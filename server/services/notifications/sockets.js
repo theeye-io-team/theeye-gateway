@@ -4,11 +4,15 @@ const NOTIFICATION_TOPIC = 'notification-crud'
 const RESULT_RENDER_TOPIC = 'job-result-render'
 const CUSTOMER_CHANGED_TOPIC = 'session-customer-changed'
 
-module.exports = {
+class Sockets {
+  constructor () {
+  }
+
   send (message, next) {
     next || (next = ()=>{})
     return this.emit(message.topic, message, next)
-  },
+  }
+
   emit (topic, message, next) {
     logger.debug('emit event %s', topic)
 
@@ -28,6 +32,8 @@ module.exports = {
     }
   }
 }
+
+module.exports = Sockets
 
 const sendNotificationMessages = (data, next) => {
   const topic = NOTIFICATION_TOPIC

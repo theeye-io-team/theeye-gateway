@@ -1,15 +1,13 @@
-'use strict';
 
-const debug = require('debug');
+const debug = require('debug')
 
-function Logger (name) {
-  var self = {};
-
-  var dlog   = debug('theeye:log:' + name);
-  var derror = debug('theeye:error:' + name);
-  var ddata  = debug('theeye:data:' + name);
-  var ddebug = debug('theeye:debug:' + name);
-  var dwarn  = debug('theeye:warn:' + name);
+const Logger = (name) => {
+  const self = {};
+  const dlog   = debug('theeye:log:' + name);
+  const derror = debug('theeye:error:' + name);
+  const ddata  = debug('theeye:data:' + name);
+  const ddebug = debug('theeye:debug:' + name);
+  const dwarn  = debug('theeye:warn:' + name);
 
   self.log = function flog(){
     dlog.apply(self, arguments);
@@ -34,4 +32,4 @@ function Logger (name) {
   return self;
 }
 
-module.exports =  Logger;
+module.exports =  Logger

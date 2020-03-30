@@ -1,28 +1,30 @@
 const express = require('express')
-const router = express.Router()
+const app = require('../app')
 
-const Notifications = require('../libs/notifications')
+module.exports = () => {
+  const router = express.Router()
 
-router.post('/customer/:customer', controller.currentCustomer)
+  router.post('/customer/:customer', controller.currentCustomer)
 
-router.post('/refresh', controller.refreshAccessToken)
+  router.post('/refresh', controller.refreshAccessToken)
 
-router.get('/profile', controller.sessionProfile)
+  router.get('/profile', controller.sessionProfile)
 
-router.put('/profile/settings', controller.updateSettings)
+  router.put('/profile/settings', controller.updateSettings)
 
-router.put('/profile/onboarding', controller.updateOnboarding)
+  router.put('/profile/onboarding', controller.updateOnboarding)
 
-// activateuser
-router.post('/activateuser', (req, res) => { })
+  // activateuser
+  router.post('/activateuser', (req, res) => { })
 
-// registeruser
-router.post('/registeruser', (req, res) => { })
+  // registeruser
+  router.post('/registeruser', (req, res) => { })
 
-// verifyInvitationToken
-router.post('/verifytoken', (req, res) => { })
+  // verifyInvitationToken
+  router.post('/verifytoken', (req, res) => { })
 
-module.exports = router
+  return router
+}
 
 const controller = {
   refreshAccessToken (req, res, next) {
@@ -44,7 +46,7 @@ const controller = {
           return res.status(500).json('Internal Error')
         }
 
-        Notifications.sockets.send({
+        app.notifications.sockets.send({
           topic: 'session-customer-changed',
           data: {
             model: user,

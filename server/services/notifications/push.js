@@ -1,11 +1,14 @@
+const app = require('../../app')
 const logger = require('../logger')('eye:libs:push-notifications')
-const AWS = require('aws-sdk')
-const SNS = new AWS.SNS(new AWS.Config(sails.config.aws))
 const fs = require('fs')
 
 const dumpfile = '/tmp/theeye-push-dump.log'
 
-module.exports = {
+class Push {
+
+  constructor () {
+  }
+
   send (event, users) {
     const model = event.data.model
     let data
@@ -28,7 +31,8 @@ module.exports = {
         if (data.msg) this.dispatch(data, users)
         break
     }
-  },
+  }
+
   dispatch (data, users) {
     if (!data.msg) {
       return logger.error('Error. invalid message, undefined condition')
@@ -59,7 +63,7 @@ module.exports = {
             params.TargetArn = device.endpoint_arn
             logger.debug('Sending notification to target arn: ' + params.TargetArn)
 
-            SNS.publish(params, function (error, data) {
+            app.sns.publish(params, function (error, data) {
               if (error) {
                 logger.error('%o', error)
                 logger.error('Error sending notification, deleting endpoint arn: ' + params.TargetArn)
@@ -76,6 +80,8 @@ module.exports = {
     }
   }
 }
+
+module.exports = Push
 
 const prepareJobNotification = (job) => {
   let data = {}
@@ -173,7 +179,7 @@ const dumpSNSMessage = (dummyArn, filename, payload) => {
 }
 
 const handleSNSError = (user, device) => {
-  SNS.deleteEndpoint({
+  app.sns.deleteEndpoint({
     EndpointArn: device.endpoint_arn
   }, function(error, data) {
     if (error) {

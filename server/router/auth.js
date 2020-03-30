@@ -1,10 +1,19 @@
 const express = require('express')
-const router = express.Router()
+const app = require('../app')
 
-router.post('/login', (req, res) => {
-})
+module.exports = () => {
+  const router = express.Router()
 
-router.post('/logout', (req, res) => {
-})
+  router.post('/login', controller.login)
 
-module.exports = router
+  router.post('/logout', controller.logout)
+
+  return router
+}
+
+const controller = {
+  login (req, res, next) {
+  },
+  logout (req, res, next) {
+  }
+}
