@@ -4,46 +4,90 @@ const http = require('http')
 const https = require('https')
 const socket = require('socket.io')
 const router = require('./router')
-const config = require('./config')
+const Models = require('./models')
 
+const logger = require('./services/logger')('app')
+const Tokens = require('./services/tokens')
+const Authentication = require('./services/authentication')
 const Notifications = require('./services/notifications')
 
 const aws = require('aws-sdk')
 
 //const cookieParser = require('cookie-parser')
 
-class App {
-  constructor () {
-  }
+const app = {
+  async configure (config) {
+    this.config = config
 
-  initialize () {
-    const app = express()
-    app.config = config
-    const server = process.env.NODE_ENV === 'development' ? http.Server(app) : https.Server(app)
-    const port = config.application.port
-    const io = (server)
+    this.api = setupApi()
 
-    app.use(express.static(path.join(__dirname, '../client/dist')))
+    // services
+    this.tokens = setupTokens(config)
+    this.sns = setupSNS(config)
+    this.notifications = setupNotifications(config)
 
-    router.route(app)
+    this.models = await setupModels(config)
 
-    //app.use(cookieParser())
-    app.use(express.json())
-    app.use(express.urlencoded({ extended: false }))
+    // authentication require models
+    setupAuth(this)
+    // routes require models
+    setupRoutes(this, config)
+  },
 
-    app.listen(port, () => console.log(`api ready`))
-
-    this.setupSNS(config)
-    this.setupNotifications(config)
-  }
-
-  setupSNS (config) {
-    this.sns = new aws.SNS(new aws.Config(config.aws))
-  }
-
-  setupNotifications (config) {
-    this.notifications = new Notifications(config.services.notifications)
+  start () {
+    const port = this.config.app.port
+    this.api.listen(port, () => {
+      logger.log(`API ready at port ${port}`)
+    })
   }
 }
 
-module.exports = App
+module.exports = app
+
+const setupApi = () => {
+  let api = express()
+  //const server = process.env.NODE_ENV === 'development' ? http.Server(api) : https.Server(api)
+
+  api.use(express.json())
+  api.use(express.urlencoded({ extended: true }))
+  //api.use(cookieParser())
+
+  return api
+}
+
+const setupAuth = (app) => {
+  return new Authentication(app, app.config.services.authentication)
+}
+
+const setupTokens = (config) => {
+  return new Tokens(config.services.tokens)
+}
+
+const setupSNS = (config) => {
+  return new aws.SNS(new aws.Config(config.services.aws))
+}
+
+const setupNotifications = (config) => {
+  return new Notifications(config.services.notifications)
+}
+
+const setupModels = async (config) => {
+  let models = new Models(config)
+  await models.configure()
+  return models
+}
+
+const setupRoutes = (app, config) => {
+  let api = app.api
+  api.use(express.static(path.join(__dirname, '../client/dist')))
+  router.route(api)
+
+  // last route 404
+  api.use((req, res, next) => {
+    let payload = { message: `${req.path} not found`, status: 404 }
+    logger.log(payload)
+    res.status(payload.status)
+    res.json(payload)
+  })
+}
+

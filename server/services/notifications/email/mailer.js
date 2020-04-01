@@ -5,7 +5,7 @@ class Mailer {
   constructor (config) {
     const trType = config.transport.type
     const options = config.transport.options || {}
-    const transport
+    let transport
 
     switch (trType) {
       case 'ses':

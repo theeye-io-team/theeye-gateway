@@ -1,8 +1,9 @@
-const App = require('./app')
+const app = require('./app')
+const config = require('./config')
 
-const main = () => {
-  let app = new App()
-  app.initialize()
+const main = async () => {
+  await app.configure(config)
+  app.start()
 }
 
 main()
