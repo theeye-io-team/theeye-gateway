@@ -2,8 +2,12 @@ const mongoose = require('mongoose')
 
 module.exports = function () {
   const schema = new mongoose.Schema({
-    user_id: { type: mongoose.Schema.Types.ObjectId, ref: 'AppUser' }
+    user_id: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }
+    token: { type: String },
     expires: { type: Date, default: new Date() }
+  }, {
+    collection: 'web_session',
+    discriminatorKey: '_type'
   })
 
   const def = {
@@ -20,5 +24,5 @@ module.exports = function () {
   schema.set('toJSON', def)
   schema.set('toObject', def)
 
-  return mongoose.model('AppSession', schema)
+  return mongoose.model('Session', schema)
 }

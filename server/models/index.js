@@ -2,18 +2,20 @@
 const MongodbDS = require('./mongodb')
 const NotificationModel = require('./notification')
 const UserModel = require('./user')
+const PassportModel = require('./passport')
 
 class Models {
-  constructor (config) {
-    this.config = config.models
-    this.datasource = new MongodbDS(config.mongodb)
+  constructor (app) {
+    this.config = app.config.models
+    this.datasource = new MongodbDS(app.config.mongodb)
   }
 
   async configure () {
-    await this.datasource.connect()
+    let db = await this.datasource.connect()
 
-    this.user = new UserModel()
-    this.notification = new NotificationModel()
+    this.user = new UserModel(db)
+    this.passport = new PassportModel(db)
+    this.notification = new NotificationModel(db)
   }
 }
 

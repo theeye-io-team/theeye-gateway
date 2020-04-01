@@ -1,5 +1,5 @@
 const Mailer = require('./mailer')
-const logger = require('../../logger')('services:mailer')
+const logger = require('../../../logger')('services:mailer')
 
 class Email {
   constructor (config) {

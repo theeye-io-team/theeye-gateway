@@ -1,4 +1,4 @@
-const logger = require('../logger')('libs:notifications:sockets')
+const logger = require('../../logger')('libs:notifications:sockets')
 
 const NOTIFICATION_TOPIC = 'notification-crud'
 const RESULT_RENDER_TOPIC = 'job-result-render'

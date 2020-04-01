@@ -1,9 +1,11 @@
-const app = require('./app')
+const App = require('./app')
 const config = require('./config')
 
-const main = async () => {
+const app = module.exports = new App()
+
+const boot = async () => {
   await app.configure(config)
   app.start()
 }
 
-main()
+boot()

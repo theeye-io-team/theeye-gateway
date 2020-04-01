@@ -6,33 +6,37 @@ const socket = require('socket.io')
 const router = require('./router')
 const Models = require('./models')
 
-const logger = require('./services/logger')('app')
+const logger = require('./logger')('app')
 const Tokens = require('./services/tokens')
-const Authentication = require('./services/authentication')
 const Notifications = require('./services/notifications')
+
+const AuthenticationMiddleware = require('./middleware/authentication')
 
 const aws = require('aws-sdk')
 
 //const cookieParser = require('cookie-parser')
 
-const app = {
+class App {
+  constructor () {
+  }
+
   async configure (config) {
     this.config = config
 
     this.api = setupApi()
 
     // services
-    this.tokens = setupTokens(config)
-    this.sns = setupSNS(config)
-    this.notifications = setupNotifications(config)
+    this.service = {}
+    this.service.tokens = new Tokens(this)
+    this.service.notifications = new Notifications(this)
+    this.service.sns = setupSNS(this)
 
-    this.models = await setupModels(config)
+    this.models = new Models(this)
+    await this.models.configure()
 
-    // authentication require models
-    setupAuth(this)
     // routes require models
     setupRoutes(this, config)
-  },
+  }
 
   start () {
     const port = this.config.app.port
@@ -42,8 +46,9 @@ const app = {
   }
 }
 
-module.exports = app
+module.exports = App
 
+// must be function to scope app
 const setupApi = () => {
   let api = express()
   //const server = process.env.NODE_ENV === 'development' ? http.Server(api) : https.Server(api)
@@ -56,28 +61,18 @@ const setupApi = () => {
 }
 
 const setupAuth = (app) => {
-  return new Authentication(app, app.config.services.authentication)
+  return 
 }
 
-const setupTokens = (config) => {
-  return new Tokens(config.services.tokens)
-}
-
-const setupSNS = (config) => {
-  return new aws.SNS(new aws.Config(config.services.aws))
-}
-
-const setupNotifications = (config) => {
-  return new Notifications(config.services.notifications)
-}
-
-const setupModels = async (config) => {
-  let models = new Models(config)
-  await models.configure()
-  return models
+const setupSNS = (app) => {
+  return new aws.SNS(new aws.Config(app.config.services.aws))
 }
 
 const setupRoutes = (app, config) => {
+
+  // authentication require models
+  new AuthenticationMiddleware(app)
+
   let api = app.api
   api.use(express.static(path.join(__dirname, '../client/dist')))
   router.route(api)
@@ -90,4 +85,3 @@ const setupRoutes = (app, config) => {
     res.json(payload)
   })
 }
-

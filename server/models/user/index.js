@@ -1,6 +1,6 @@
 const mongoose = require('mongoose')
 
-module.exports = function () {
+module.exports = function (db) {
   const schema = new mongoose.Schema({
     username: {
       type: String,
@@ -18,7 +18,6 @@ module.exports = function () {
     credential: { type: 'string', default: 'viewer' },
     enabled: { type: 'boolean', default: false },
     invitation_token: { type: 'string', default: '' },
-    //passports: [{ type: Schema.Types.ObjectId, ref: 'Passport' }],
     devices: { type: 'array', default: [] },
     notifications: {
       type: 'object',
@@ -32,6 +31,9 @@ module.exports = function () {
       }
     },
     onboardingCompleted: { type: 'boolean', default: false }
+  }, {
+    collection: 'web_user',
+    discriminatorKey: '_type'                                        
   })
 
   const def = {
@@ -48,5 +50,5 @@ module.exports = function () {
   schema.set('toJSON', def)
   schema.set('toObject', def)
 
-  return mongoose.model('AppUser', schema)
+  return db.model('User', schema)
 }

@@ -7,8 +7,8 @@
 const jwt = require('jsonwebtoken')
 
 class Tokens {
-  constructor (config) {
-    this.config = config
+  constructor (app) {
+    this.config = app.config.services.tokens
   }
 
   /**

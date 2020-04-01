@@ -1,5 +1,5 @@
 const app = require('../../app')
-const logger = require('../logger')('eye:libs:push-notifications')
+const logger = require('../../logger')('eye:libs:push-notifications')
 const fs = require('fs')
 
 const dumpfile = '/tmp/theeye-push-dump.log'
