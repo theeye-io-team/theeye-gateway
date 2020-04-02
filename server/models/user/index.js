@@ -13,9 +13,9 @@ module.exports = function (db) {
       required: true
     },
     name: { type: 'string' },
-    current_customer: { type: 'string' },
-    customers: { type: 'array', default: [] },
-    credential: { type: 'string', default: 'viewer' },
+    //current_customer: { type: 'string' },
+    //customers: { type: 'array', default: [] },
+    //credential: { type: 'string', default: 'viewer' },
     enabled: { type: 'boolean', default: false },
     invitation_token: { type: 'string', default: '' },
     devices: { type: 'array', default: [] },

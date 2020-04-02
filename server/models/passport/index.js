@@ -4,7 +4,7 @@ const bcrypt = require('bcrypt')
 module.exports = function (db) {
   const schema = new mongoose.Schema({
     protocol: { type: 'string', required: true },
-    password: { type: 'string' },
+    password: { type: 'string' }, // local
     provider: { type: 'string' },
     identifier: { type: 'string' },
     tokens: { type: 'object' },
