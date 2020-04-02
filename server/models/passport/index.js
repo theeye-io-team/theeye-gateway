@@ -3,13 +3,15 @@ const bcrypt = require('bcrypt')
 
 module.exports = function (db) {
   const schema = new mongoose.Schema({
-    protocol: { type: 'alphanumeric', required: true },
+    protocol: { type: 'string', required: true },
     password: { type: 'string' },
     provider: { type: 'string' },
     identifier: { type: 'string' },
     tokens: { type: 'object' },
     user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
     user_id: { type: mongoose.Schema.Types.ObjectId, required: true },
+    creation_date: { type: Date, default: new Date(), required: true },
+    last_update: { type: Date, default: new Date(), required: true },
   }, {
     collection: 'web_passport',
     discriminatorKey: '_type'                                        
@@ -38,19 +40,17 @@ module.exports = function (db) {
   schema.set('toObject', def)
 
   schema.pre('save', next => {
-    hashPassword(passport, next)
-  })
-
-  const hashPassword = (passport, next) => {
+    this.last_update = new Date()
+    let passport = this
     if (passport.password) {
       bcrypt.hash(passport.password, 10, (err, hash) => {
         passport.password = hash
-        next(err, passport)
+        next(err)
       })
     } else {
-      next(null, passport)
+      next(null)
     }
-  }
+  })
 
   schema.validatePassword = (password, next) => {
     bcrypt.compare(password, this.password, next)

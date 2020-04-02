@@ -5,15 +5,21 @@ const SessionRouter = require('./session')
 const NotificationRouter = require('./notification')
 const SocketsRouter = require('./sockets')
 
-module.exports = {
-  route (app) {
-    app.get('/login', (req, res) => {
+class Router {
+  constructor (app) {
+    this.app = app
+    let api = app.api
+
+    // static api route
+    api.get('/login', (req, res) => {
       res.sendFile(path.join(__dirname, '../../client/dist/index.html'))
     })
 
-    app.use('/api/auth', AuthRouter())
-    app.use('/api/session', SessionRouter())
-    app.use('/api/notification', NotificationRouter())
-    app.use('/api/socket', SocketsRouter())
+    api.use('/api/auth', AuthRouter(app))
+    api.use('/api/session', SessionRouter(app))
+    api.use('/api/notification', NotificationRouter(app))
+    api.use('/api/socket', SocketsRouter(app))
   }
 }
+
+module.exports = Router

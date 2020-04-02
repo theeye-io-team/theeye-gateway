@@ -1,8 +1,10 @@
 //const user = require('./user')
 const MongodbDS = require('./mongodb')
 const NotificationModel = require('./notification')
-const UserModel = require('./user')
 const PassportModel = require('./passport')
+const SessionModel = require('./session')
+const UserModel = require('./user')
+const CustomerModel = require('./customer')
 
 class Models {
   constructor (app) {
@@ -13,9 +15,11 @@ class Models {
   async configure () {
     let db = await this.datasource.connect()
 
-    this.user = new UserModel(db)
-    this.passport = new PassportModel(db)
     this.notification = new NotificationModel(db)
+    this.passport = new PassportModel(db)
+    this.session = new SessionModel(db)
+    this.user = new UserModel(db)
+    this.customer = new CustomerModel(db)
   }
 }
 

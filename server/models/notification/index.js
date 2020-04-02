@@ -13,7 +13,9 @@ module.exports = function (db) {
     topic: { type: 'string' },
     event_id: { type: 'string' },
     read: { type: 'boolean', default: false },
-    data: { type: 'object', default: () => { return {} } }
+    data: { type: 'object', default: () => { return {} } },
+    creation_date: { type: Date, default: new Date(), required: true },
+    last_update: { type: Date, default: new Date(), required: true },
   }, {
     collection: 'web_notification',
     discriminatorKey: '_type'
@@ -29,6 +31,11 @@ module.exports = function (db) {
       delete ret.__v
     }
   }
+
+  schema.pre('save', next => {
+    this.last_update = new Date()
+    next(null)
+  })
 
   schema.set('toJSON', def)
   schema.set('toObject', def)

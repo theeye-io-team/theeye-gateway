@@ -30,7 +30,10 @@ module.exports = function (db) {
         }
       }
     },
-    onboardingCompleted: { type: 'boolean', default: false }
+    onboardingCompleted: { type: 'boolean', default: false },
+    creation_date: { type: Date, default: new Date(), required: true },
+    last_update: { type: Date, default: new Date(), required: true },
+    last_login: { type: Date, default: new Date(), required: true }
   }, {
     collection: 'web_user',
     discriminatorKey: '_type'                                        
@@ -46,6 +49,11 @@ module.exports = function (db) {
       delete ret.__v
     }
   }
+
+  schema.pre('save', next => {
+    this.last_update = new Date()
+    next(null)
+  })
 
   schema.set('toJSON', def)
   schema.set('toObject', def)

@@ -1,10 +1,14 @@
 const mongoose = require('mongoose')
 
-module.exports = function () {
+module.exports = function (db) {
   const schema = new mongoose.Schema({
-    user_id: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }
-    token: { type: String },
-    expires: { type: Date, default: new Date() }
+    token: { type: String, required: true },
+    expires: { type: Date, required: true },
+    creation_date: { type: Date, default: new Date(), required: true },
+    user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+    user_id: { type: mongoose.Schema.Types.ObjectId, required: true },
+    customer: { type: mongoose.Schema.Types.ObjectId, ref: 'Customer' },
+    customer_id: { type: mongoose.Schema.Types.ObjectId }
   }, {
     collection: 'web_session',
     discriminatorKey: '_type'
@@ -24,5 +28,5 @@ module.exports = function () {
   schema.set('toJSON', def)
   schema.set('toObject', def)
 
-  return mongoose.model('Session', schema)
+  return db.model('Session', schema)
 }

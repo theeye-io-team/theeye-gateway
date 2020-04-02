@@ -1,126 +1,167 @@
 const express = require('express')
 const passport = require('passport')
-const app = require('../app')
 
-module.exports = () => {
+module.exports = (app) => {
   const router = express.Router()
 
   router.post(
     '/login',
-    passport.authenticate('basic', { session: false }),
-    controller.login
+    (req, res, next) => {
+      passport.authenticate('basic', { session: false })(req, res, (err, user) => {
+        if (err) {
+          if (err.status >= 400) {
+            res.status(err.status)
+            res.json(err.message)
+          }
+        } else {
+          next(err, user)
+        }
+      })
+    },
+    async (req, res, next) => {
+      try {
+        var user = req.user
+        let access_token = app.service.authentication.issue({ user_id: user.id })
+
+        let expiration = new Date()
+        let expSecs = app.config.services.authentication.expires
+        expiration.setSeconds( expiration.getSeconds() + expSecs )
+
+        let session = new app.models.session()
+        session.user_id = user._id
+        session.user = user
+        session.token = access_token
+        session.expires = expiration
+        await session.save()
+
+        // TODO: register all issued tokens
+        res.json({ access_token })
+      } catch (err) {
+        res.json(err)
+      }
+    }
   )
 
   router.post(
     '/logout',
     passport.authenticate('bearer', { session: false }),
-    controller.logout
+    (req, res, next) => {
+      if (!req.user) {
+        return res.send(400)
+      }
+      // TODO: de-register issued token
+      // let token = req.query.access_token
+      res.status(200).json()
+    }
   )
 
-  router.post('/password/recover', controller.passwordRecover)
-  router.get('/password/recoververify', controller.passwordRecoverVerify)
-  router.put('/password/reset', controller.passwordReset)
-
-  return router
-}
-
-const controller = {
-  login (req, res) {
-    var user = req.user
-    let token = app.tokens.issue({ user_id: user.client_id })
-    // TODO: register all issued tokens
-    res.send({ token })
-  },
-  logout (req, res, next) {
-    if (!req.user) {
-      return res.send(400)
+  router.post(
+    '/refresh',
+    passport.authenticate('bearer', { session: false }),
+    (req, res, next) => {
+      const user = req.user
+      const access_token = app.service.authentication.issue({ user_id: user.id })
+      return res.json({ access_token })
     }
-    // TODO: de-register issued token
-    // let token = req.query.access_token
-    res.send(200)
-  },
+  )
+
+
   /**
    *
    * send reset password email
    *
    */
-  passwordRecover (req, res, next) {
-    if (sails.config.passport.ldapauth) {
-      return res.send(400, {error: 'ldapSet'});
+  router.post(
+    '/password/recover',
+    (req, res, next) => {
+      if (sails.config.passport.ldapauth) {
+        return res.send(400, {error: 'ldapSet'});
+      }
+      var email = req.params.all().email; // every posible param
+      logger.debug('searching ' + email);
+
+      User.findOne({ email: email },function(err,user){
+        if( err ) return res.send(500,err);
+        if( ! user ) return res.send(400,"User not found");
+
+        let token = app.service.authentication.issue({ user }, { expiresIn: "12h" })
+        var url = passport.protocols.local.getPasswordResetLink(token)
+
+        mailer.sendPasswordRecoveryEMail({
+          url: url,
+          user: user
+        },function(err){
+          if(err) {
+            logger.error("Error sending email to " + email);
+            logger.error('%o',err);
+            return res.send(500,err);
+          }
+
+          return res.send(200,{ message: 'ok' });
+        })
+      })
     }
-    var email = req.params.all().email; // every posible param
-    logger.debug('searching ' + email);
+  )
 
-    User.findOne({ email: email },function(err,user){
-      if( err ) return res.send(500,err);
-      if( ! user ) return res.send(400,"User not found");
-
-      var token = app.tokens.issue({ user: user }, { expiresIn: "12h" })
-      var url = passport.protocols.local.getPasswordResetLink(token)
-
-      mailer.sendPasswordRecoveryEMail({
-        url: url,
-        user: user
-      },function(err){
-        if(err) {
-          logger.error("Error sending email to " + email);
-          logger.error('%o',err);
-          return res.send(500,err);
+  router.get(
+    '/password/recoververify',
+    (req, res, next) => {
+      try {
+        if (!req.query.token) {
+          return res.send(400)
         }
 
-        return res.send(200,{ message: 'ok' });
-      })
-    })
-  },
-  passwordRecoverVerify (req, res, next) {
-    try {
-      if (!req.query.token) {
+        let decoded = app.service.authentication.verify(req.query.token)
+        var user = decoded.user
+
+        var resetToken = app.service.authentication.issue({ user }, { expiresIn: "5m" })
+        return res.json({ resetToken })
+      } catch (err) {
+        logger.error('%o', err)
+        return res.send(400)
+      }
+    }
+  )
+
+  router.put(
+    '/password/reset',
+    (req, res, next) => {
+      var params = req.params.all()
+
+      if(
+        ! params.token ||
+        ! params.password ||
+        ! params.confirmation
+      ) {
         return res.send(400)
       }
 
-      let decoded = app.tokens.verify(req.query.token)
-      var user = decoded.user
-      var resetToken = app.tokens.issue({user:user},{ expiresIn: "5m" })
-      return res.json({ resetToken })
-    } catch (err) {
-      logger.error('%o', err)
-      return res.send(400)
-    }
-  },
-  passwordReset (req, res, next) {
-    var params = req.params.all()
+      if (params.password != params.confirmation) {
+        return res.send(400,'Passwords does not match')
+      }
 
-    if(
-      ! params.token ||
-      ! params.password ||
-      ! params.confirmation
-    ) {
-      return res.send(400)
-    }
-
-    if (params.password != params.confirmation) {
-      return res.send(400,'Passwords does not match')
-    }
-
-    try {
-      let decoded = app.tokens.verify(params.token)
-      var user = decoded.user;
-      passport.protocols.local.reset({
-        email: user.email,
-        password: params.password
-      }, err => {
-        if(err){
-          if(err.message == 'Invalid password'){
-            return res.send(400, 'The password must have at least 8 characters long')
+      try {
+        let decoded = app.tokens.verify(params.token)
+        var user = decoded.user;
+        passport.protocols.local.reset({
+          email: user.email,
+          password: params.password
+        }, err => {
+          if(err){
+            if(err.message == 'Invalid password'){
+              return res.send(400, 'The password must have at least 8 characters long')
+            }
+            logger.error('%o', err)
+            return res.send(500, 'Error updating password, try again.')
           }
-          logger.error('%o', err)
-          return res.send(500, 'Error updating password, try again.')
-        }
-        res.send(200)
-      })
-    } catch (err) {
-      logger.error('%o',err)
-      return res.send(400,'Invalid password reset token, try again.')
+          res.send(200)
+        })
+      } catch (err) {
+        logger.error('%o',err)
+        return res.send(400,'Invalid password reset token, try again.')
+      }
     }
-  }
+  )
+
+  return router
 }
