@@ -1,16 +1,30 @@
+
 # TheEye Api Gateway
+
+This repo contains
 
 ```
 
 https://github.com/theeye-io/api_gateway
 |
-+- client/
-+- node_modules/
-+- package.json
-+- package-lock.json
-+- server/
++-- client/
+   |
+   +-- empty
++-- package.json
++-- package-lock.json
++-- server/
+    |
+    +--app.js
+    +--config/
+    +--index.js
+    +--logger.js
+    +--models/
+    +--router/
+    +--services/
+
 
 ```
+
 
 to start the API
 
