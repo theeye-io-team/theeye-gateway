@@ -7,7 +7,7 @@ This repo contains
 
 https://github.com/theeye-io/api_gateway
 |
-+-- client/
++-- client/ # development. web static assets dist
    |
    +-- empty
 +-- package.json
@@ -32,6 +32,6 @@ to start the API
 
 ## Development
 
-to navigate web client in local environment, clone theeye web into the client directory. 
+to navigate web client in local environment, clone theeye web https://github.com/theeye-io/web into the client directory. 
 
 statics files will be served in localhost:6080
