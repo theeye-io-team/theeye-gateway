@@ -7,7 +7,7 @@ module.exports = {
   },
   mongodb: {
     hosts: "localhost:27017",
-    database: "theeye",
+    database: "theeyenew",
     // options are passed directly to the mongo-native driver
     options: {
       useNewUrlParser: true,
