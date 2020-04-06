@@ -15,11 +15,11 @@ module.exports = (app) => {
         if (err) {
           logger.error(err.message)
           if (err.status === 400) {
-            return res.send(400, err.error.toString())
+            return res.status(400).json({ message: err.error.toString() })
           }
-          return res.send(500, err.toString())
+          return res.status(500).json({ message: err.toString() })
         } else {
-          return res.send(200)
+          return res.send(200).json()
         }
       }
 
@@ -62,22 +62,18 @@ module.exports = (app) => {
   router.delete(
     '/',
     (req, res, next) => {
-      app.service.notifications.native(function (err, notifications) {
-        if (err) { return res.send(500, err) }
+      let date = moment()
+        .subtract(1, 'days')
+        .startOf('day')
+        .toDate()
 
-        let date = moment()
-          .subtract(1, 'days')
-          .startOf('day')
-          .toDate()
-
-        notifications.remove({
-          createdAt: {
-            $lte: date
-          }
-        }, function (err, result) {
-          if (err) { return res.send(500, err) }
-          res.send(200, { count: result })
-        })
+      app.models.notifications.deleteMany({
+        creation_date: {
+          $lte: date
+        }
+      }, function (err, result) {
+        if (err) { return res.status(500).json({ message: 'Error removing notifications.' }) }
+        res.json({ count: result })
       })
     }
   )
@@ -150,6 +146,7 @@ module.exports = (app) => {
     let body = (args[1] || notifyTask.body)
     let recipients = (parseRecipients(args[2]) || notifyTask.recipients)
     let organization = event.data.organization
+    let organization_id = event.data.organization_id
 
     logger.debug('%s|%s', event.id, 'dispatching custom notifications')
 
@@ -172,7 +169,9 @@ module.exports = (app) => {
         topic: 'notification-task',
         data: event.data,
         event_id: event.id,
-        customer_name: organization
+        customer_name: organization,
+        customer_id: organization_id,
+        customer: organization_id
       }, users, (err, notifications) => {
         if (err) {
           let msg = `${event.id}|error creating notifications`
@@ -263,6 +262,7 @@ module.exports = (app) => {
     let acls = (model.task ? model.task.acl : model.acl) || []
     let credentials = ['admin', 'owner', 'root']
     let organization = event.data.organization
+    let organization_id = event.data.organization_id
 
     getUsersToNotify(event, organization, acls, credentials, (error, users) => {
       if (error) {
@@ -287,7 +287,9 @@ module.exports = (app) => {
         topic: event.topic,
         data: event.data,
         event_id: event.id,
-        customer_name: organization
+        customer_name: organization,
+        customer_id: organization_id,
+        customer: organization_id
       }, users, (err, notifications) => {
         if (err) {
           let msg = 'error creating user notifications'
@@ -386,7 +388,7 @@ module.exports = (app) => {
     const notifications = []
 
     users.forEach(user => {
-      notifications.push(Object.assign({}, event, { user_id: user.id }))
+      notifications.push(Object.assign({}, event, { user_id: user.id, user: user.id }))
     })
 
     app.models.notification.create(notifications, callback)
