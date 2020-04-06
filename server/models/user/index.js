@@ -2,38 +2,16 @@ const mongoose = require('mongoose')
 
 module.exports = function (db) {
   const schema = new mongoose.Schema({
-    username: {
-      type: String,
-      unique: true,
-      required: true
-    },
-    email: {
-      type: String,
-      unique: true,
-      required: true
-    },
+    username: { type: String, unique: true, required: true },
+    email: { type: String, unique: true, required: true },
     name: { type: 'string' },
-    //current_customer: { type: 'string' },
-    //customers: { type: 'array', default: [] },
-    //credential: { type: 'string', default: 'viewer' },
     enabled: { type: 'boolean', default: false },
     invitation_token: { type: 'string', default: '' },
     devices: { type: 'array', default: [] },
-    notifications: {
-      type: 'object',
-      default: () => {
-        return {
-          mute: false,
-          push: true,
-          email: true,
-          desktop: true
-        }
-      }
-    },
     onboardingCompleted: { type: 'boolean', default: false },
     creation_date: { type: Date, default: new Date(), required: true },
     last_update: { type: Date, default: new Date(), required: true },
-    last_login: { type: Date, default: new Date(), required: true }
+    last_login: { type: Date, default: new Date() }
   }, {
     collection: 'web_user',
     discriminatorKey: '_type'                                        
@@ -50,7 +28,7 @@ module.exports = function (db) {
     }
   }
 
-  schema.pre('save', next => {
+  schema.pre('save', function (next) {
     this.last_update = new Date()
     next(null)
   })
@@ -58,5 +36,8 @@ module.exports = function (db) {
   schema.set('toJSON', def)
   schema.set('toObject', def)
 
-  return db.model('User', schema)
+  const User = db.model('User', schema)
+  const BotUser = db.model('BotUser', schema)
+
+  return User
 }

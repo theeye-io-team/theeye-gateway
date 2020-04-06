@@ -5,6 +5,7 @@ const PassportModel = require('./passport')
 const SessionModel = require('./session')
 const UserModel = require('./user')
 const CustomerModel = require('./customer')
+const MemberModel = require('./member')
 
 class Models {
   constructor (app) {
@@ -20,6 +21,7 @@ class Models {
     this.session = new SessionModel(db)
     this.user = new UserModel(db)
     this.customer = new CustomerModel(db)
+    this.member = new MemberModel(db)
   }
 }
 

@@ -49,7 +49,7 @@ module.exports = function (db) {
     }
   }
 
-  schema.pre('save', next => {
+  schema.pre('save', function (next) {
     this.last_update = new Date()
     // do stuff
     next()

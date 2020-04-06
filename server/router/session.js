@@ -1,8 +1,7 @@
 const express = require('express')
-const app = require('../app')
-const passport = require('passport')
+const logger = require('../logger')('router:session')
 
-module.exports = () => {
+module.exports = (app) => {
   const router = express.Router()
 
   /**
@@ -12,7 +11,6 @@ module.exports = () => {
    */
   router.post(
     '/customer/:customer',
-    passport.authenticate('bearer', { session: false }),
     (req, res, next) => {
       const customer = req.params.customer
       const user = req.user
@@ -24,7 +22,7 @@ module.exports = () => {
             return res.status(500).json('Internal Error')
           }
 
-          app.notifications.sockets.send({
+          app.services.notifications.sockets.send({
             topic: 'session-customer-changed',
             data: {
               model: user,
@@ -49,50 +47,49 @@ module.exports = () => {
    */
   router.get(
     '/profile',
-    passport.authenticate('bearer', { session: false }),
-    (req, res, next) => {
-      const user = req.user
+    async (req, res, next) => {
+      try {
+        const user = req.user
+        const session = req.session
 
-      return res.json(user)
-
-      app.models.user.findOne({
-        user: user.id,
-        protocol: 'theeye'
-      }, (err, theeye) => {
-        if (err) return res.send(500,err)
-
-        user.theeye = theeye
-        const customers = theeye.profile.customers
-
-        if (
-          ! customers ||
-          ! Array.isArray(customers) ||
-          customers.length === 0
-        ) {
-          return res.send(500, 'error fetching profile. profile customers are empty.')
-        }
-
-        const current_customer = customers.find(c => c.name == user.current_customer)
-
-        if (!current_customer) {
-          return res.send(500,'error fetching profile. profile customer not found.')
-        }
-
-        req.supervisor.get({
-          //replace this route
-          //route: `/customer/${current_customer.name}`,
-          route: `${current_customer.name}/customer`,
-          success: customer => {
-            user.current_customer = customer
-            res.send(200, user)
-          },
-          failure: err => {
-            console.error(err)
-            res.send(500,'error fetching profile')
+        const members = await app.models.member.find({ user_id: user._id })
+        const customers = []
+        if (members.length > 0) {
+          for (let member of members) {
+            await member.populate('customer', { id: 1, name: 1 }).execPopulate()
+            customers.push(member.customer)
           }
-        })
-        //return res.json(user)
-      })
+        }
+
+        await session.populate({
+          path: 'member',
+          populate: { 
+            path: 'customer'
+          }
+        }).execPopulate()
+
+        let member = session.member
+
+        let profile = {}
+        profile.customers = customers // reduced information
+        profile.last_login = user.last_login
+        profile.name = user.name
+        profile.username = user.username
+        profile.email = user.email
+        profile.onboardingCompleted = user.onboardingCompleted
+        profile.current_customer = {
+          id: member.customer.id,
+          name: member.customer.name,
+          config: member.customer.config
+        }
+        profile.notifications = member.notifications
+        profile.credential = member.credential
+
+        return res.json(profile)
+      } catch (err) {
+        logger.error(err)
+        return res.status(err.status || 500).json(err)
+      }
     }
   )
 
@@ -103,7 +100,6 @@ module.exports = () => {
    */
   router.put(
     '/profile/settings',
-    passport.authenticate('bearer', { session: false }),
     (req, res, next) => {
       const user = req.user
       const params = req.params.all()
@@ -122,9 +118,9 @@ module.exports = () => {
 
   router.put(
     '/profile/onboarding',
-    passport.authenticate('bearer', { session: false }),
     (req, res, next) => {
       const user = req.user
+      console.log(req.user, req.session)
       const params = req.params.all()
 
       user.onboardingCompleted = params.onboardingCompleted

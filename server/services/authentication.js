@@ -78,12 +78,24 @@ module.exports = function (app) {
             return next(err)
           }
 
+          // basic authentication requires a local passport
+          let passport = await app.models.passport.findOne({ user: user._id, protocol: 'local' })
+
+          await passport.validatePassword(password)
+
           logger.log('client %s/%s connected [basic]', user.username, user.email)
           return next(null, user)
         } catch (err) {
-          logger.error('error fetching user by token')
-          logger.error(err)
-          return next(err)
+          if (err.message === 'InvalidPassword') {
+            logger.error(`unauthorized. u:${username}/p:${password}`)
+            let err = new Error('unauthorized')
+            err.status = 401
+            return next(err)
+          } else {
+            logger.error('error fetching user by token')
+            logger.error(err)
+            return next(err)
+          }
         }
       })
 
@@ -112,7 +124,7 @@ module.exports = function (app) {
               unauthorized()
             } else {
               logger.log('client %s/%s connected [bearer]', user.username, user.email)
-              next(null, user)
+              next(null, user, session)
             }
           } catch (err) {
             next(err)

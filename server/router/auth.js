@@ -1,5 +1,6 @@
 const express = require('express')
 const passport = require('passport')
+const logger = require('../logger')('router:auth')
 
 module.exports = (app) => {
   const router = express.Router()
@@ -7,37 +8,59 @@ module.exports = (app) => {
   router.post(
     '/login',
     (req, res, next) => {
-      passport.authenticate('basic', { session: false })(req, res, (err, user) => {
+      passport.authenticate('basic', (err, user) => {
         if (err) {
           if (err.status >= 400) {
             res.status(err.status)
-            res.json(err.message)
+            return res.json(err.message)
           }
+          next(err)
         } else {
-          next(err, user)
+          req.user = user
+          next()
         }
-      })
+      }, {session: false})(req, res, next)
     },
     async (req, res, next) => {
       try {
-        var user = req.user
+        let user = req.user
         let access_token = app.service.authentication.issue({ user_id: user.id })
-
+        let customer = req.query.customer || null
         let expiration = new Date()
         let expSecs = app.config.services.authentication.expires
-        expiration.setSeconds( expiration.getSeconds() + expSecs )
+        expiration.setSeconds(expiration.getSeconds() + expSecs)
 
+        let query = { user_id: user._id }
+        if (customer) {
+          query.customer_name = customer
+        }
+
+        let memberOf = await app.models.member.find(query)
+
+        if (memberOf.length === 0) {
+          return res
+            .status(403)
+            .json({ message: 'forbidden', reason: 'you have no memberships' })
+        }
+
+        let member = memberOf[0]
+
+        // register issued tokens
         let session = new app.models.session()
-        session.user_id = user._id
-        session.user = user
         session.token = access_token
         session.expires = expiration
+        session.user = user._id
+        session.user_id = user._id
+        session.member = member._id
+        session.member_id = member._id
+        session.customer = member.customer._id
+        session.customer_id = member.customer._id
         await session.save()
 
-        // TODO: register all issued tokens
         res.json({ access_token })
       } catch (err) {
-        res.json(err)
+        logger.error(err)
+        res.status(500).json({message:'internal server error'})
       }
     }
   )

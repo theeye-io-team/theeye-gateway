@@ -2,14 +2,11 @@ const mongoose = require('mongoose')
 
 module.exports = function (db) {
   const schema = new mongoose.Schema({
-    //customer_id: { type: 'string' },
-    customer_name: { type: 'string', required: true, index: true },
-    user_id: {
-      type: mongoose.Schema.Types.ObjectId,
-      required: true,
-      index: true,
-      ref: 'User'
-    },
+    customer_id: { type: mongoose.Schema.Types.ObjectId, required: true, index: true },
+    customer: { type: mongoose.Schema.Types.ObjectId, ref: 'Customer', required: true },
+    customer_name: { type: 'string' },
+    user_id: { type: mongoose.Schema.Types.ObjectId, required: true, index: true },
+    user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
     topic: { type: 'string' },
     event_id: { type: 'string' },
     read: { type: 'boolean', default: false },
@@ -32,7 +29,7 @@ module.exports = function (db) {
     }
   }
 
-  schema.pre('save', next => {
+  schema.pre('save', function (next) {
     this.last_update = new Date()
     next(null)
   })

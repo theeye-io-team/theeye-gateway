@@ -4,13 +4,27 @@ module.exports = function (db) {
   const schema = new mongoose.Schema({
     user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
     user_id: { type: mongoose.Schema.Types.ObjectId, required: true },
-    customer: { type: mongoose.Schema.Types.ObjectId, ref: 'Customer' },
-    customer_id: { type: mongoose.Schema.Types.ObjectId }
+    customer: { type: mongoose.Schema.Types.ObjectId, ref: 'Customer', required: true },
+    customer_id: { type: mongoose.Schema.Types.ObjectId },
+    customer_name: { type: 'string' },
     credential: { type: 'string', default: 'viewer' },
+    invitation_token: { type: 'string', default: null },
+    enabled: { type: 'boolean' },
     creation_date: { type: Date, default: new Date(), required: true },
     last_update: { type: Date, default: new Date(), required: true },
+    notifications: {
+      type: 'object',
+      default: () => {
+        return {
+          mute: false,
+          push: true,
+          email: true,
+          desktop: true
+        }
+      }
+    }
   }, {
-    collection: 'member',
+    collection: 'members',
     discriminatorKey: '_type'
   })
 
@@ -25,7 +39,7 @@ module.exports = function (db) {
     }
   }
 
-  schema.pre('save', next => {
+  schema.pre('save', function (next) {
     this.last_update = new Date()
     next(null)
   })

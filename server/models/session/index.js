@@ -3,12 +3,12 @@ const mongoose = require('mongoose')
 module.exports = function (db) {
   const schema = new mongoose.Schema({
     token: { type: String, required: true },
-    expires: { type: Date, required: true },
+    expires: { type: Date },
     creation_date: { type: Date, default: new Date(), required: true },
+    member: { type: mongoose.Schema.Types.ObjectId, ref: 'Member', required: true },
+    member_id: { type: mongoose.Schema.Types.ObjectId, required: true },
     user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
-    user_id: { type: mongoose.Schema.Types.ObjectId, required: true },
-    customer: { type: mongoose.Schema.Types.ObjectId, ref: 'Customer' },
-    customer_id: { type: mongoose.Schema.Types.ObjectId }
+    user_id: { type: mongoose.Schema.Types.ObjectId, required: true }
   }, {
     collection: 'web_session',
     discriminatorKey: '_type'
