@@ -7,8 +7,6 @@ const InboxRouter = require('./inbox')
 //const MemberRouter = require('./member')
 const SocketsRouter = require('./sockets')
 
-const passport = require('passport')
-
 class Router {
   constructor (app) {
     this.app = app
@@ -19,23 +17,10 @@ class Router {
       res.sendFile(path.join(__dirname, '../../client/dist/index.html'))
     } 
     api.get('/login', staticRoute)
+    api.get('/logout', staticRoute)
     api.get('/dashboard', staticRoute)
 
-    const bearerMiddleware = (req, res, next) => {
-      passport.authenticate('bearer', (err, user, session) => {
-        if (err) {
-          if (err.status >= 400) {
-            res.status(err.status)
-            return res.json(err.message)
-          }
-          next(err)
-        } else {
-          req.session = session
-          req.user = user
-          next()
-        }
-      }, {session: false})(req, res, next)
-    }
+    const bearerMiddleware = app.service.authentication.middlewares.bearerPassport
 
     api.use('/api/auth', AuthRouter(app))
     api.use('/api/notification', NotificationRouter(app))

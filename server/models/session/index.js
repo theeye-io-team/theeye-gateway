@@ -5,6 +5,7 @@ module.exports = function (db) {
     token: { type: String, required: true },
     expires: { type: Date },
     creation_date: { type: Date, default: new Date(), required: true },
+    last_update: { type: Date, default: new Date(), required: true },
     member: { type: mongoose.Schema.Types.ObjectId, ref: 'Member', required: true },
     member_id: { type: mongoose.Schema.Types.ObjectId, required: true },
     user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
@@ -29,6 +30,11 @@ module.exports = function (db) {
 
   schema.set('toJSON', def)
   schema.set('toObject', def)
+
+  schema.pre('save', function (next) {
+    this.last_update = new Date()
+    next(null)
+  })
 
   return db.model('Session', schema)
 }

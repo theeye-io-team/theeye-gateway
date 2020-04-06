@@ -6,42 +6,6 @@ module.exports = (app) => {
 
   /**
    *
-   * set current session customer
-   *
-   */
-  router.post(
-    '/customer/:customer',
-    (req, res, next) => {
-      const customer = req.params.customer
-      const user = req.user
-
-      if (user.customers.indexOf(customer) !== -1) {
-        user.current_customer = customer
-        user.save(err => {
-          if (err) {
-            return res.status(500).json('Internal Error')
-          }
-
-          app.services.notifications.sockets.send({
-            topic: 'session-customer-changed',
-            data: {
-              model: user,
-              model_type: 'User',
-              operation: 'update',
-              organization: user.current_customer // customer name
-            }
-          })
-
-          res.send(200, {})
-        })
-      } else {
-        res.send(403,'Forbidden')
-      }
-    }
-  )
-
-  /**
-   *
    * get session profile
    *
    */
@@ -93,6 +57,20 @@ module.exports = (app) => {
     }
   )
 
+  const logout = async (req, res, next) => {
+    await req.session.remove()
+    return res.status(200).json('OK')
+  }
+  router.post('/logout', logout)
+  router.get('/logout', logout)
+
+  router.put('/refresh', async (req, res, next) => {
+    //const user = req.user
+    const session = req.session
+    await app.service.authentication.refreshSession(session)
+    return res.status(200).json({ access_token: session.token })
+  })
+
   /**
    *
    * update profile settings
@@ -136,15 +114,41 @@ module.exports = (app) => {
     }
   )
 
-  // activateuser
-  router.post('/activateuser', (req, res) => { })
+  /**
+   *
+   * set current session customer
+   *
+   */
+  router.post(
+    '/customer/:customer',
+    (req, res, next) => {
+      const customer = req.params.customer
+      const user = req.user
 
-  // registeruser
-  router.post('/registeruser', (req, res) => { })
+      if (user.customers.indexOf(customer) !== -1) {
+        user.current_customer = customer
+        user.save(err => {
+          if (err) {
+            return res.status(500).json('Internal Error')
+          }
 
-  // verifyInvitationToken
-  router.post('/verifytoken', (req, res) => { })
+          app.services.notifications.sockets.send({
+            topic: 'session-customer-changed',
+            data: {
+              model: user,
+              model_type: 'User',
+              operation: 'update',
+              organization: user.current_customer // customer name
+            }
+          })
+
+          res.send(200, {})
+        })
+      } else {
+        res.send(403,'Forbidden')
+      }
+    }
+  )
 
   return router
-
 }

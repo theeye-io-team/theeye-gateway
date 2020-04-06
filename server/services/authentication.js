@@ -142,6 +142,80 @@ module.exports = function (app) {
 
       passport.use(basicStrategy)
       passport.use(bearerStrategy)
+
+      const bearerPassport = (req, res, next) => {
+        passport.authenticate('bearer', (err, user, session) => {
+          if (err) {
+            if (err.status >= 400) {
+              res.status(err.status)
+              return res.json(err.message)
+            }
+            next(err)
+          } else {
+            req.session = session
+            req.user = user
+            next()
+          }
+        }, {session: false})(req, res, next)
+      }
+
+      const basicPassport = (req, res, next) => {
+        passport.authenticate('basic', (err, user) => {
+          if (err) {
+            if (err.status >= 400) {
+              res.status(err.status)
+              return res.json(err.message)
+            }
+            next(err)
+          } else {
+            req.user = user
+            next()
+          }
+        }, {session: false})(req, res, next)
+      }
+
+      this.middlewares = { basicPassport, bearerPassport }
+    }
+
+    /**
+     * @param {Member}
+     * @return {Promise}
+     */
+    createSession (member) {
+      let expiration = new Date()
+      let expSecs = this.config.expires
+      expiration.setSeconds(expiration.getSeconds() + expSecs)
+
+      let token = app.service.authentication.issue({ user_id: member.user_id })
+
+      // register issued tokens
+      let session = new app.models.session()
+      session.token = token 
+      session.expires = expiration
+      session.user = member.user_id
+      session.user_id = member.user_id
+      session.member = member._id
+      session.member_id = member._id
+      session.customer = member.customer._id
+      session.customer_id = member.customer._id
+      return session.save()
+    }
+
+    /**
+     * @param {Session}
+     * @return {Promise}
+     */
+    refreshSession (session) {
+      let expiration = new Date()
+      let expSecs = this.config.expires
+      expiration.setSeconds(expiration.getSeconds() + expSecs)
+
+      let token = app.service.authentication.issue({ user_id: session.user_id })
+
+      // register issued tokens
+      session.token = token 
+      session.expires = expiration
+      return session.save()
     }
   }
 
