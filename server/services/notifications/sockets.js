@@ -45,10 +45,11 @@ const sendNotificationMessages = (data, next) => {
 
       logger.debug(`sending message to ${room}`)
 
-      sails.io
-        .sockets
-        .in(room)
-        .emit(topic, Object.assign({}, data, { model }))
+      // conectar socket.io
+      // sails.io
+      //   .sockets
+      //   .in(room)
+      //   .emit(topic, Object.assign({}, data, { model }))
     }
     return next()
   } else {
@@ -65,10 +66,11 @@ const sendUserNotificationMessage = (topic, data, next) => {
 
   logger.debug(`sending message to ${room}`)
 
-  sails.io
-    .sockets
-    .in(room)
-    .emit(topic, data)
+  // conectar socket.io
+  // sails.io
+  //   .sockets
+  //   .in(room)
+  //   .emit(topic, data)
 
   return next()
 }
@@ -76,15 +78,17 @@ const sendUserNotificationMessage = (topic, data, next) => {
 const sendCustomerChangedMessage = (data, next) => {
   const topic = CUSTOMER_CHANGED_TOPIC
   const room = `${data.model.id}:${topic}`
-  sails.io.sockets.in(room).emit(topic, {
-    organization: data.organization
-  })
+  // conectar socket.io
+  // sails.io.sockets.in(room).emit(topic, {
+  //   organization: data.organization
+  // })
   next()
 }
 
 const sendEventMessage = (topic, data, next) => {
   const room = `${data.organization}:${topic}`
   logger.debug(`sending message to ${room}`)
-  sails.io.sockets.in(room).emit(topic, data)
+  // conectar socket.io
+  // sails.io.sockets.in(room).emit(topic, data)
   next()
 }
