@@ -8,7 +8,9 @@ module.exports = function (db) {
     member: { type: mongoose.Schema.Types.ObjectId, ref: 'Member', required: true },
     member_id: { type: mongoose.Schema.Types.ObjectId, required: true },
     user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
-    user_id: { type: mongoose.Schema.Types.ObjectId, required: true }
+    user_id: { type: mongoose.Schema.Types.ObjectId, required: true },
+    customer: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+    customer_id: { type: mongoose.Schema.Types.ObjectId, required: true }
   }, {
     collection: 'web_session',
     discriminatorKey: '_type'
