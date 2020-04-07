@@ -6,7 +6,7 @@ const NotificationRouter = require('./notification')
 const InboxRouter = require('./inbox')
 //const MemberRouter = require('./member')
 const SocketsRouter = require('./sockets')
-const GatewayRouter = require('./gateway')
+//const GatewayRouter = require('./gateway')
 
 class Router {
   constructor (app) {
@@ -20,6 +20,7 @@ class Router {
     api.get('/login', staticRoute)
     api.get('/logout', staticRoute)
     api.get('/dashboard', staticRoute)
+    api.get('/admin/*', staticRoute)
 
     const bearerMiddleware = app.service.authentication.middlewares.bearerPassport
 
@@ -29,7 +30,7 @@ class Router {
     api.use('/api/session', bearerMiddleware, SessionRouter(app))
     //api.use('/api/member', bearerMiddleware, MemberRouter(app))
     //api.use('/api/socket', SocketsRouter(app))
-    api.use('/api', bearerMiddleware, GatewayRouter(app))
+    //api.use('/api', bearerMiddleware, GatewayRouter(app))
   }
 }
 

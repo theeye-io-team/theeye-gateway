@@ -71,6 +71,10 @@ module.exports = (app) => {
     return res.status(200).json({ access_token: session.token })
   })
 
+  router.get('/verify', (req, res, next) => {
+    res.status(200).json(req.session)
+  })
+
   /**
    *
    * update profile settings
