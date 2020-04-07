@@ -4,7 +4,7 @@ const AuthRouter = require('./auth')
 const SessionRouter = require('./session')
 const NotificationRouter = require('./notification')
 const InboxRouter = require('./inbox')
-//const MemberRouter = require('./member')
+const MemberRouter = require('./member')
 const SocketsRouter = require('./sockets')
 //const GatewayRouter = require('./gateway')
 
@@ -16,7 +16,7 @@ class Router {
     // static api route
     const staticRoute = (req, res) => {
       res.sendFile(path.join(__dirname, '../../client/dist/index.html'))
-    } 
+    }
     api.get('/login', staticRoute)
     api.get('/logout', staticRoute)
     api.get('/dashboard', staticRoute)
@@ -28,7 +28,7 @@ class Router {
     api.use('/api/notification', NotificationRouter(app))
     api.use('/api/inbox', bearerMiddleware, InboxRouter(app))
     api.use('/api/session', bearerMiddleware, SessionRouter(app))
-    //api.use('/api/member', bearerMiddleware, MemberRouter(app))
+    api.use('/api/member', bearerMiddleware, MemberRouter(app))
     //api.use('/api/socket', SocketsRouter(app))
     //api.use('/api', bearerMiddleware, GatewayRouter(app))
   }

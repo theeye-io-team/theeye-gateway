@@ -23,7 +23,7 @@ module.exports = (app) => {
         .limit(40)
         .sort({creation_date: -1})
         .exec((err, records) => {
-          if (err) { res.status(400).json({ message: "Error getting notifications" }) }
+          if (err) { res.status(500).json({ message: "Error getting notifications" }) }
           else { res.json(records) }
         })
     }
