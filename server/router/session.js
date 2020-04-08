@@ -27,7 +27,7 @@ module.exports = (app) => {
 
         await session.populate({
           path: 'member',
-          populate: { 
+          populate: {
             path: 'customer'
           }
         }).execPopulate()
@@ -151,6 +151,13 @@ module.exports = (app) => {
       } else {
         res.send(403,'Forbidden')
       }
+    }
+  )
+
+  router.get(
+    '/userpassport',
+    (req, res, next) => {
+      return res.status(200).json({})
     }
   )
 
