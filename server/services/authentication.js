@@ -16,6 +16,11 @@ module.exports = function (app) {
   class Authentication {
     constructor () {
       this.config = app.config.services.authentication
+
+      passport.use(new passportBasic(this.verifyUserPassword))
+      passport.use(new passportBearer(this.verifySessionToken))
+
+      this.middlewares = { basicPassport, bearerPassport }
     }
 
     /**
@@ -41,7 +46,7 @@ module.exports = function (app) {
      * @throws
      *
      */
-    verify (payload) {
+    verify (token) {
       let decoded = jwt.verify(
         token,
         this.config.secret,
@@ -51,85 +56,74 @@ module.exports = function (app) {
       return decoded
     }
 
-    middleware (app) {
+    async verifyUserPassword (username, password, next) {
+      try {
+        logger.log('new connection [basic]')
+        let user = await userFetch({ $or: [{ email: username }, { username }] })
 
-      const userFetch = (where) => {
-        return new Promise((resolve, reject) => {
-          app.models
-            .user
-            .findOne(where)
-            .exec((err, user) => {
-              if (err) { reject(err) }
-              else { resolve(user) }
-            })
-        })
-      }
-
-      const basicStrategy = new passportBasic(async (username, password, next) => {
-        try {
-          logger.log('new connection [basic]')
-          let user = await userFetch({ $or: [{ email: username }, { username }] })
-
-          if (!user) {
-            logger.error('invalid request, client %s', username)
-            //return next(null, false)
-            let err = new Error('unauthorized')
-            err.status = 401
-            return next(err)
-          }
-
-          // basic authentication requires a local passport
-          let passport = await app.models.passport.findOne({ user: user._id, protocol: 'local' })
-
-          await passport.validatePassword(password)
-
-          logger.log('client %s/%s connected [basic]', user.username, user.email)
-          return next(null, user)
-        } catch (err) {
-          if (err.message === 'InvalidPassword') {
-            logger.error(`unauthorized. u:${username}/p:${password}`)
-            let err = new Error('unauthorized')
-            err.status = 401
-            return next(err)
-          } else {
-            logger.error('error fetching user by token')
-            logger.error(err)
-            return next(err)
-          }
+        if (!user) {
+          logger.error('invalid request, client %s', username)
+          //return next(null, false)
+          let err = new Error('unauthorized')
+          err.status = 401
+          return next(err)
         }
-      })
 
-      const bearerStrategy = new passportBearer((token, next) => {
-        logger.log('new connection [bearer]')
+        // basic authentication requires a local passport
+        let passport = await app.models.passport.findOne({ user: user._id, protocol: 'local' })
 
-        const findError = (err) => {
+        await passport.validatePassword(password)
+
+        logger.log('client %s/%s connected [basic]', user.username, user.email)
+        return next(null, user)
+      } catch (err) {
+        if (err.message === 'InvalidPassword') {
+          logger.error(`unauthorized. u:${username}/p:${password}`)
+          let err = new Error('unauthorized')
+          err.status = 401
+          return next(err)
+        } else {
           logger.error('error fetching user by token')
           logger.error(err)
           return next(err)
         }
+      }
+    }
 
-        const unauthorized = () => {
-          logger.error('invalid or outdated token %s', token)
-          let err = new Error('unauthorized')
-          err.statusCode = 401
-          return next(err, false)
-        }
+    verifySessionToken (token, next) {
+      logger.log('new connection [bearer]')
 
-        const success = async (session) => {
-          // fetch profile
-          try {
-            let user = await userFetch({ _id: session.user_id })
-            if (!user) {
-              // why ??
-              unauthorized()
-            } else {
-              logger.log('client %s/%s connected [bearer]', user.username, user.email)
-              next(null, user, session)
-            }
-          } catch (err) {
-            next(err)
+      const findError = (err) => {
+        logger.error('error fetching user by token')
+        logger.error(err)
+        return next(err)
+      }
+
+      const unauthorized = () => {
+        logger.error('invalid or outdated token %s', token)
+        let err = new Error('Unauthorized')
+        err.statusCode = 401
+        return next(err, false)
+      }
+
+      const success = async (session) => {
+        // fetch profile
+        try {
+          let user = await userFetch({ _id: session.user_id })
+          if (!user) {
+            // why ??
+            unauthorized()
+          } else {
+            logger.log('client %s/%s connected [bearer]', user.username, user.email)
+            next(null, user, session)
           }
+        } catch (err) {
+          next(err)
         }
+      }
+
+      try {
+        let decoded = app.service.authentication.verify(token)
 
         app.models.session
           .findOne({ token })
@@ -138,43 +132,10 @@ module.exports = function (app) {
             else if (!session) { unauthorized() }
             else { success(session) }
           })
-      })
-
-      passport.use(basicStrategy)
-      passport.use(bearerStrategy)
-
-      const bearerPassport = (req, res, next) => {
-        passport.authenticate('bearer', (err, user, session) => {
-          if (err) {
-            if (err.status >= 400) {
-              res.status(err.status)
-              return res.json(err.message)
-            }
-            next(err)
-          } else {
-            req.session = session
-            req.user = user
-            next()
-          }
-        }, {session: false})(req, res, next)
+      } catch (err) { // jwt verify error
+        logger.error(err)
+        unauthorized()
       }
-
-      const basicPassport = (req, res, next) => {
-        passport.authenticate('basic', (err, user) => {
-          if (err) {
-            if (err.status >= 400) {
-              res.status(err.status)
-              return res.json(err.message)
-            }
-            next(err)
-          } else {
-            req.user = user
-            next()
-          }
-        }, {session: false})(req, res, next)
-      }
-
-      this.middlewares = { basicPassport, bearerPassport }
     }
 
     /**
@@ -217,6 +178,50 @@ module.exports = function (app) {
       session.expires = expiration
       return session.save()
     }
+  }
+
+  const bearerPassport = (req, res, next) => {
+    passport.authenticate('bearer', (err, user, session) => {
+      if (err) {
+        if (err.status >= 400) {
+          res.status(err.status)
+          return res.json(err.message)
+        }
+        next(err)
+      } else {
+        req.session = session
+        req.user = user
+        next()
+      }
+    }, {session: false})(req, res, next)
+  }
+
+  const basicPassport = (req, res, next) => {
+    passport.authenticate('basic', (err, user) => {
+      if (err) {
+        if (err.status >= 400) {
+          res.status(err.status)
+          return res.json(err.message)
+        }
+        next(err)
+      } else {
+        req.user = user
+        next()
+      }
+    }, {session: false})(req, res, next)
+  }
+
+
+  const userFetch = (where) => {
+    return new Promise((resolve, reject) => {
+      app.models
+        .user
+        .findOne(where)
+        .exec((err, user) => {
+          if (err) { reject(err) }
+          else { resolve(user) }
+        })
+    })
   }
 
   return new Authentication()

@@ -6,7 +6,7 @@ const dumpfile = '/tmp/theeye-push-dump.log'
 
 class Push {
 
-  constructor () {
+  constructor (app, config) {
   }
 
   send (event, users) {

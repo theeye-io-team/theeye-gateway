@@ -5,8 +5,8 @@ const SessionRouter = require('./session')
 const NotificationRouter = require('./notification')
 const InboxRouter = require('./inbox')
 const MemberRouter = require('./member')
-const SocketsRouter = require('./sockets')
 const BotRouter = require('./bot')
+const MessageRouter = require('./message')
 //const GatewayRouter = require('./gateway')
 
 class Router {
@@ -31,7 +31,7 @@ class Router {
     api.use('/api/session', bearerMiddleware, SessionRouter(app))
     api.use('/api/member', bearerMiddleware, MemberRouter(app))
     api.use('/api/bot', bearerMiddleware, BotRouter(app))
-    //api.use('/api/socket', SocketsRouter(app))
+    api.use('/api/message', bearerMiddleware, MessageRouter(app))
     //api.use('/api', bearerMiddleware, GatewayRouter(app))
   }
 }

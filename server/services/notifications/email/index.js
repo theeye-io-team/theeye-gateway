@@ -2,7 +2,7 @@ const Mailer = require('./mailer')
 const logger = require('../../../logger')('services:mailer')
 
 class Email {
-  constructor (config) {
+  constructor (app, config) {
     this.mailer = new Mailer(config)
   }
 

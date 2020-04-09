@@ -2,7 +2,6 @@ const express = require('express')
 const path = require('path')
 const http = require('http')
 const https = require('https')
-const socket = require('socket.io')
 const Router = require('./router')
 const Models = require('./models')
 
@@ -12,11 +11,8 @@ const Notifications = require('./services/notifications')
 
 const aws = require('aws-sdk')
 
-//const cookieParser = require('cookie-parser')
-
 class App {
-  constructor () {
-  }
+  constructor () { }
 
   async configure (config) {
     this.config = config
@@ -36,9 +32,11 @@ class App {
 
   start () {
     const port = this.config.app.port
-    this.api.listen(port, () => {
+    const server = this.server = this.api.listen(port, () => {
       logger.log(`API ready at port ${port}`)
     })
+
+    this.service.notifications.sockets.start(server)
   }
 
   setupApi () {
@@ -48,10 +46,9 @@ class App {
 
     api.use(express.json())
     api.use(express.urlencoded({ extended: true }))
-    //api.use(cookieParser())
 
     // authentication require models
-    this.service.authentication.middleware(this)
+    //this.service.authentication.middleware()
 
     api.use(express.static(path.join(__dirname, '../client/dist')))
     new Router(this)
@@ -82,14 +79,15 @@ class App {
   }
 }
 
+module.exports = App
+
 const isClientError = (statusCode) => {
   return statusCode && statusCode >= 400 && statusCode < 500
 }
+
 const isServerError = (statusCode) => {
   return statusCode && statusCode >= 500
 }
-
-module.exports = App
 
 const setupAuth = (app) => {
   return 

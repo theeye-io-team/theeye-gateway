@@ -19,7 +19,7 @@ module.exports = (app) => {
           }
           return res.status(500).json({ message: err.toString() })
         } else {
-          return res.send(200).json()
+          return res.status(200).json()
         }
       }
 
@@ -99,6 +99,7 @@ module.exports = (app) => {
   const createTaskResultNotification = (req, res, done) => {
     const event = req.body
     const organization = event.data.organization
+    const organization_id = event.data.organization_id
     const model = event.data.model
     let recipient
 
@@ -120,7 +121,8 @@ module.exports = (app) => {
           model: model,
           model_type: 'Job',
           user_id: user.id,
-          organization: organization
+          organization,
+          organization_id
         }
       })
 
@@ -188,7 +190,8 @@ module.exports = (app) => {
               model: notifications,
               model_type: 'Notification',
               operation: 'create',
-              organization: organization
+              organization,
+              organization_id
             }
           })
           logger.debug('%s|%s', event.id, 'by desktop notified')
@@ -305,7 +308,8 @@ module.exports = (app) => {
             model: notifications,
             model_type: 'Notification',
             operation: 'create',
-            organization: organization
+            organization,
+            organization_id
           }
         })
         logger.debug('%s|%s', event.id, 'by socket notified')

@@ -124,7 +124,8 @@ const migrate = async () => {
         password: user.client_secret,
         identifier: user.client_id,
         tokens: {
-          access_token: user.token
+          access_token: user.token,
+          refresh_token: user.client_secret
         },
         // new bot user created.
         user: bot._id,
