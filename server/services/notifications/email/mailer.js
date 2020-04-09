@@ -5,6 +5,9 @@ class Mailer {
   constructor (config) {
     const trType = config.transport.type
     const options = config.transport.options || {}
+
+    this.config = config
+
     let transport
 
     switch (trType) {
@@ -33,20 +36,20 @@ class Mailer {
   }
 
   sendMail (options, callback) {
-    let from = config
+    let from = this.config
       .from
       .replace(/%customer%/g, options.customer_name)
 
     options.from = from
-    options.replyTo = config.reply_to
+    options.replyTo = this.config.reply_to
 
     if (
-      config.only_support ||
+      this.config.only_support ||
       (!options.to && !options.bcc)
     ) {
-      options.to = config.support.join(',')
-    } else if (config.include_support_bcc) {
-      options.bcc = config.support.join(',')
+      options.to = this.config.support.join(',')
+    } else if (this.config.include_support_bcc) {
+      options.bcc = this.config.support.join(',')
     }
 
     if (options.to) {

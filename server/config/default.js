@@ -99,6 +99,7 @@ module.exports = {
       }
     }
   },
+  activateUrl: 'http://127.0.0.1:6080/activate?'
   ///**
   // *
   // * redis options to pass directly to node redis client
