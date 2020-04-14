@@ -63,10 +63,7 @@ module.exports = function (app) {
 
         if (!user) {
           logger.error('invalid request, client %s', username)
-          //return next(null, false)
-          let err = new Error('unauthorized')
-          err.status = 401
-          return next(err)
+          return unauthorized(next)
         }
 
         // basic authentication requires a local passport
@@ -79,9 +76,7 @@ module.exports = function (app) {
       } catch (err) {
         if (err.message === 'InvalidPassword') {
           logger.error(`unauthorized. u:${username}/p:${password}`)
-          let err = new Error('unauthorized')
-          err.status = 401
-          return next(err)
+          return unauthorized(next)
         } else {
           logger.error('error fetching user by token')
           logger.error(err)
@@ -99,20 +94,13 @@ module.exports = function (app) {
         return next(err)
       }
 
-      const unauthorized = () => {
-        logger.error('invalid or outdated token %s', token)
-        let err = new Error('Unauthorized')
-        err.statusCode = 401
-        return next(err, false)
-      }
-
       const success = async (session) => {
         // fetch profile
         try {
           let user = await userFetch({ _id: session.user_id })
           if (!user) {
             // why ??
-            unauthorized()
+            unauthorized(next)
           } else {
             logger.log('client %s/%s connected [bearer]', user.username, user.email)
             next(null, user, session)
@@ -129,12 +117,15 @@ module.exports = function (app) {
           .findOne({ token })
           .exec((err, session) => {
             if (err) { findError(err) }
-            else if (!session) { unauthorized() }
+            else if (!session) {
+              logger.error('invalid or outdated token %s', token)
+              unauthorized(next)
+            }
             else { success(session) }
           })
       } catch (err) { // jwt verify error
         logger.error(err)
-        unauthorized()
+        unauthorized(next)
       }
     }
 
@@ -157,8 +148,8 @@ module.exports = function (app) {
       session.user_id = member.user_id
       session.member = member._id
       session.member_id = member._id
-      session.customer = member.customer._id
-      session.customer_id = member.customer._id
+      session.customer = member.customer_id
+      session.customer_id = member.customer_id
       return session.save()
     }
 
@@ -205,8 +196,14 @@ module.exports = function (app) {
         }
         next(err)
       } else {
-        req.user = user
-        next()
+        if (!user) {
+          logger.log('no credentials')
+          let err = unauthorized()
+          return res.status(err.statusCode).json(err.message)
+        } else {
+          req.user = user
+          next()
+        }
       }
     }, {session: false})(req, res, next)
   }
@@ -222,6 +219,13 @@ module.exports = function (app) {
           else { resolve(user) }
         })
     })
+  }
+
+  const unauthorized = (next) => {
+    let err = new Error('Unauthorized')
+    err.statusCode = 401
+    next && next(err, false)
+    return err
   }
 
   return new Authentication()

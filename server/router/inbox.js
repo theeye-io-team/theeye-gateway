@@ -17,14 +17,19 @@ module.exports = (app) => {
       app.models
         .notification
         .find({
-          customer_id: mongoose.Types.ObjectId(session.customer_id),
-          user_id: mongoose.Types.ObjectId(req.user.id)
+          customer_id: session.customer_id,
+          user_id: req.user.id
         })
         .limit(40)
         .sort({creation_date: -1})
         .exec((err, records) => {
-          if (err) { res.status(500).json({ message: "Error getting notifications" }) }
-          else { res.json(records) }
+          if (err) {
+            logger.error(err)
+            res.status(500)
+            res.json({ message: "Internal Server Error", statusCode: 500 })
+          } else {
+            res.json(records)
+          }
         })
     }
   )
@@ -35,8 +40,8 @@ module.exports = (app) => {
       const session = req.session
 
       const query = {
-        customer_id: mongoose.Types.ObjectId(session.customer_id),
-        user_id: mongoose.Types.ObjectId(req.user.id)
+        customer_id: session.customer_id,
+        user_id: req.user.id
       }
 
       if ( !(req.query.remove_all==='true') ) {
@@ -46,9 +51,14 @@ module.exports = (app) => {
       app.models
         .notification
         .deleteMany(query)
-        .exec((err, result) => {
-          if (err) { res.status(500).json({ message: "Error deleting notifications" }) }
-          else { res.json({count: result}) }
+        .exec((err, count) => {
+          if (err) {
+            logger.error(err)
+            res.status(500)
+            res.json({ message: "Internal Server Error", statusCode: 500 })
+          } else {
+            res.json({ count })
+          }
         })
     }
   )
@@ -60,13 +70,18 @@ module.exports = (app) => {
       app.models
         .notification
         .countDocuments({
-          customer_id: mongoose.Types.ObjectId(session.customer_id),
-          user_id: mongoose.Types.ObjectId(req.user.id),
+          customer_id: session.customer_id,
+          user_id: req.user.id,
           read: false
         })
         .exec((err, count) => {
-          if (err) { res.status(400).json({ message: "Error counting unread notifications" }) }
-          else { res.json(count) }
+          if (err) {
+            logger.error(err)
+            res.status(500)
+            res.json({ message: "Internal Server Error", statusCode: 500 })
+          } else {
+            res.json(count)
+          }
         })
     }
   )
@@ -83,15 +98,19 @@ module.exports = (app) => {
         .notification
         .updateMany({
           _id: { $in: ids },
-          customer_id: mongoose.Types.ObjectId(session.customer_id),
-          user_id: mongoose.Types.ObjectId(req.user.id)
-        },
-        {
+          customer_id: session.customer_id,
+          user_id: req.user.id
+        }, {
           read: true
         })
         .exec((err, result) => {
-          if (err) { res.status(500).json({ message: "Error updating notifications." }) }
-          else { res.status(200).json() }
+          if (err) {
+            logger.error(err)
+            res.status(500)
+            res.json({ message: "Internal Server Error", statusCode: 500 })
+          } else {
+            res.status(200).json()
+          }
         })
     }
   )

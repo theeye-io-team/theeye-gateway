@@ -1,5 +1,7 @@
 const express = require('express')
+const mongoose = require('mongoose')
 const logger = require('../logger')('router:session')
+const { REPLACE, DELETE } = require('../constants/operations')
 
 module.exports = (app) => {
   const router = express.Router()
@@ -9,58 +11,121 @@ module.exports = (app) => {
    * get session profile
    *
    */
-  router.get(
-    '/profile',
+  router.get('/profile', async (req, res, next) => {
+    try {
+      const user = req.user
+      const session = req.session
+
+      const members = await app.models.member.find({ user_id: user._id })
+      const customers = []
+      if (members.length > 0) {
+        for (let member of members) {
+          await member.populate('customer', { id: 1, name: 1 }).execPopulate()
+          customers.push(member.customer)
+        }
+      }
+
+      await session.populate({
+        path: 'member',
+        populate: {
+          path: 'customer'
+        }
+      }).execPopulate()
+
+      let member = session.member
+
+      let profile = {}
+      profile.customers = customers // reduced information
+      profile.last_login = user.last_login
+      profile.name = user.name
+      profile.username = user.username
+      profile.email = user.email
+      profile.onboardingCompleted = user.onboardingCompleted
+      profile.current_customer = {
+        id: member.customer.id,
+        name: member.customer.name,
+        config: member.customer.config
+      }
+      profile.notifications = member.notifications
+      profile.credential = member.credential
+
+      return res.json(profile)
+    } catch (err) {
+      logger.error(err)
+      return res.status(err.status || 500).json(err)
+    }
+  })
+
+  /**
+   *
+   * replace current session customer. need to generate a new session
+   *
+   */
+  router.put(
+    '/customer/:customer',
     async (req, res, next) => {
       try {
         const user = req.user
-        const session = req.session
+        const customer_id = req.params.customer
 
-        const members = await app.models.member.find({ user_id: user._id })
-        const customers = []
-        if (members.length > 0) {
-          for (let member of members) {
-            await member.populate('customer', { id: 1, name: 1 }).execPopulate()
-            customers.push(member.customer)
-          }
+        const member = await app.models.member.findOne({
+          user_id: user._id,
+          customer_id: mongoose.Types.ObjectId(customer_id)
+        })
+
+        if (!member) {
+          res.status(403)
+          res.json({ message: 'Forbidden', statusCode: 401 })
+          return
         }
-
-        await session.populate({
-          path: 'member',
-          populate: {
-            path: 'customer'
-          }
-        }).execPopulate()
-
-        let member = session.member
-
-        let profile = {}
-        profile.customers = customers // reduced information
-        profile.last_login = user.last_login
-        profile.name = user.name
-        profile.username = user.username
-        profile.email = user.email
-        profile.onboardingCompleted = user.onboardingCompleted
-        profile.current_customer = {
-          id: member.customer.id,
-          name: member.customer.name,
-          config: member.customer.config
-        }
-        profile.notifications = member.notifications
-        profile.credential = member.credential
-
-        return res.json(profile)
+        req.member = member
+        next()
       } catch (err) {
-        logger.error(err)
-        return res.status(err.status || 500).json(err)
+        res.status(500)
+        res.json({ message: 'Internal Server Error', statusCode: 500 })
+      }
+    },
+    async (req, res, next) => {
+      try {
+        const member = req.member
+        const session = req.session
+        const newSession = await app.service.authentication.createSession(member)
+        const model = { _id: session._id, user_id: session.user_id } // information to identify target user
+
+        app.service.notifications.sockets.send({
+          topic: 'session',
+          data: {
+            model,
+            model_type: 'session',
+            operation: REPLACE
+          }
+        })
+
+        // destroy current session
+        await req.session.remove()
+        // return new session
+        res.json({ access_token: newSession.token })
+      } catch (err) {
+        res.status(500)
+        res.json({ message: 'Internal Server Error', statusCode: 500 })
       }
     }
   )
 
   const logout = async (req, res, next) => {
-    await req.session.remove()
+    const session = req.session
+    app.service.notifications.sockets.send({
+      topic: 'session',
+      data: {
+        model: { _id: session._id, user_id: session.user_id },
+        model_type: 'session',
+        operation: DELETE
+      }
+    })
+    await session.remove()
     return res.status(200).json('OK')
   }
+
   router.post('/logout', logout)
   router.get('/logout', logout)
 
@@ -106,7 +171,6 @@ module.exports = (app) => {
       const params = req.params.all()
 
       user.onboardingCompleted = params.onboardingCompleted
-
       user.save(err => {
         if (err) {
           sails.log.error(err)
@@ -115,42 +179,6 @@ module.exports = (app) => {
 
         res.send(200, { onboardingCompleted: user.onboardingCompleted })
       })
-    }
-  )
-
-  /**
-   *
-   * set current session customer
-   *
-   */
-  router.post(
-    '/customer/:customer',
-    (req, res, next) => {
-      const customer = req.params.customer
-      const user = req.user
-
-      if (user.customers.indexOf(customer) !== -1) {
-        user.current_customer = customer
-        user.save(err => {
-          if (err) {
-            return res.status(500).json('Internal Error')
-          }
-
-          app.services.notifications.sockets.send({
-            topic: 'session-customer-changed',
-            data: {
-              model: user,
-              model_type: 'User',
-              operation: 'update',
-              organization: user.current_customer // customer name
-            }
-          })
-
-          res.send(200, {})
-        })
-      } else {
-        res.send(403,'Forbidden')
-      }
     }
   )
 

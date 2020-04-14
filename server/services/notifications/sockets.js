@@ -5,7 +5,7 @@ const TopicConstants = require('../../constants/topics')
 
 const NOTIFICATION_TOPIC = 'notification-crud'
 const RESULT_RENDER_TOPIC = 'job-result-render'
-//const CUSTOMER_CHANGED_TOPIC = 'session-customer-changed'
+const SESSION_TOPIC = 'session'
 
 module.exports = function (app, config) {
   class Sockets {
@@ -24,29 +24,12 @@ module.exports = function (app, config) {
     }
 
     send (message, next) {
-      next || (next = ()=>{})
-      return this.emit(message.topic, message, next)
-    }
-
-    emit (topic, message, next) {
-      logger.debug('emit event "%s"', topic)
-
-      switch (topic) {
-        case NOTIFICATION_TOPIC:
-          sendNotificationMessages(this.io, message.data, next)
-          break;
-        case RESULT_RENDER_TOPIC:
-          sendUserNotificationMessage(this.io, topic, message.data, next)
-          break;
-        //case CUSTOMER_CHANGED_TOPIC:
-        //  logger.error('==========')
-        //  logger.error('DEPRECATED')
-        //  logger.error('==========')
-        //  sendSessionMessage (this.io, message.data, next)
-        //  break;
-        default:
-          sendEventMessage (this.io, topic, message.data, next)
-          break;
+      try {
+        emit(this.io, message.topic, message)
+        next && next()
+      } catch (err) {
+        logger.error(err)
+        next(err)
       }
     }
   }
@@ -72,6 +55,7 @@ module.exports = function (app, config) {
   const SocketEvents = {
     'disconnect': (req, next) => {
       logger.log('user disconnected')
+      const socket = req.socket
       next({ status: 200 })
     },
     'post:autosubscribe': (req, next) => {
@@ -133,39 +117,28 @@ module.exports = function (app, config) {
       const customer_id = req.session.customer_id.toString()
       const socket = req.socket
 
-      var logops = []
-
       let topics = req.params.topics
 
       if (!topics) { // unsubscribe all
-        let myRooms = socket.manager.roomClients[socket.id]
-        for (var roomName in myRooms) {
-          if (myRooms[roomName]===true) {
-            let trueName = roomName.substring(1)
-            // remove leading / from roomName, dont know why it has a leading /
-            socket.leave(trueName, function(){
-              let msg = `client leave room ${trueName}`
-              logops.push(msg)
-              logger.debug(msg)
-            })
-          }
+        for (let room in socket.rooms) {
+          let msg = `client leaving room ${room}`
+          logger.debug(msg)
+          socket.leave(room)
         }
       } else {
-        topics.forEach(topic => {
-          let roomName = `${customer_id}:${topic}`
-          socket.leave(roomName, function(){
-            let msg = `client leave room ${roomName}`
-            logops.push(msg)
-            logger.debug(msg)
-          })
-        })
+        for (let topic of topics) {
+          let room = `${customer_id}:${topic}`
+          let msg = `client leaving room ${room}`
+          logger.debug(msg)
+          socket.leave(room)
+        }
       }
 
-      next({ status: 200, body: logops })
+      next({ status: 200 })
     },
     'get:subscriptions': (req, next) => {
       const socket = req.socket
-      let myRooms = socket.manager.roomClients[req.socket.id]
+      let myRooms = socket.rooms[req.socket.id]
       next({ status: 200, body: Object.keys(myRooms) })
     }
   }
@@ -218,54 +191,66 @@ module.exports = function (app, config) {
     }
   }
 
-  const sendNotificationMessages = (io, data, next) => {
-    const topic = NOTIFICATION_TOPIC
-    if (Array.isArray(data.model)) {
-      // send a socket event for each user notification
-      for (let idx in data.model) {
-        const model = data.model[idx]
-        const room = `${model.data.organization_id}:${model.user_id}:${topic}`
+  const emit = (io, topic, message) => {
+    const data = message.data
+    logger.debug('emit event "%s"', topic)
 
+    switch (topic) {
+      case NOTIFICATION_TOPIC:
+         // @TODO: improve this handler. should be abstracted
+        sendNotificationMessages(io, topic, data)
+        break;
+      case RESULT_RENDER_TOPIC:
+        sendOrganizationUserEvent(io, topic, data)
+        break;
+      case SESSION_TOPIC:
+        const room = `${data.model._id}:${data.model.user_id}:session`
         logger.debug(`sending message to ${room}`)
-
-        io.sockets
-          .in(room)
-          .emit(topic, Object.assign({}, data, { model }))
-      }
-      return next()
-    } else {
-      let msg = `ERROR: invalid notification structure. Array expected, received ${data.model}`
-      logger.error(msg)
-      return next( new Error(msg) )
+        io.sockets.in(room).emit(topic, data)
+        break;
+      default:
+        sendOrganizationEvent (io, topic, data)
+        break;
     }
   }
 
-  const sendUserNotificationMessage = (io, topic, data, next) => {
-    const model = data.model
-    const user_id = data.user_id
-    const room = `${data.organization_id}:${user_id}:${topic}`
+  const sendNotificationMessages = (io, topic, data) => {
+    if (!Array.isArray(data.model)) {
+      let msg = `ERROR: invalid notification structure. Array expected, received ${data.model}`
+      logger.error(msg)
+      throw new Error(msg)
+    }
 
-    logger.debug(`sending message to ${room}`)
+    // send a socket event for each user that need to be notified
+    // @TODO: user and organization should not be read from model. model is internal implementation of the message. must be abstracted
+    for (let idx in data.model) {
+      const model = data.model[idx]
+      const room = `${model.data.organization_id}:${model.user_id}:${topic}`
 
-    io.sockets
-      .in(room)
-      .emit(topic, data)
+      logger.debug(`sending message to ${room}`)
 
-    return next()
+      let payload = Object.assign({}, data, { model })
+      io.sockets.in(room).emit(topic, payload)
+    }
   }
 
-  //const sendSessionMessage = (io, data, next) => {
-  //  const topic = CUSTOMER_CHANGED_TOPIC
-  //  const room = `${data.model.id}:${topic}`
-  //  io.sockets.in(room).emit(topic, { organization: data.organization_id })
-  //  next()
-  //}
+  const sendOrganizationUserEvent = (io, topic, data) => {
+    const user_id = data.user_id
+    const room = `${data.organization_id}:${user_id}:${topic}`
+    logger.debug(`sending message to ${room}`)
+    io.sockets.in(room).emit(topic, data)
+  }
 
-  const sendEventMessage = (io, topic, data, next) => {
+  const sendUserEvent = (io, topic, data) => {
+    const room = `${data.model.id}:${topic}`
+    logger.debug(`sending message to ${room}`)
+    io.sockets.in(room).emit(topic, data)
+  }
+
+  const sendOrganizationEvent = (io, topic, data) => {
     const room = `${data.organization_id}:${topic}`
     logger.debug(`sending message to ${room}`)
     io.sockets.in(room).emit(topic, data)
-    next()
   }
 
   return new Sockets()

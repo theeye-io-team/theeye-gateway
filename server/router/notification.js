@@ -6,39 +6,26 @@ module.exports = (app) => {
   const router = express.Router()
 
   // notification create
-  router.post(
-    '/',
-    (req, res, next) => {
+  router.post('/', async (req, res, next) => {
+    try {
       const event = req.body
-
-      const done = (err) => {
-        if (err) {
-          logger.error(err.message)
-          if (err.status === 400) {
-            return res.status(400).json({ message: err.error.toString() })
-          }
-          return res.status(500).json({ message: err.toString() })
-        } else {
-          return res.status(200).json()
-        }
-      }
 
       if (!event.id) {
         let err = new Error('id required')
         err.status = 400
-        return done(err)
+        throw err
       }
 
       if (!event.data) {
         let err = new Error('%s|data required', event.id)
         err.status = 400
-        return done(err)
+        throw err
       }
 
       if (!event.topic) {
         let err = new Error('%s|topic required', event.id)
         err.status = 400
-        return done(err)
+        throw err
       }
 
       logger.debug('%s|event arrived. %s, %s, %s',
@@ -51,12 +38,18 @@ module.exports = (app) => {
       // dispatch original event to all clients
       app.service.notifications.sockets.send(event)
 
-      createEventNotifications(req, res, (err) => {
-        if (err) { return done(err) }
-        sendTaskEventNotification(req, res, done)
-      })
+      await createEventNotifications(req, res)
+      await sendTaskEventNotification(req, res)
+      return res.status(200).json("Ok")
+    } catch (err) {
+      logger.error(err.message)
+      if (err.status === 400) {
+        return res.status(400).json({ message: err.message })
+      } else {
+        return res.status(500).json('Internal Server Error')
+      }
     }
-  )
+  })
 
   // notification maintenance
   router.delete(
@@ -78,22 +71,30 @@ module.exports = (app) => {
     }
   )
 
-  const sendTaskEventNotification = (req, res, next) => {
-    const event = req.body
+  const sendTaskEventNotification = async (req, res) => {
+    return new Promise((resolve, reject) => {
+      const event = req.body
 
-    // can't send task event notifications without a task ...
-    if ( ! (event.data.model && event.data.model.task) ) {
-      logger.debug('%s|not a task notification', event.id)
-      return next()
-    }
+      // can't send task event notifications without a task ...
+      if ( ! (event.data.model && event.data.model.task) ) {
+        logger.debug('%s|not a task notification', event.id)
+        return resolve()
+      }
 
-    if (isTaskNotificationEvent(event)) {
-      createTaskCustomNotification(req, res, next)
-    } else if (isResultNotificationEvent(event)){
-      createTaskResultNotification(req, res, next)
-    } else {
-      return next()
-    }
+      if (isTaskNotificationEvent(event)) {
+        createTaskCustomNotification(req, res, (err) => {
+          if (err) { reject(err) }
+          else { resolve() }
+        })
+      } else if (isResultNotificationEvent(event)){
+        createTaskResultNotification(req, res, (err) => {
+          if (err) { reject(err) }
+          else { resolve() }
+        })
+      } else {
+        return resolve()
+      }
+    })
   }
 
   const createTaskResultNotification = (req, res, done) => {
@@ -250,78 +251,80 @@ module.exports = (app) => {
    * should only be notified to the organization users
    *
    */
-  const createEventNotifications = (req, res, done) => {
-    const event = req.body
-    const topic = event.topic
+  const createEventNotifications = (req, res) => {
+    return new Promise((resolve, reject) => {
+      const event = req.body
+      const topic = event.topic
 
-    logger.debug('%s|dispatching event notification.', event.id)
+      logger.debug('%s|dispatching event notification.', event.id)
 
-    if (!isHandledNotificationEvent(event)) {
-      logger.debug('%s|dismissed. not handled', event.id)
-      return done()
-    }
-
-    let model = event.data.model
-    let acls = (model.task ? model.task.acl : model.acl) || []
-    let credentials = ['admin', 'owner', 'root']
-    let organization = event.data.organization
-    let organization_id = event.data.organization_id
-
-    getUsersToNotify(event, organization, acls, credentials, (error, users) => {
-      if (error) {
-        let msg = 'error getting system users'
-        logger.debug('%s|%s', event.id, msg)
-        return done(new Error(msg))
+      if (!isHandledNotificationEvent(event)) {
+        logger.debug('%s|dismissed. not handled', event.id)
+        return resolve()
       }
 
-      if (users.length === 0) {
-        logger.debug('%s|%s', event.id, 'dismissed. no system users to notify')
-        return done()
-      }
+      let model = event.data.model
+      let acls = (model.task ? model.task.acl : model.acl) || []
+      let credentials = ['admin', 'owner', 'root']
+      let organization = event.data.organization
+      let organization_id = event.data.organization_id
 
-      users = applyNotificationFilters(event, users)
-      if (!users || !Array.isArray(users) || !users.length) {
-        logger.debug('%s|%s', event.id, 'dismissed. notification is ignored by users')
-        return done()
-      }
-
-      // create a notification for each user
-      createNotifications({
-        topic: event.topic,
-        data: event.data,
-        event_id: event.id,
-        customer_name: organization,
-        customer_id: organization_id,
-        customer: organization_id
-      }, users, (err, notifications) => {
-        if (err) {
-          let msg = 'error creating user notifications'
+      getUsersToNotify(event, organization, acls, credentials, (error, users) => {
+        if (error) {
+          let msg = 'error getting system users'
           logger.debug('%s|%s', event.id, msg)
-          return done(new Error(msg))
+          return reject(new Error(msg))
         }
 
-        // send extra notification event via socket to desktop clients
-        app.service.notifications.sockets.send({
-          id: event.id,
-          topic: 'notification-crud',
-          data: {
-            model: notifications,
-            model_type: 'Notification',
-            operation: 'create',
-            organization,
-            organization_id
+        if (users.length === 0) {
+          logger.debug('%s|%s', event.id, 'dismissed. no system users to notify')
+          return resolve()
+        }
+
+        users = applyNotificationFilters(event, users)
+        if (!users || !Array.isArray(users) || !users.length) {
+          logger.debug('%s|%s', event.id, 'dismissed. notification is ignored by users')
+          return resolve()
+        }
+
+        // create a notification for each user
+        createNotifications({
+          topic: event.topic,
+          data: event.data,
+          event_id: event.id,
+          customer_name: organization,
+          customer_id: organization_id,
+          customer: organization_id
+        }, users, (err, notifications) => {
+          if (err) {
+            let msg = 'error creating user notifications'
+            logger.debug('%s|%s', event.id, msg)
+            return reject(new Error(msg))
           }
+
+          // send extra notification event via socket to desktop clients
+          app.service.notifications.sockets.send({
+            id: event.id,
+            topic: 'notification-crud',
+            data: {
+              model: notifications,
+              model_type: 'Notification',
+              operation: 'create',
+              organization,
+              organization_id
+            }
+          })
+          logger.debug('%s|%s', event.id, 'by socket notified')
+
+          app.service.notifications.push.send(event, users)
+          logger.debug('%s|%s', event.id, 'by push notified')
+
+          //Notifications.email.send('TO-DO', users)
+          //logger.debug('%s|%s', event.id, 'by email notified')
+
+          logger.debug('%s|%s', event.id, 'event notifications dispatched')
+          return resolve()
         })
-        logger.debug('%s|%s', event.id, 'by socket notified')
-
-        app.service.notifications.push.send(event, users)
-        logger.debug('%s|%s', event.id, 'by push notified')
-
-        //Notifications.email.send('TO-DO', users)
-        //logger.debug('%s|%s', event.id, 'by email notified')
-
-        logger.debug('%s|%s', event.id, 'event notifications dispatched')
-        return done()
       })
     })
   }

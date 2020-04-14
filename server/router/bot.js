@@ -14,15 +14,19 @@ module.exports = (app) => {
 
         let agentMember = await app.models.member.findOne({
           credential: 'agent',
-          customer_id: mongoose.Types.ObjectId(session.customer_id)
+          customer_id: session.customer_id
         })
-
-        if (!agentMember && !agentMember.user_id) { res.status(500).json({ message: "Error getting agent credentials." }) }
 
         let agentPassport = await app.models.passport.findOne({
           protocol: 'local',
-          user_id: mongoose.Types.ObjectId(agentMember.user_id)
+          user_id: agentMember.user_id
         })
+
+        if (!agentPassport || (!agentMember && !agentMember.user_id)) {
+          let err = new Error('Error getting agent credentials.')
+          err.statusCode = 500
+          throw err
+        }
 
         let botAgent = {
           customer_name: agentMember.customer_name,
@@ -70,12 +74,14 @@ module.exports = (app) => {
           app.config.supervisor.url
         )
 
-        return res.status(200).json({ user: botAgent })
+        res.status(200).json({ user: botAgent })
       } catch (err) {
         logger.error(err)
-        res.status(500).json({ message:'Error getting agent credentials.' })
+        let message = err.message || 'Internal Server Error'
+        let statusCode = err.statusCode || 500
+        res.status(statusCode)
+        res.json({ message, statusCode })
       }
-
     }
   )
 

@@ -6,7 +6,6 @@ module.exports = (app) => {
   const router = express.Router()
 
   //const bearerMiddleware = app.service.authentication.middlewares.bearerPassport
-
   router.post(
     '/login',
     app.service.authentication.middlewares.basicPassport,
@@ -14,7 +13,6 @@ module.exports = (app) => {
       try {
         let user = req.user
         let customer = req.query.customer || null
-
         let query = { user_id: user._id }
         if (customer) {
           query.customer_name = customer
@@ -25,7 +23,11 @@ module.exports = (app) => {
         if (memberOf.length === 0) {
           return res
             .status(403)
-            .json({ message: 'forbidden', reason: 'you have no memberships' })
+            .json({
+              message: 'Forbidden',
+              reason: 'you are not a member',
+              statusCode: 403
+            })
         }
 
         let member = memberOf[0]
