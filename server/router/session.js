@@ -35,6 +35,7 @@ module.exports = (app) => {
       let member = session.member
 
       let profile = {}
+      profile.id = user._id.toString()
       profile.customers = customers // reduced information
       profile.last_login = user.last_login
       profile.name = user.name
