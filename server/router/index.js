@@ -7,6 +7,8 @@ const InboxRouter = require('./inbox')
 const MemberRouter = require('./member')
 const BotRouter = require('./bot')
 const MessageRouter = require('./message')
+const CustomerRouter = require('./customer')
+const UserRouter = require('./user')
 //const GatewayRouter = require('./gateway')
 
 class Router {
@@ -32,6 +34,9 @@ class Router {
     api.use('/api/member', bearerMiddleware, MemberRouter(app))
     api.use('/api/bot', bearerMiddleware, BotRouter(app))
     api.use('/api/message', bearerMiddleware, MessageRouter(app))
+    api.use('/api/customer', bearerMiddleware, CustomerRouter(app))
+    api.use('/api/user', bearerMiddleware, UserRouter(app))
+
     //api.use('/api', bearerMiddleware, GatewayRouter(app))
   }
 }

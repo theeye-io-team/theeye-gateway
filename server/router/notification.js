@@ -1,6 +1,7 @@
 const express = require('express')
 const logger = require('../logger')('router:notifications')
 const moment = require('moment')
+const CredentialsConstants = require('../constants/credentials')
 
 module.exports = (app) => {
   const router = express.Router()
@@ -110,7 +111,7 @@ module.exports = (app) => {
       recipient = model.user.email
     }
 
-    app.models.user.findOne({email: recipient}).exec((err, user) => {
+    app.models.users.uiUser.findOne({email: recipient}).exec((err, user) => {
       if (err) { return done(err) }
       if (!user) { return done(new Error('User not found')) }
 
@@ -265,7 +266,7 @@ module.exports = (app) => {
 
       let model = event.data.model
       let acls = (model.task ? model.task.acl : model.acl) || []
-      let credentials = ['admin', 'owner', 'root']
+      let credentials = [CredentialsConstants.ROOT, CredentialsConstants.ADMIN, CredentialsConstants.OWNER]
       let organization = event.data.organization
       let organization_id = event.data.organization_id
 
@@ -379,7 +380,7 @@ module.exports = (app) => {
       }
     }
 
-    app.models.user.find(query, function (error, users) {
+    app.models.users.uiUser.find(query, function (error, users) {
       if (!users || !Array.isArray(users) || users.length === 0) {
         return callback(null, [])
       }

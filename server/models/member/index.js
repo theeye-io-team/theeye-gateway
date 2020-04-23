@@ -9,7 +9,6 @@ module.exports = function (db) {
     customer_name: { type: 'string' },
     credential: { type: 'string', default: 'viewer' },
     invitation_token: { type: 'string', default: null },
-    enabled: { type: 'boolean' },
     creation_date: { type: Date, default: new Date(), required: true },
     last_update: { type: Date, default: new Date(), required: true },
     notifications: {

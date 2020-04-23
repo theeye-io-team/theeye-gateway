@@ -133,16 +133,18 @@ module.exports = function (app) {
      * @param {Member}
      * @return {Promise}
      */
-    createSession (member) {
+    async createSession (member) {
       let expiration = new Date()
       let expSecs = this.config.expires
       expiration.setSeconds(expiration.getSeconds() + expSecs)
 
       let token = app.service.authentication.issue({ user_id: member.user_id })
 
+      await member.populate('user', { id: 1, credential: 1 }).execPopulate()
+
       // register issued tokens
       let session = new app.models.session()
-      session.token = token 
+      session.token = token
       session.expires = expiration
       session.user = member.user_id
       session.user_id = member.user_id
@@ -150,6 +152,10 @@ module.exports = function (app) {
       session.member_id = member._id
       session.customer = member.customer_id
       session.customer_id = member.customer_id
+      session.credential = member.credential
+
+      if (member.user.credential) session.credential = member.user.credential
+
       return session.save()
     }
 
@@ -165,7 +171,7 @@ module.exports = function (app) {
       let token = app.service.authentication.issue({ user_id: session.user_id })
 
       // register issued tokens
-      session.token = token 
+      session.token = token
       session.expires = expiration
       return session.save()
     }
@@ -211,8 +217,7 @@ module.exports = function (app) {
 
   const userFetch = (where) => {
     return new Promise((resolve, reject) => {
-      app.models
-        .user
+      app.models.users.user
         .findOne(where)
         .exec((err, user) => {
           if (err) { reject(err) }

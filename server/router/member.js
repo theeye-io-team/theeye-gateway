@@ -2,85 +2,96 @@ const express = require('express')
 const mongoose = require('mongoose')
 const logger = require('../logger')('router:member')
 const emailTemplates = require('../services/notifications/email/templates')
+const CredentialsConstants = require('../constants/credentials')
+const isEmail = require('validator/lib/isEmail')
 
 module.exports = (app) => {
   const router = express.Router()
 
   router.get(
     '/',
-    (req, res, next) => {
-      const session = req.session
+    async (req, res, next) => {
+      try {
+        const session = req.session
 
-      let query = {
-        customer_id: mongoose.Types.ObjectId(session.customer_id)
+        let query = {
+          customer_id: mongoose.Types.ObjectId(session.customer_id)
+        }
+
+        let ninCredentials = [CredentialsConstants.AGENT, CredentialsConstants.INTEGRATION]
+        if (session.credential !== CredentialsConstants.ROOT) {
+          ninCredentials.push(CredentialsConstants.ROOT)
+        }
+
+        query.credential = { $nin: ninCredentials }
+
+        let members = await app.models.member.find(query).exec()
+
+        for (var member of members) {
+          await member.populate({
+            path: 'user',
+            select: 'id name username email enabled'
+          }).execPopulate()
+        }
+
+        res.json(members)
+      } catch (err) {
+        if (err.status) { res.status(err.status).json( { message: err.message }) }
+        else res.status(500).json('Internal Server Error')
       }
-
-      let ninCredentials = ['agent', 'integration']
-      if (req.user.credential !== 'root') {
-        ninCredentials.push('root')
-      }
-
-      query.credential = { $nin: ninCredentials }
-
-      app.models
-        .member
-        .find(query)
-        .populate({
-          path: 'user',
-          select: 'id name username email credential enabled invitation_token devices onboardingCompleted notifications'
-        })
-        .exec((err, members) => {
-          if (err) { res.status(500).json({ message: "Error getting members." }) }
-          else {
-            res.json(members)
-          }
-        })
     }
   )
 
   router.delete(
     '/:id',
-    (req, res, next) => {
-      if (!req.params.id) {
-        return res.status(400).json({ message: "Missing param id." })
+    async (req, res, next) => {
+      try {
+        const id = req.params.id
+
+        let member = await app.models.member.findById(id)
+        if (!member) {
+          let err = new Error('Member Not Found')
+          err.status = 404
+          throw new err
+        }
+
+        await member.remove()
+        res.json({})
+      } catch (err) {
+        if (err.status) { res.status(err.status).json( { message: err.message }) }
+        else res.status(500).json('Internal Server Error')
       }
-
-      const id = req.params.id
-
-      app.models
-        .member
-        .findByIdAndRemove(id)
-        .exec((err, result) => {
-          if (err) { res.status(500).json({ message: "Error removing member." })}
-          else { res.status(200).json() }
-        })
     }
   )
 
   router.patch(
     '/:id',
-    (req, res, next) => {
-      if (!req.params.id) {
-        return res.status(400).json({ message: "Missing param id." })
+    async (req, res, next) => {
+      try {
+        if (!req.body.credential) {
+          return res.status(400).json({ message: "Missing param credential." })
+        }
+
+        const id = req.params.id
+        const update = {
+          credential: req.body.credential
+        }
+
+        let member = await app.models.member.findById(id)
+        if (!member) {
+          let err = new Error('Member Not Found')
+          err.status = 404
+          throw new err
+        }
+
+        member.set(update)
+        await member.save()
+
+        res.json(member)
+      } catch (err) {
+        if (err.status) { res.status(err.status).json( { message: err.message }) }
+        else res.status(500).json('Internal Server Error')
       }
-
-      if (!req.body.credential) {
-        return res.status(400).json({ message: "Missing param credential." })
-      }
-
-      const id = req.params.id
-      const update = {
-        credential: req.body.credential
-      }
-
-      app.models
-        .member
-        .findByIdAndUpdate(id,update)
-        .exec((err, result) => {
-          if (err) { res.status(500).json({ message: "Error updating member credential." })}
-          else { res.status(200).json() }
-        })
-
     }
   )
 
@@ -108,9 +119,11 @@ module.exports = (app) => {
           throw err
         }
 
+        if (!isEmail(req.body.user.email)) return res.status(400).json({message: 'incorrect email format'})
+
         let data = {}
 
-        let user = await app.models.user.findOne({email: body.user.email})
+        let user = await app.models.users.uiUser.findOne({email: body.user.email})
         let customer = await app.models.customer.findById(session.customer_id)
 
         if (!customer) {
@@ -155,8 +168,7 @@ module.exports = (app) => {
               customer: customer._id,
               customer_id:  customer._id,
               customer_name: customer.name,
-              credential: body.credential,
-              enabled: false
+              credential: body.credential
             }
 
             let newMember = await app.models.member.create(data)
@@ -183,7 +195,7 @@ module.exports = (app) => {
             invitation_token: token
           }
 
-          let newUser = await app.models.user.create(userData)
+          let newUser = await app.models.users.uiUser.create(userData)
           if (!newUser) { throw new Error("newUser not set.") }
 
           // creo el member para el nuevo user
@@ -193,8 +205,7 @@ module.exports = (app) => {
             customer: customer._id,
             customer_id: customer._id,
             customer_name: customer.name,
-            credential: body.credential,
-            enabled: false
+            credential: body.credential
           }
 
           let newMember = await app.models.member.create(memberData)
@@ -209,7 +220,6 @@ module.exports = (app) => {
           return res.status(200).json({ member:newMember, resend:false })
         }
       } catch (err) {
-        console.log(err)
         if (err.status) { res.status(err.status).json( { message: err.message }) }
         else res.status(500).json('Internal Server Error')
       }

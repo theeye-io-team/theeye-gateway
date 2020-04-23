@@ -1,11 +1,19 @@
 const mongoose = require('mongoose')
 
 module.exports = function (db) {
+  const User = db.model('User', new BaseSchema())
+  const BotUser = User.discriminator('BotUser', new BaseSchema())
+  const UiUser = User.discriminator('UiUser', new BaseSchema())
+  return { User, BotUser, UiUser }
+}
+
+function BaseSchema () {
   const schema = new mongoose.Schema({
     username: { type: String, unique: true, required: true },
     email: { type: String, unique: true, required: true },
     name: { type: 'string' },
     enabled: { type: 'boolean', default: false },
+    credential: { type: 'string' }, // global property for internal use. will replace session credential when set
     invitation_token: { type: 'string', default: '' },
     devices: { type: 'array', default: [] },
     onboardingCompleted: { type: 'boolean', default: false },
@@ -14,7 +22,7 @@ module.exports = function (db) {
     last_login: { type: Date, default: new Date() }
   }, {
     collection: 'web_user',
-    discriminatorKey: '_type'                                        
+    discriminatorKey: '_type'
   })
 
   const def = {
@@ -36,8 +44,5 @@ module.exports = function (db) {
   schema.set('toJSON', def)
   schema.set('toObject', def)
 
-  const User = db.model('User', schema)
-  const BotUser = db.model('BotUser', schema)
-
-  return User
+  return schema
 }

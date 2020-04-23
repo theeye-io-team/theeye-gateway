@@ -2,6 +2,7 @@ const express = require('express')
 const mongoose = require('mongoose')
 const format = require('util').format
 const logger = require('../logger')('router:bot')
+const CredentialsConstants = require('../constants/credentials')
 
 module.exports = (app) => {
   const router = express.Router()
@@ -13,7 +14,7 @@ module.exports = (app) => {
         const session = req.session
 
         let agentMember = await app.models.member.findOne({
-          credential: 'agent',
+          credential: CredentialsConstants.AGENT,
           customer_id: session.customer_id
         })
 
