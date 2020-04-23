@@ -17,8 +17,8 @@ function BaseSchema () {
     invitation_token: { type: 'string', default: '' },
     devices: { type: 'array', default: [] },
     onboardingCompleted: { type: 'boolean', default: false },
-    creation_date: { type: Date, default: new Date(), required: true },
-    last_update: { type: Date, default: new Date(), required: true },
+    creation_date: { type: Date, default: () => { return new Date() }, required: true },
+    last_update: { type: Date, default: () => { return new Date() }, required: true },
     last_login: { type: Date, default: new Date() }
   }, {
     collection: 'web_user',

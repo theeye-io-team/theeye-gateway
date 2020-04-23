@@ -29,8 +29,8 @@ module.exports = function (db) {
         }
       }
     },
-    creation_date: { type: Date, default: new Date() },
-    last_update: { type: Date, default: new Date() },
+    creation_date: { type: Date, default: () => { return new Date() } },
+    last_update: { type: Date, default: () => { return new Date() } },
   }, {
     collection: 'customers',
     discriminatorKey: '_type'

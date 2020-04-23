@@ -11,8 +11,8 @@ module.exports = function (db) {
     event_id: { type: 'string' },
     read: { type: 'boolean', default: false },
     data: { type: 'object', default: () => { return {} } },
-    creation_date: { type: Date, default: new Date(), required: true },
-    last_update: { type: Date, default: new Date(), required: true },
+    creation_date: { type: Date, default: () => { return new Date() }, required: true },
+    last_update: { type: Date, default: () => { return new Date() }, required: true },
   }, {
     collection: 'web_notification',
     discriminatorKey: '_type'

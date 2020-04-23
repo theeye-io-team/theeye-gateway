@@ -38,11 +38,11 @@ module.exports = function (db) {
     // https://github.com/balderdashy/waterline
     user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
     user_id: { type: mongoose.Schema.Types.ObjectId, required: true },
-    creation_date: { type: Date, default: new Date(), required: true },
-    last_update: { type: Date, default: new Date(), required: true },
+    creation_date: { type: Date, default: () => { return new Date() }, required: true },
+    last_update: { type: Date, default: () => { return new Date() }, required: true },
   }, {
     collection: 'web_passport',
-    discriminatorKey: '_type'                                        
+    discriminatorKey: '_type'
   })
 
   /**
