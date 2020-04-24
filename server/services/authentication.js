@@ -185,6 +185,9 @@ module.exports = function (app) {
           return res.json(err.message)
         }
         next(err)
+      } else if (user === false || !user) {
+        let err = unauthorized()
+        return res.status(err.statusCode).json(err.message)
       } else {
         req.session = session
         req.user = user
@@ -202,7 +205,7 @@ module.exports = function (app) {
         }
         next(err)
       } else {
-        if (!user) {
+        if (user === false || !user) {
           logger.log('no credentials')
           let err = unauthorized()
           return res.status(err.statusCode).json(err.message)
