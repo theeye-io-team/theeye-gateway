@@ -75,7 +75,7 @@ module.exports = (app) => {
           app.config.supervisor.url
         )
 
-        res.status(200).json({ user: botAgent })
+        res.status(200).json(botAgent)
       } catch (err) {
         logger.error(err)
         let message = err.message || 'Internal Server Error'

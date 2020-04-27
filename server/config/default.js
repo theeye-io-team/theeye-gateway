@@ -31,15 +31,7 @@ module.exports = {
     authentication: {
       secret: '692fc164a0c06a9fd02575cf17688c9e',
       expires: 3 * (60 * 60), // in seconds
-      // not in use.
-      //session: {
-      //  secret: '692fc164a0c06a9fd02575cf17688c9e',
-      //  adapter: 'mongo',
-      //  host: '127.0.0.1',
-      //  port: 27017,
-      //  db: 'theeye',
-      //  collection: 'web_session'
-      //}
+      //expires: 15 * 60, // 15 minutes in seconds
     },
     notifications: {
       email: {

@@ -75,10 +75,11 @@ module.exports = (app) => {
         })
 
         if (!member) {
-          res.status(403)
-          res.json({ message: 'Forbidden', statusCode: 401 })
-          return
+          let err = new Error('Forbidden')
+          err.statusCode = 403
+          throw err
         }
+
         req.member = member
         next()
       } catch (err) {
@@ -143,52 +144,96 @@ module.exports = (app) => {
 
   /**
    *
-   * update profile settings
+   * update notifications preferences
    *
    */
   router.put(
-    '/profile/settings',
+    '/profile/notifications',
     (req, res, next) => {
-      const user = req.user
-      const params = req.params.all()
-
-      user.notifications = params.notifications
-      user.save(err => {
-        if (err) {
-          sails.log.error(err)
-          return res.send(500, 'internal server error')
+      try {
+        //const params = req.params.all()
+        if (!req.body) {
+          let err = new Error('Invalid Payload')
+          err.statusCode(400)
+          throw err
         }
 
-        res.send(200, { notifications: user.notifications })
-      })
-    }
-  )
+        let payload = req.body
+        let upgradeable = [
+          'notificationFilters',
+          'email',
+          'push',
+          'desktop',
+          'mute'
+        ]
 
-  router.put(
-    '/profile/onboarding',
-    (req, res, next) => {
-      const user = req.user
-      console.log(req.user, req.session)
-      const params = req.params.all()
-
-      user.onboardingCompleted = params.onboardingCompleted
-      user.save(err => {
-        if (err) {
-          sails.log.error(err)
-          return res.send(500, 'internal server error')
+        // extra property
+        let updates = {}
+        for (let prop in payload) {
+          if (upgradeable.indexOf(prop) !== -1) { // can update?
+            //let err = new Error('Invalid Payload Property')
+            //err.statusCode(400)
+            //throw err
+            updates[prop] = payload[prop]
+          }
         }
 
-        res.send(200, { onboardingCompleted: user.onboardingCompleted })
-      })
+        if (Object.keys(updates) === 0) {
+          let err = new Error('Invalid Payload')
+          err.statusCode(400)
+          throw err
+        }
+
+        req.notifications = updates
+        next()
+      } catch (err) {
+        errorResponse(err, res)
+      }
+    },
+    async (req, res, next) => {
+      try {
+        const session = req.session
+        await session.populate('member','notifications').execPopulate()
+        const member = session.member
+
+        //@TODO: create member 1 <> * notifications collection
+        member.notifications = req.notifications
+        await member.save()
+
+        res.status(200).json({ notifications: member.notifications })
+      } catch (err) {
+        errorResponse(err, res)
+      }
     }
   )
 
-  router.get(
-    '/userpassport',
-    (req, res, next) => {
-      return res.status(200).json({})
-    }
-  )
+  router.put('/profile/onboarding', (req, res, next) => {
+    const user = req.user
+    const params = req.params.all()
+
+    user.onboardingCompleted = params.onboardingCompleted
+    user.save(err => {
+      if (err) {
+        sails.log.error(err)
+        return res.send(500, 'internal server error')
+      }
+
+      res.send(200, { onboardingCompleted: user.onboardingCompleted })
+    })
+  })
+
+  router.get('/userpassport', (req, res, next) => {
+    return res.status(200).json({})
+  })
 
   return router
+}
+
+const errorResponse = (err, res) => {
+  logger.error(err)
+  if (err.statusCode) {
+    res.status(err.statusCode).json(err.message)
+  } else {
+    res.status(500).json('Internal Server Error')
+  }
 }
