@@ -9,6 +9,8 @@ const BotRouter = require('./bot')
 const MessageRouter = require('./message')
 const CustomerRouter = require('./customer')
 const UserRouter = require('./user')
+const RegistrationRouter = require('./registration')
+
 //const GatewayRouter = require('./gateway')
 
 class Router {
@@ -23,6 +25,7 @@ class Router {
     api.get('/login', staticRoute)
     api.get('/logout', staticRoute)
     api.get('/dashboard', staticRoute)
+    api.get('/activate', staticRoute)
     api.get('/admin/*', staticRoute)
 
     const bearerMiddleware = app.service.authentication.middlewares.bearerPassport
@@ -36,6 +39,7 @@ class Router {
     api.use('/api/message', bearerMiddleware, MessageRouter(app))
     api.use('/api/customer', bearerMiddleware, CustomerRouter(app))
     api.use('/api/user', bearerMiddleware, UserRouter(app))
+    api.use('/api/registration', RegistrationRouter(app))
 
     //api.use('/api', bearerMiddleware, GatewayRouter(app))
   }

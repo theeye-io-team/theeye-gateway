@@ -34,7 +34,7 @@ module.exports = (app) => {
         if (!customer) {
           let err = new Error('Error creating customer')
           err.status = 500
-          throw new err
+          throw err
         }
 
         await createCustomerAgent(app, customer)
@@ -74,7 +74,7 @@ module.exports = (app) => {
         if (!customer) {
           let err = new Error('Customer Not Found')
           err.status = 404
-          throw new err
+          throw err
         }
 
         let key = 'config.' + integration
@@ -102,7 +102,7 @@ module.exports = (app) => {
         if (!customer) {
           let err = new Error('Customer Not Found')
           err.status = 404
-          throw new err
+          throw err
         }
 
         customer.set(update)
@@ -127,7 +127,7 @@ module.exports = (app) => {
         if (!customer) {
           let err = new Error('Customer Not Found')
           err.status = 404
-          throw new err
+          throw err
         }
 
         await app.models.member.deleteMany({customer_id: customer._id})

@@ -1,7 +1,5 @@
 const express = require('express')
-const mongoose = require('mongoose')
 const logger = require('../logger')('router:user')
-const crypto = require('crypto')
 const CredentialsConstants = require('../constants/credentials')
 const emailTemplates = require('../services/notifications/email/templates')
 const isEmail = require('validator/lib/isEmail')
@@ -88,12 +86,11 @@ module.exports = (app) => {
         if (!validateUsername(req.body.username)) return res.status(400).json({message: 'incorrect username format'})
         if (!isEmail(req.body.email)) return res.status(400).json({message: 'incorrect email format'})
 
-
         let user = await app.models.users.uiUser.findById(id)
         if (!user) {
           let err = new Error('User Not Found')
           err.status = 404
-          throw new err
+          throw err
         }
 
         user.set({
@@ -123,7 +120,7 @@ module.exports = (app) => {
         if (!user) {
           let err = new Error('User Not Found')
           err.status = 404
-          throw new err
+          throw err
         }
 
         await app.models.passport.deleteMany({user_id: user._id})
@@ -150,7 +147,7 @@ module.exports = (app) => {
         if (!user) {
           let err = new Error('User Not Found')
           err.status = 404
-          throw new err
+          throw err
         }
 
         if (user.enabled === true) {
@@ -159,7 +156,7 @@ module.exports = (app) => {
             invitee: user
           })
         } else {
-          const token = getActivationToken(user.email)
+          const token = app.service.authentication.issue({ email: user.email })
           user.set({invitation_token: token})
 
           await user.save()
@@ -179,7 +176,6 @@ module.exports = (app) => {
     }
   )
 
-
   return router
 }
 
@@ -198,7 +194,7 @@ const createUser = async (app, inviter, data) => {
   }
 
   if(!data.enabled) {
-    userData.invitation_token = getActivationToken(data.email)
+    userData.invitation_token = app.service.authentication.issue({ email: data.email })
   }
 
   let newUser = await app.models.users.uiUser.create(userData)
@@ -227,12 +223,6 @@ const createUser = async (app, inviter, data) => {
   }
 
   return newUser
-}
-
-const  getActivationToken = (string) => {
-  var seed = string + Date.now()
-  var token = crypto.createHmac("sha1",seed).digest("hex")
-  return token
 }
 
 const getActivationLink = function (user, activateUrl) {

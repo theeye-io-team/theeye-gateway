@@ -52,7 +52,7 @@ module.exports = (app) => {
         if (!member) {
           let err = new Error('Member Not Found')
           err.status = 404
-          throw new err
+          throw err
         }
 
         await member.remove()
@@ -81,7 +81,7 @@ module.exports = (app) => {
         if (!member) {
           let err = new Error('Member Not Found')
           err.status = 404
-          throw new err
+          throw err
         }
 
         member.set(update)
