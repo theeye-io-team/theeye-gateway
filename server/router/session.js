@@ -47,7 +47,8 @@ module.exports = (app) => {
         config: member.customer.config
       }
       profile.notifications = member.notifications
-      profile.credential = member.credential
+      profile.credential = session.credential
+      profile.protocol = session.protocol
 
       return res.json(profile)
     } catch (err) {

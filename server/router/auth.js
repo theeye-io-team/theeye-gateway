@@ -8,10 +8,17 @@ module.exports = (app) => {
   //const bearerMiddleware = app.service.authentication.middlewares.bearerPassport
   router.post(
     '/login',
-    app.service.authentication.middlewares.basicPassport,
+    (req, res, next) => {
+      if (app.config.services.authentication.strategies.ldapauth) {
+        app.service.authentication.middlewares.ldapPassport(req, res, next)
+      } else {
+        app.service.authentication.middlewares.basicPassport(req, res, next)
+      }
+    },
     async (req, res, next) => {
       try {
         let user = req.user
+        let passport = req.passport
         let customer = req.query.customer || null
         let query = { user_id: user._id }
         if (customer) {
@@ -31,7 +38,7 @@ module.exports = (app) => {
         }
 
         let member = memberOf[0]
-        const session = await app.service.authentication.createSession(member)
+        const session = await app.service.authentication.createSession({ member, passport })
         res.json({ access_token: session.token })
       } catch (err) {
         logger.error(err)

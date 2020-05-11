@@ -1,8 +1,10 @@
 const passport = require('passport')
 const passportBearer = require('passport-http-bearer').Strategy
 const passportBasic = require('passport-http').BasicStrategy
+const passportLdap = require('passport-ldapauth')
+const ldapauth = require('./ldapauth')
 
-const logger = require('../logger')(':services:authentication')
+const logger = require('../../logger')(':services:authentication')
 
 /**
  * jwToken
@@ -12,7 +14,6 @@ const logger = require('../logger')(':services:authentication')
 const jwt = require('jsonwebtoken')
 
 module.exports = function (app) {
-
   class Authentication {
     constructor () {
       this.config = app.config.services.authentication
@@ -20,7 +21,11 @@ module.exports = function (app) {
       passport.use(new passportBasic(this.verifyUserPassword))
       passport.use(new passportBearer(this.verifySessionToken))
 
-      this.middlewares = { basicPassport, bearerPassport }
+      if (this.config.strategies.ldapauth) {
+        passport.use(new passportLdap(this.config.strategies.ldapauth, ldapauth(app)))
+      }
+
+      this.middlewares = { basicPassport, bearerPassport, ldapPassport }
     }
 
     /**
@@ -67,7 +72,10 @@ module.exports = function (app) {
         }
 
         // basic authentication requires a local passport
-        let passport = await app.models.passport.findOne({ user: user._id, protocol: 'local' })
+        let passport = await app.models.passport.findOne({
+          user: user._id,
+          protocol: 'local'
+        })
 
         await passport.validatePassword(password)
 
@@ -76,7 +84,7 @@ module.exports = function (app) {
         await app.models.passport.updateOne({ _id: passport._id },{ $set: { last_access: new Date() } })
 
         logger.log('client %s/%s connected [basic]', user.username, user.email)
-        return next(null, user)
+        return next(null, { user, passport })
       } catch (err) {
         if (err.message === 'InvalidPassword') {
           logger.error(`unauthorized. u:${username}/p:${password}`)
@@ -134,10 +142,14 @@ module.exports = function (app) {
     }
 
     /**
-     * @param {Member}
+     * @param {Object} params
+     * @property {Member} params.member
+     * @property {Passport} params.passport
      * @return {Promise}
      */
-    async createSession (member) {
+    async createSession (params) {
+      let { member, passport } = params
+
       let expiration = new Date()
       let expSecs = this.config.expires
       expiration.setSeconds(expiration.getSeconds() + expSecs)
@@ -156,9 +168,13 @@ module.exports = function (app) {
       session.member_id = member._id
       session.customer = member.customer_id
       session.customer_id = member.customer_id
-      session.credential = member.credential
+      session.protocol = passport.protocol
 
-      if (member.user.credential) session.credential = member.user.credential
+      if (member.user.credential) {
+        session.credential = member.user.credential
+      } else {
+        session.credential = member.credential
+      }
 
       return session.save()
     }
@@ -201,7 +217,8 @@ module.exports = function (app) {
   }
 
   const basicPassport = (req, res, next) => {
-    passport.authenticate('basic', (err, user) => {
+    passport.authenticate('basic', (err, auth) => {
+      let { user, passport } = auth
       if (err) {
         if (err.status >= 400) {
           res.status(err.status)
@@ -210,17 +227,39 @@ module.exports = function (app) {
         next(err)
       } else {
         if (user === false || !user) {
-          logger.log('no credentials')
+          logger.log('Invalid credentials.')
           let err = unauthorized()
           return res.status(err.statusCode).json(err.message)
         } else {
           req.user = user
+          req.passport = passport
           next()
         }
       }
     }, {session: false})(req, res, next)
   }
 
+  const ldapPassport = (req, res, next) => {
+    passport.authenticate('ldapauth', (err, auth) => {
+      let { user, passport } = auth
+      if (err) {
+        if (err.status >= 400) {
+          res.status(err.status)
+          return res.json(err.message)
+        }
+        next(err)
+      } else {
+        if (user === false || !user) {
+          logger.log('Invalid credentials.')
+          let err = unauthorized()
+          return res.status(err.statusCode).json(err.message)
+        }
+        req.user = user
+        req.passport = passport
+        next()
+      }
+    }, {session: false})(req, res, next)
+  }
 
   const userFetch = (where) => {
     return new Promise((resolve, reject) => {

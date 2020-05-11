@@ -12,7 +12,8 @@ module.exports = function (db) {
     user_id: { type: mongoose.Schema.Types.ObjectId, required: true },
     customer: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
     customer_id: { type: mongoose.Schema.Types.ObjectId, required: true },
-    credential: { type: String, required: true }
+    credential: { type: String, required: true },
+    protocol: { type: String, required: true }
   }, {
     collection: 'gw_session',
     discriminatorKey: '_type'

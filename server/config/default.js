@@ -31,7 +31,29 @@ module.exports = {
     authentication: {
       secret: '692fc164a0c06a9fd02575cf17688c9e',
       expires: 3 * (60 * 60), // in seconds
-      //expires: 15 * 60, // 15 minutes in seconds
+      strategies: {
+        // ldapauth: {
+        //   provider: 'ActiveDirectory',
+        //   usernameField: 'username',
+        //   passReqToCallback: true,
+        //   server: {
+        //     url: '',
+        //     bindDN: '',
+        //     bindCredentials: '',
+        //     searchBase: 'cn=Users,dc=theeye,dc=local',
+        //     searchAttributes: ['objectSid', 'name', 'mail', 'sAMAccountName', 'memberOf'],
+        //     searchFilter: '(sAMAccountName={{username}})'
+        //   },
+        //   fields: {
+        //     id: 'sAMAccountName',
+        //     name: 'name',
+        //     username: 'sAMAccountName',
+        //     email: 'mail',
+        //     groups: 'memberOf'
+        //   },
+        //   customerName: '' // default customer name
+        // }
+      }
     },
     notifications: {
       email: {
