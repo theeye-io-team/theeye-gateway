@@ -3,10 +3,6 @@ const socketIO = require('socket.io')
 const socketIOredis = require('socket.io-redis')
 const TopicConstants = require('../../constants/topics')
 
-const NOTIFICATION_TOPIC = 'notification-crud'
-const RESULT_RENDER_TOPIC = 'job-result-render'
-const SESSION_TOPIC = 'session'
-
 module.exports = function (app, config) {
   class Sockets {
     constructor () {
@@ -84,9 +80,9 @@ module.exports = function (app, config) {
       }
 
       // session subscriptions
-      joinRoom(`${customer_id}:${user_id}:notification-crud`)
-      joinRoom(`${customer_id}:${user_id}:job-result-render`)
-      joinRoom(`${session_id}:${user_id}:session`)
+      joinRoom(`${customer_id}:${user_id}:${TopicConstants.NOTIFICATION_CRUD}`)
+      joinRoom(`${customer_id}:${user_id}:${TopicConstants.JOB_RESULT_RENDER}`)
+      joinRoom(`${session_id}:${user_id}:${TopicConstants.SESSION}`)
 
       topics.forEach(topic => joinRoom(`${customer_id}:${topic}`))
 
@@ -196,15 +192,14 @@ module.exports = function (app, config) {
     logger.debug('emit event "%s"', topic)
 
     switch (topic) {
-      case NOTIFICATION_TOPIC:
-         // @TODO: improve this handler. should be abstracted
-        sendNotificationMessages(io, topic, data)
-        break;
-      case RESULT_RENDER_TOPIC:
+      case TopicConstants.NOTIFICATION_CRUD:
+        //sendNotificationMessages(io, topic, data)
+        //break;
+      case TopicConstants.JOB_RESULT_RENDER:
         sendOrganizationUserEvent(io, topic, data)
         break;
-      case SESSION_TOPIC:
-        const room = `${data.model._id}:${data.model.user_id}:session`
+      case TopicConstants.SESSION:
+        const room = `${data.model._id}:${data.model.user_id}:${TopicConstants.SESSION}`
         logger.debug(`sending message to ${room}`)
         io.sockets.in(room).emit(topic, data)
         break;
@@ -214,25 +209,23 @@ module.exports = function (app, config) {
     }
   }
 
-  const sendNotificationMessages = (io, topic, data) => {
-    if (!Array.isArray(data.model)) {
-      let msg = `ERROR: invalid notification structure. Array expected, received ${data.model}`
-      logger.error(msg)
-      throw new Error(msg)
-    }
-
-    // send a socket event for each user that need to be notified
-    // @TODO: user and organization should not be read from model. model is internal implementation of the message. must be abstracted
-    for (let idx in data.model) {
-      const model = data.model[idx]
-      const room = `${model.data.organization_id}:${model.user_id}:${topic}`
-
-      logger.debug(`sending message to ${room}`)
-
-      let payload = Object.assign({}, data, { model })
-      io.sockets.in(room).emit(topic, payload)
-    }
-  }
+  //const sendNotificationMessages = (io, topic, data) => {
+  //  if (!Array.isArray(data.model)) {
+  //    let msg = `ERROR: invalid notification structure. Array expected, received ${data.model}`
+  //    logger.error(msg)
+  //    throw new Error(msg)
+  //  }
+  //  // send a socket event for each user that need to be notified
+  //  // @TODO: user and organization should not be read from model.
+  //  // model is internal implementation of the message. must be abstracted
+  //  for (let idx in data.model) {
+  //    const model = data.model[idx]
+  //    const room = `${model.data.organization_id}:${model.user_id}:${topic}`
+  //    logger.debug(`sending message to ${room}`)
+  //    let payload = Object.assign({}, data, { model })
+  //    io.sockets.in(room).emit(topic, payload)
+  //  }
+  //}
 
   const sendOrganizationUserEvent = (io, topic, data) => {
     const user_id = data.user_id
@@ -254,5 +247,4 @@ module.exports = function (app, config) {
   }
 
   return new Sockets()
-
 }

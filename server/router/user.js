@@ -189,8 +189,7 @@ const createUser = async (app, inviter, data) => {
     invitation_token: null,
     devices: null,
     notifications: null ,
-    onboardingCompleted: false,
-    last_login:  null
+    onboardingCompleted: false
   }
 
   if(!data.enabled) {

@@ -163,7 +163,6 @@ const createCustomerAgent = async (app, customer) => {
     devices: null,
     notifications: null ,
     onboardingCompleted: true ,
-    last_login:  null,
     credential: null
   }
 

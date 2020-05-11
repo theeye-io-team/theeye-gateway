@@ -8,11 +8,11 @@ const Models = require('./models')
 const logger = require('./logger')('app')
 const Authentication = require('./services/authentication')
 const Notifications = require('./services/notifications')
+const EventEmitter = require('events')
 
 const aws = require('aws-sdk')
 
-class App {
-  constructor () { }
+class App extends EventEmitter {
 
   async configure (config) {
     this.config = config
@@ -28,6 +28,8 @@ class App {
 
     // routes require models
     this.setupApi()
+
+    this.emit('configured')
   }
 
   start () {

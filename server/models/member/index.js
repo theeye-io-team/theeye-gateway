@@ -8,7 +8,6 @@ module.exports = function (db) {
     customer_id: { type: mongoose.Schema.Types.ObjectId },
     customer_name: { type: 'string' },
     credential: { type: 'string', default: 'viewer' },
-    invitation_token: { type: 'string', default: null },
     creation_date: { type: Date, default: new Date(), required: true },
     last_update: { type: Date, default: new Date(), required: true },
     notifications: {
@@ -23,7 +22,7 @@ module.exports = function (db) {
       }
     }
   }, {
-    collection: 'members',
+    collection: 'gw_members',
     discriminatorKey: '_type'
   })
 

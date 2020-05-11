@@ -71,6 +71,10 @@ module.exports = function (app) {
 
         await passport.validatePassword(password)
 
+        // WARNING ! dont change. password is changed is .save is used.
+        // every time passport is saved the password is bcrypted
+        await app.models.passport.updateOne({ _id: passport._id },{ $set: { last_access: new Date() } })
+
         logger.log('client %s/%s connected [basic]', user.username, user.email)
         return next(null, user)
       } catch (err) {

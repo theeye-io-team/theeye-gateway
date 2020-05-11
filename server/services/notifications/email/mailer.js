@@ -1,4 +1,5 @@
 const nodemailer = require('nodemailer')
+const logger = require('../../../logger')('services:notifications:email:mailer')
 
 /** http://www.nodemailer.com/ **/
 class Mailer {
@@ -35,10 +36,17 @@ class Mailer {
     this.transporter = nodemailer.createTransport(transport)
   }
 
+  /**
+   *
+   * @param {Object} options
+   * @property {String} options.to
+   * @property {String} options.bcc
+   * @property {String} options.subject
+   * @property {String} options.body
+   *
+   */
   sendMail (options, callback) {
-    let from = this.config
-      .from
-      .replace(/%customer%/g, options.customer_name)
+    let from = this.config.from.replace(/%customer%/g, options.customer_name)
 
     options.from = from
     options.replyTo = this.config.reply_to
@@ -60,6 +68,7 @@ class Mailer {
       options.bcc = options.bcc.toLowerCase()
     }
 
+    logger.debug(options)
     this.transporter.sendMail(options, callback)
   }
 }

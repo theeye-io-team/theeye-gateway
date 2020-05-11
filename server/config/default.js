@@ -7,7 +7,7 @@ module.exports = {
   },
   mongodb: {
     hosts: "localhost:27017",
-    database: "theeyenew",
+    database: "theeye",
     // options are passed directly to the mongo-native driver
     options: {
       useNewUrlParser: true,
@@ -47,6 +47,7 @@ module.exports = {
       },
       push: {
         debug: false,
+        debug_filename: '/tmp/theeye-push-dump.log',
         push_notifications: {
           android: '',
           ios: ''

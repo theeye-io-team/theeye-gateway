@@ -1,46 +1,53 @@
 const app = require('../../app')
-const logger = require('../../logger')('eye:libs:push-notifications')
+const logger = require('../../logger')('service:notifications:push')
 const fs = require('fs')
-
-const dumpfile = '/tmp/theeye-push-dump.log'
+const TopicsConstants = require('../../constants/topics')
 
 class Push {
 
   constructor (app, config) {
+    this.debug = config.debug
+    this.debug_filename = config.debug_filename
   }
 
-  send (event, users) {
+  send (event, user) {
     const model = event.data.model
     let data
     switch (event.topic) {
-      case 'monitor-state':
+      case TopicsConstants.MONITOR_STATE:
         let monitor_event = event.data.monitor_event
         let severity = model.failure_severity
 
         if (severity === 'HIGH' || severity === 'CRITICAL') {
           data = prepareMonitorStateChangeNotification(model, monitor_event)
-          if (data.msg) this.dispatch(data, users)
+          if (data.msg) this.dispatch(data, user)
         }
         break
-      case 'job-crud':
+      case TopicsConstants.JOB_CRUD:
         data = prepareJobNotification(model)
-        if (data.msg) this.dispatch(data, users)
+        if (data.msg) this.dispatch(data, user)
         break
-      case 'webhook-triggered':
+      case TopicsConstants.WEBHOOK_TRIGGERED:
         data = prepareWebhookNotification(model)
-        if (data.msg) this.dispatch(data, users)
+        if (data.msg) this.dispatch(data, user)
         break
+      default:
+        logger.debug('topic not handled')
     }
   }
 
-  dispatch (data, users) {
-    if (!data.msg) {
-      return logger.error('Error. invalid message, undefined condition')
+  dispatch (data, user) {
+    if (!user.devices) {
+      return logger.log(`${user._id} no devices registered`)
     }
-    var message = data.msg.replace(/['"]+/g, '')
-    var action = data.action || 'showNotificationsTab'
 
-    var params = {
+    if (!data.msg) {
+      return logger.error('invalid message, undefined')
+    }
+
+    let message = data.msg.replace(/['"]+/g, '')
+    let action = data.action || 'showNotificationsTab'
+    let params = {
       MessageStructure: 'json',
       Message: JSON.stringify({
         "GCM": "{ \"data\": { \"message\": \"" + message + "\",  \"action\": \"" + action + "\", \"style\": \"inbox\", \"summaryText\": \"%n% New notifications\"} }",
@@ -49,34 +56,23 @@ class Push {
       })
     }
 
-    logger.debug('Sending push notification to users with message: ' + message)
+    user.devices.forEach( (device) => {
+      params.TargetArn = device.endpoint_arn
+      logger.debug('Sending notification to target arn: ' + params.TargetArn)
 
-    if (users.length) {
-      users.forEach(function (user) {
-        if (user.notifications && user.notifications['push'] !== true) {
-          // user opt out
-          return
+      app.sns.publish(params, (error, data) => {
+        if (error) {
+          logger.error('%o', error)
+          logger.error('Error sending notification, deleting endpoint arn: ' + params.TargetArn)
+          handleSNSError(user, device)
+        } else {
+          logger.debug('Push notification sent.')
         }
-
-        if (user.devices) {
-          user.devices.forEach(function (device) {
-            params.TargetArn = device.endpoint_arn
-            logger.debug('Sending notification to target arn: ' + params.TargetArn)
-
-            app.sns.publish(params, function (error, data) {
-              if (error) {
-                logger.error('%o', error)
-                logger.error('Error sending notification, deleting endpoint arn: ' + params.TargetArn)
-                handleSNSError(user, device)
-              } else {
-                logger.debug('Push notification sent.')
-              }
-            })
-          })
-        }
-
-        dumpSNSMessage(`arn:user:${user.username}`, dumpfile, params)
       })
+    })
+
+    if (this.debug) {
+      dumpSNSMessage(`arn:user:${user.username}`, this.debug_filename, params)
     }
   }
 }
@@ -160,11 +156,7 @@ const prepareWebhookNotification = (webhook) => {
 }
 
 const dumpSNSMessage = (dummyArn, filename, payload) => {
-  if (process.env.NODE_ENV==='localdev') {
-    if (!filename) {
-      return logger.error('no filename provided')
-    }
-
+  if (process.env.NODE_ENV !== 'production') {
     let data = Object.assign({}, payload, { dummyArn })
     fs.appendFile(
       filename,

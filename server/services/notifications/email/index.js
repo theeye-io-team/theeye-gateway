@@ -1,15 +1,26 @@
 const Mailer = require('./mailer')
-const logger = require('../../../logger')('services:mailer')
+const logger = require('../../../logger')('services:notifications:email')
 
 class Email {
   constructor (app, config) {
     this.mailer = new Mailer(config)
   }
 
-  send (options, next) {
-    next || (next = () => {})
+  send (message, address) {
+    return new Promise((resolve, reject) => {
+      let mail = {}
+      mail.bcc = address
+      mail.html = message.body
+      mail.subject = message.subject
 
-    this.mailer.sendMail(options, error => next(error))
+      this.mailer.sendMail(mail, (err, response) => {
+        if (err) reject(err)
+        else {
+          logger.log(response)
+          resolve()
+        }
+      })
+    })
   }
 }
 

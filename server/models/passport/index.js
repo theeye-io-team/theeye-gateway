@@ -40,8 +40,9 @@ module.exports = function (db) {
     user_id: { type: mongoose.Schema.Types.ObjectId, required: true },
     creation_date: { type: Date, default: () => { return new Date() }, required: true },
     last_update: { type: Date, default: () => { return new Date() }, required: true },
+    last_access: { type: Date }
   }, {
-    collection: 'web_passport',
+    collection: 'gw_passport',
     discriminatorKey: '_type'
   })
 
@@ -66,17 +67,28 @@ module.exports = function (db) {
   schema.set('toObject', def)
 
   schema.pre('save', function (next) {
-    this.last_update = new Date()
-    let passport = this
-    if (passport.password) {
-      bcrypt.hash(passport.password, 10, (err, hash) => {
-        passport.password = hash
-        next(err)
-      })
-    } else {
-      next(null)
-    }
+    if (!this.isNew) { return next() } // on update
+    if (!this.password) { return next() }
+    bcrypt.hash(this.password, 10, (err, hash) => {
+      if (err) { next(err) }
+      else {
+        this.password = hash
+        next()
+      }
+    })
   })
+
+  //schema.pre('update', function (next) {
+  //  const password = this.getUpdate().$set.password
+  //  if (!password) { return next() }
+  //  bcrypt.hash(this.password, 10, (err, hash) => {
+  //    if (err) { next(err) }
+  //    else {
+  //      this.getUpdate().$set.password = hash
+  //      next()
+  //    }
+  //  })
+  //})
 
   schema.methods.validatePassword = function (password) {
     return new Promise( (resolve, reject) => {

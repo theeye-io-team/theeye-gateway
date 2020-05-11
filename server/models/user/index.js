@@ -19,9 +19,9 @@ function BaseSchema () {
     onboardingCompleted: { type: 'boolean', default: false },
     creation_date: { type: Date, default: () => { return new Date() }, required: true },
     last_update: { type: Date, default: () => { return new Date() }, required: true },
-    last_login: { type: Date, default: new Date() }
+    //last_login: { type: Date }
   }, {
-    collection: 'web_user',
+    collection: 'gw_user',
     discriminatorKey: '_type'
   })
 

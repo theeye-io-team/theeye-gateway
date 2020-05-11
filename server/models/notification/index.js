@@ -1,12 +1,13 @@
 const mongoose = require('mongoose')
+const ObjectId = mongoose.Schema.Types.ObjectId
 
 module.exports = function (db) {
   const schema = new mongoose.Schema({
-    customer_id: { type: mongoose.Schema.Types.ObjectId, required: true, index: true },
-    customer: { type: mongoose.Schema.Types.ObjectId, ref: 'Customer', required: true },
+    user_id: { type: ObjectId, required: true, index: true },
+    user: { type: ObjectId, ref: 'User', required: true },
+    customer_id: { type: ObjectId, required: true, index: true },
+    customer: { type: ObjectId, ref: 'Customer', required: true },
     customer_name: { type: 'string' },
-    user_id: { type: mongoose.Schema.Types.ObjectId, required: true, index: true },
-    user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
     topic: { type: 'string' },
     event_id: { type: 'string' },
     read: { type: 'boolean', default: false },
@@ -14,7 +15,7 @@ module.exports = function (db) {
     creation_date: { type: Date, default: () => { return new Date() }, required: true },
     last_update: { type: Date, default: () => { return new Date() }, required: true },
   }, {
-    collection: 'web_notification',
+    collection: 'gw_notification',
     discriminatorKey: '_type'
   })
 
