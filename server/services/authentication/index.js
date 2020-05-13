@@ -148,11 +148,15 @@ module.exports = function (app) {
      * @return {Promise}
      */
     async createSession (params) {
-      let { member, passport } = params
+      let { member, protocol, expiration } = params
 
-      let expiration = new Date()
-      let expSecs = this.config.expires
-      expiration.setSeconds(expiration.getSeconds() + expSecs)
+      if (expiration !== undefined) {
+        expiration = params.expiration
+      } else {
+        let expSecs = this.config.expires
+        expiration = new Date()
+        expiration.setSeconds(expiration.getSeconds() + expSecs)
+      }
 
       let token = app.service.authentication.issue({ user_id: member.user_id })
 
@@ -168,7 +172,7 @@ module.exports = function (app) {
       session.member_id = member._id
       session.customer = member.customer_id
       session.customer_id = member.customer_id
-      session.protocol = passport.protocol
+      session.protocol = protocol
 
       if (member.user.credential) {
         session.credential = member.user.credential

@@ -61,7 +61,11 @@ module.exports = (app) => {
         }
 
         const integrationMember = await createIntegrationModels(app, customer, token)
-        const integrationSession = await app.service.authentication.createSession(integrationMember)
+        const integrationSession = await app.service.authentication.createSession({
+          member: integrationMember,
+          protocol: session.protocol,
+          expiration: null
+        })
         token.id = integrationMember.id
         token.token = integrationSession.token
         res.json(token)

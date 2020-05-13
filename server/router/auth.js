@@ -38,7 +38,7 @@ module.exports = (app) => {
         }
 
         let member = memberOf[0]
-        const session = await app.service.authentication.createSession({ member, passport })
+        const session = await app.service.authentication.createSession({ member, protocol: passport.protocol })
         res.json({ access_token: session.token })
       } catch (err) {
         logger.error(err)

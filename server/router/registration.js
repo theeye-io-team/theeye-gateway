@@ -85,10 +85,15 @@ module.exports = (app) => {
           throw err
         }
 
-        user.set({
-          enabled: true,
-          username: body.username
-        })
+        // authenticate user
+        let member = await app.models.member.findOne({user_id: user._id})
+        if (!member) {
+          let err = new Error('Member Not Found')
+          err.status = 404
+          throw err
+        }
+
+        user.set({ enabled: true, username: body.username })
         await user.save()
 
         // create passport
@@ -100,17 +105,9 @@ module.exports = (app) => {
           user_id: user._id
         }
 
-        await app.models.passport.create(passportData)
+        let passport = await app.models.passport.create(passportData)
 
-        // authenticate user
-        let member = await app.models.member.findOne({user_id: user._id})
-        if (!member) {
-          let err = new Error('Member Not Found')
-          err.status = 404
-          throw err
-        }
-
-        const session = await app.service.authentication.createSession(member)
+        const session = await app.service.authentication.createSession({ member, protocol: passport.protocol })
         res.json({ access_token: session.token })
       } catch (err) {
         if (err.status) { res.status(err.status).json( { message: err.message }) }

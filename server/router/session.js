@@ -52,8 +52,7 @@ module.exports = (app) => {
 
       return res.json(profile)
     } catch (err) {
-      logger.error(err)
-      return res.status(err.status || 500).json(err)
+      errorResponse(err, res)
     }
   })
 
@@ -83,15 +82,20 @@ module.exports = (app) => {
         req.member = member
         next()
       } catch (err) {
-        res.status(500)
-        res.json({ message: 'Internal Server Error', statusCode: 500 })
+        if (err.statusCode) {
+          res.status(err.statusCode)
+          res.json({ message: 'Internal Server Error', statusCode: 500 })
+        } else {
+          res.status(500)
+          res.json({ message: 'Internal Server Error', statusCode: 500 })
+        }
       }
     },
     async (req, res, next) => {
       try {
         const member = req.member
         const session = req.session
-        const newSession = await app.service.authentication.createSession(member)
+        const newSession = await app.service.authentication.createSession({ member, protocol: session.protocol })
         const model = { _id: session._id, user_id: session.user_id } // information to identify target user
 
         app.service.notifications.sockets.send({
@@ -108,8 +112,7 @@ module.exports = (app) => {
         // return new session
         res.json({ access_token: newSession.token })
       } catch (err) {
-        res.status(500)
-        res.json({ message: 'Internal Server Error', statusCode: 500 })
+        errorResponse(err, res)
       }
     }
   )
