@@ -1,13 +1,13 @@
 FROM node:10
-
 MAINTAINER Facundo Gonzalez <facugon@theeye.io>
+ENV destDir /src/theeye/gateway
+# app directory
+RUN mkdir -p ${destDir}
+WORKDIR ${destDir}
+COPY . ${destDir}
+# install
+RUN cd ${destDir}; npm install
 
-ENV workdir /src/theeye/gateway
-RUN mkdir -p ${workdir}
-COPY . ${workdir}
+EXPOSE 6080
 
-RUN cd ${workdir}; npm install
-
-EXPOSE 8080
-
-CMD ["npm","start"]
+CMD ["npm","run","start"]

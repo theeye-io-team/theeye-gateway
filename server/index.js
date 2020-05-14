@@ -1,6 +1,8 @@
 const App = require('./app')
 const config = require('./config')
 
+console.log(config)
+
 const app = module.exports = new App()
 
 const boot = async (app) => {
