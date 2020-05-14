@@ -1,9 +1,11 @@
 {
-  "name": "TheEye API Gateway",
+  "name": "TheEye-APIGateway",
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
-  "scripts": {},
+  "scripts": {
+    "start":"node ./server"
+  },
   "author": "",
   "dependencies": {
     "aws-sdk": "~2.648.0",

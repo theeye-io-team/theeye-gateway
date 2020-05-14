@@ -10,4 +10,4 @@ RUN cd ${workdir}; npm install
 
 EXPOSE 8080
 
-CMD ["node","/src/theeye/gateway/server"]
+CMD ["npm","start"]
