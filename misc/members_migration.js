@@ -153,7 +153,8 @@ const migrate = async () => {
             user_id: member.user_id,
             customer: member.customer_id,
             customer_id: member.customer_id,
-            credential: member.credential
+            credential: member.credential,
+            protocol: 'local'
           })
           await session.save()
         }
