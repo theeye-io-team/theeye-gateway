@@ -4,7 +4,8 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "start": "node ./server"
+    "start": "node ./server",
+    "build": "docker build . --tag 'theeye-gateway:1.0.0'"
   },
   "author": "",
   "dependencies": {
