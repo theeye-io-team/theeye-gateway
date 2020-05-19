@@ -6,8 +6,7 @@ const TopicsConstants = require('../../constants/topics')
 class Push {
 
   constructor (app, config) {
-    this.debug = config.debug
-    this.debug_filename = config.debug_filename
+    this.config = config
   }
 
   send (event, user) {
@@ -71,8 +70,8 @@ class Push {
       })
     })
 
-    if (this.debug) {
-      dumpSNSMessage(`arn:user:${user.username}`, this.debug_filename, params)
+    if (this.config.debug) {
+      dumpSNSMessage(`arn:user:${user.username}`, this.config.debug_filename, params)
     }
   }
 }

@@ -3,6 +3,7 @@ const logger = require('../../../logger')('services:notifications:email')
 
 class Email {
   constructor (app, config) {
+    this.config = config
     this.mailer = new Mailer(config)
   }
 

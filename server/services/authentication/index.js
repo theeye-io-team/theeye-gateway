@@ -222,7 +222,6 @@ module.exports = function (app) {
 
   const basicPassport = (req, res, next) => {
     passport.authenticate('basic', (err, auth) => {
-      let { user, passport } = auth
       if (err) {
         if (err.status >= 400) {
           res.status(err.status)
@@ -230,11 +229,12 @@ module.exports = function (app) {
         }
         next(err)
       } else {
-        if (user === false || !user) {
+        if (!auth || !auth.user) {
           logger.log('Invalid credentials.')
           let err = unauthorized()
           return res.status(err.statusCode).json(err.message)
         } else {
+          let { user, passport } = auth
           req.user = user
           req.passport = passport
           next()
