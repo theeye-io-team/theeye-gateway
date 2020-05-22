@@ -46,27 +46,33 @@ const connect = (config) => {
   let connectionString
 
   if (!config) {
-    throw new Error('no mongo db connection provided!')
+    throw new Error('no mongo db connection provided!');
   }
 
-  if (config.user && config.password) {
-    connectionString = format(
-      'mongodb://%s:%s@%s/%s',
-      encodeURIComponent(config.user),
-      encodeURIComponent(config.password),
-      config.hosts,
-      config.database
-    )
+  if (config.uri) {
+    // sample uri
+    // mongodb+srv://<user>:<password>@<host>/<db>?retryWrites=true&w=majority
+    connectionString = config.uri
   } else {
-    connectionString = format(
-      'mongodb://%s/%s',
-      config.hosts,
-      config.database
-    )
-  }
+    if (config.user && config.password) {
+      connectionString = format(
+        'mongodb://%s:%s@%s/%s',
+        encodeURIComponent(config.user),
+        encodeURIComponent(config.password),
+        config.hosts,
+        config.database
+      );
+    } else {
+      connectionString = format(
+        'mongodb://%s/%s',
+        config.hosts,
+        config.database
+      );
+    }
 
-  if (config.replicaSet) {
-    connectionString += `?replicaSet=${config.replicaSet}`
+    if (config.replicaSet) {
+      connectionString += `?replicaSet=${config.replicaSet}`
+    }
   }
 
   if (config.debug) {

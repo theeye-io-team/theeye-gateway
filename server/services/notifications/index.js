@@ -6,9 +6,9 @@ class Notifications {
   constructor (app) {
     let config = app.config.services.notifications
 
-    this.sockets = new Sockets(config.sockets)
-    this.push = new Push(config.push)
-    this.email = new Email(config.email)
+    this.sockets = new Sockets(app, config.sockets)
+    this.push = new Push(app, config.push)
+    this.email = new Email(app, config.email)
   }
 }
 

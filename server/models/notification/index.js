@@ -1,23 +1,21 @@
 const mongoose = require('mongoose')
+const ObjectId = mongoose.Schema.Types.ObjectId
 
 module.exports = function (db) {
   const schema = new mongoose.Schema({
-    //customer_id: { type: 'string' },
-    customer_name: { type: 'string', required: true, index: true },
-    user_id: {
-      type: mongoose.Schema.Types.ObjectId,
-      required: true,
-      index: true,
-      ref: 'User'
-    },
+    user_id: { type: ObjectId, required: true, index: true },
+    user: { type: ObjectId, ref: 'User', required: true },
+    customer_id: { type: ObjectId, required: true, index: true },
+    customer: { type: ObjectId, ref: 'Customer', required: true },
+    customer_name: { type: 'string' },
     topic: { type: 'string' },
     event_id: { type: 'string' },
     read: { type: 'boolean', default: false },
     data: { type: 'object', default: () => { return {} } },
-    creation_date: { type: Date, default: new Date(), required: true },
-    last_update: { type: Date, default: new Date(), required: true },
+    creation_date: { type: Date, default: () => { return new Date() }, required: true },
+    last_update: { type: Date, default: () => { return new Date() }, required: true },
   }, {
-    collection: 'web_notification',
+    collection: 'gw_notification',
     discriminatorKey: '_type'
   })
 
@@ -32,7 +30,7 @@ module.exports = function (db) {
     }
   }
 
-  schema.pre('save', next => {
+  schema.pre('save', function (next) {
     this.last_update = new Date()
     next(null)
   })

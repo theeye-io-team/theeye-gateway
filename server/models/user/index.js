@@ -1,42 +1,28 @@
 const mongoose = require('mongoose')
 
 module.exports = function (db) {
+  const User = db.model('User', new BaseSchema())
+  const BotUser = User.discriminator('BotUser', new BaseSchema())
+  const UiUser = User.discriminator('UiUser', new BaseSchema())
+  return { User, BotUser, UiUser }
+}
+
+function BaseSchema () {
   const schema = new mongoose.Schema({
-    username: {
-      type: String,
-      unique: true,
-      required: true
-    },
-    email: {
-      type: String,
-      unique: true,
-      required: true
-    },
+    username: { type: String, unique: true, required: true },
+    email: { type: String, unique: true, required: true },
     name: { type: 'string' },
-    //current_customer: { type: 'string' },
-    //customers: { type: 'array', default: [] },
-    //credential: { type: 'string', default: 'viewer' },
     enabled: { type: 'boolean', default: false },
+    credential: { type: 'string' }, // global property for internal use. will replace session credential when set
     invitation_token: { type: 'string', default: '' },
     devices: { type: 'array', default: [] },
-    notifications: {
-      type: 'object',
-      default: () => {
-        return {
-          mute: false,
-          push: true,
-          email: true,
-          desktop: true
-        }
-      }
-    },
     onboardingCompleted: { type: 'boolean', default: false },
-    creation_date: { type: Date, default: new Date(), required: true },
-    last_update: { type: Date, default: new Date(), required: true },
-    last_login: { type: Date, default: new Date(), required: true }
+    creation_date: { type: Date, default: () => { return new Date() }, required: true },
+    last_update: { type: Date, default: () => { return new Date() }, required: true },
+    //last_login: { type: Date }
   }, {
-    collection: 'web_user',
-    discriminatorKey: '_type'                                        
+    collection: 'gw_user',
+    discriminatorKey: '_type'
   })
 
   const def = {
@@ -50,7 +36,7 @@ module.exports = function (db) {
     }
   }
 
-  schema.pre('save', next => {
+  schema.pre('save', function (next) {
     this.last_update = new Date()
     next(null)
   })
@@ -58,5 +44,5 @@ module.exports = function (db) {
   schema.set('toJSON', def)
   schema.set('toObject', def)
 
-  return db.model('User', schema)
+  return schema
 }

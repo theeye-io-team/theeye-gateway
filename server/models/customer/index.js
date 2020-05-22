@@ -10,9 +10,6 @@ module.exports = function (db) {
       dropDups: true
     },
     description: { type: String, default: '' },
-    owner_id: { type: mongoose.Schema.Types.ObjectId },
-    owner: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
-    agent: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
     config: {
       type: Object,
       default: () => {
@@ -32,8 +29,8 @@ module.exports = function (db) {
         }
       }
     },
-    creation_date: { type: Date, default: new Date() },
-    last_update: { type: Date, default: new Date() },
+    creation_date: { type: Date, default: () => { return new Date() } },
+    last_update: { type: Date, default: () => { return new Date() } },
   }, {
     collection: 'customers',
     discriminatorKey: '_type'
@@ -49,7 +46,7 @@ module.exports = function (db) {
     }
   }
 
-  schema.pre('save', next => {
+  schema.pre('save', function (next) {
     this.last_update = new Date()
     // do stuff
     next()

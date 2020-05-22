@@ -1,154 +1,242 @@
 const express = require('express')
-const app = require('../app')
-const passport = require('passport')
+const mongoose = require('mongoose')
+const logger = require('../logger')('router:session')
+const { REPLACE, DELETE } = require('../constants/operations')
 
-module.exports = () => {
+module.exports = (app) => {
   const router = express.Router()
-
-  /**
-   *
-   * set current session customer
-   *
-   */
-  router.post(
-    '/customer/:customer',
-    passport.authenticate('bearer', { session: false }),
-    (req, res, next) => {
-      const customer = req.params.customer
-      const user = req.user
-
-      if (user.customers.indexOf(customer) !== -1) {
-        user.current_customer = customer
-        user.save(err => {
-          if (err) {
-            return res.status(500).json('Internal Error')
-          }
-
-          app.notifications.sockets.send({
-            topic: 'session-customer-changed',
-            data: {
-              model: user,
-              model_type: 'User',
-              operation: 'update',
-              organization: user.current_customer // customer name
-            }
-          })
-
-          res.send(200, {})
-        })
-      } else {
-        res.send(403,'Forbidden')
-      }
-    }
-  )
 
   /**
    *
    * get session profile
    *
    */
-  router.get(
-    '/profile',
-    passport.authenticate('bearer', { session: false }),
-    (req, res, next) => {
+  router.get('/profile', async (req, res, next) => {
+    try {
       const user = req.user
+      const session = req.session
 
-      return res.json(user)
-
-      app.models.user.findOne({
-        user: user.id,
-        protocol: 'theeye'
-      }, (err, theeye) => {
-        if (err) return res.send(500,err)
-
-        user.theeye = theeye
-        const customers = theeye.profile.customers
-
-        if (
-          ! customers ||
-          ! Array.isArray(customers) ||
-          customers.length === 0
-        ) {
-          return res.send(500, 'error fetching profile. profile customers are empty.')
+      const members = await app.models.member.find({ user_id: user._id })
+      const customers = []
+      if (members.length > 0) {
+        for (let member of members) {
+          await member.populate('customer', { id: 1, name: 1 }).execPopulate()
+          customers.push(member.customer)
         }
+      }
 
-        const current_customer = customers.find(c => c.name == user.current_customer)
-
-        if (!current_customer) {
-          return res.send(500,'error fetching profile. profile customer not found.')
+      await session.populate({
+        path: 'member',
+        populate: {
+          path: 'customer'
         }
+      }).execPopulate()
 
-        req.supervisor.get({
-          //replace this route
-          //route: `/customer/${current_customer.name}`,
-          route: `${current_customer.name}/customer`,
-          success: customer => {
-            user.current_customer = customer
-            res.send(200, user)
-          },
-          failure: err => {
-            console.error(err)
-            res.send(500,'error fetching profile')
-          }
-        })
-        //return res.json(user)
-      })
+      let member = session.member
+
+      let profile = {}
+      profile.id = user._id.toString()
+      profile.customers = customers // reduced information
+      profile.name = user.name
+      profile.username = user.username
+      profile.email = user.email
+      profile.onboardingCompleted = user.onboardingCompleted
+      profile.current_customer = {
+        id: member.customer.id,
+        name: member.customer.name,
+        config: member.customer.config
+      }
+      profile.notifications = member.notifications
+      profile.credential = session.credential
+      profile.protocol = session.protocol
+
+      return res.json(profile)
+    } catch (err) {
+      errorResponse(err, res)
     }
-  )
+  })
 
   /**
    *
-   * update profile settings
+   * replace current session customer. need to generate a new session
    *
    */
   router.put(
-    '/profile/settings',
-    passport.authenticate('bearer', { session: false }),
-    (req, res, next) => {
-      const user = req.user
-      const params = req.params.all()
+    '/customer/:customer',
+    async (req, res, next) => {
+      try {
+        const user = req.user
+        const customer_id = req.params.customer
 
-      user.notifications = params.notifications
-      user.save(err => {
-        if (err) {
-          sails.log.error(err)
-          return res.send(500, 'internal server error')
+        const member = await app.models.member.findOne({
+          user_id: user._id,
+          customer_id: mongoose.Types.ObjectId(customer_id)
+        })
+
+        if (!member) {
+          let err = new Error('Forbidden')
+          err.statusCode = 403
+          throw err
         }
 
-        res.send(200, { notifications: user.notifications })
-      })
+        req.member = member
+        next()
+      } catch (err) {
+        if (err.statusCode) {
+          res.status(err.statusCode)
+          res.json({ message: 'Internal Server Error', statusCode: 500 })
+        } else {
+          res.status(500)
+          res.json({ message: 'Internal Server Error', statusCode: 500 })
+        }
+      }
+    },
+    async (req, res, next) => {
+      try {
+        const member = req.member
+        const session = req.session
+        const newSession = await app.service.authentication.createSession({ member, protocol: session.protocol })
+        const model = { _id: session._id, user_id: session.user_id } // information to identify target user
+
+        app.service.notifications.sockets.send({
+          topic: 'session',
+          data: {
+            model,
+            model_type: 'session',
+            operation: REPLACE
+          }
+        })
+
+        // destroy current session
+        await req.session.remove()
+        // return new session
+        res.json({ access_token: newSession.token })
+      } catch (err) {
+        errorResponse(err, res)
+      }
     }
   )
 
+  const logout = async (req, res, next) => {
+    const session = req.session
+    app.service.notifications.sockets.send({
+      topic: 'session',
+      data: {
+        model: { _id: session._id, user_id: session.user_id },
+        model_type: 'session',
+        operation: DELETE
+      }
+    })
+    await session.remove()
+    return res.status(200).json('OK')
+  }
+
+  router.post('/logout', logout)
+  router.get('/logout', logout)
+
+  router.put('/refresh', async (req, res, next) => {
+    //const user = req.user
+    const session = req.session
+    await app.service.authentication.refreshSession(session)
+    return res.status(200).json({ access_token: session.token })
+  })
+
+  router.get('/verify', (req, res, next) => {
+    res.status(200).json(req.session)
+  })
+
+  /**
+   *
+   * update notifications preferences
+   *
+   */
   router.put(
-    '/profile/onboarding',
-    passport.authenticate('bearer', { session: false }),
+    '/profile/notifications',
     (req, res, next) => {
-      const user = req.user
-      const params = req.params.all()
-
-      user.onboardingCompleted = params.onboardingCompleted
-
-      user.save(err => {
-        if (err) {
-          sails.log.error(err)
-          return res.send(500, 'internal server error')
+      try {
+        //const params = req.params.all()
+        if (!req.body) {
+          let err = new Error('Invalid Payload')
+          err.statusCode(400)
+          throw err
         }
 
-        res.send(200, { onboardingCompleted: user.onboardingCompleted })
-      })
+        let payload = req.body
+        let upgradeable = [
+          'notificationFilters',
+          'email',
+          'push',
+          'desktop',
+          'mute'
+        ]
+
+        // extra property
+        let updates = {}
+        for (let prop in payload) {
+          if (upgradeable.indexOf(prop) !== -1) { // can update?
+            //let err = new Error('Invalid Payload Property')
+            //err.statusCode(400)
+            //throw err
+            updates[prop] = payload[prop]
+          }
+        }
+
+        if (Object.keys(updates) === 0) {
+          let err = new Error('Invalid Payload')
+          err.statusCode(400)
+          throw err
+        }
+
+        req.notifications = updates
+        next()
+      } catch (err) {
+        errorResponse(err, res)
+      }
+    },
+    async (req, res, next) => {
+      try {
+        const session = req.session
+        await session.populate('member','notifications').execPopulate()
+        const member = session.member
+
+        //@TODO: create member 1 <> * notifications collection
+        member.notifications = req.notifications
+        await member.save()
+
+        res.status(200).json({ notifications: member.notifications })
+      } catch (err) {
+        errorResponse(err, res)
+      }
     }
   )
 
-  // activateuser
-  router.post('/activateuser', (req, res) => { })
+  router.put('/profile/onboarding', (req, res, next) => {
+    const user = req.user
+    const params = req.params.all()
 
-  // registeruser
-  router.post('/registeruser', (req, res) => { })
+    user.onboardingCompleted = params.onboardingCompleted
+    user.save(err => {
+      if (err) {
+        sails.log.error(err)
+        return res.send(500, 'internal server error')
+      }
 
-  // verifyInvitationToken
-  router.post('/verifytoken', (req, res) => { })
+      res.send(200, { onboardingCompleted: user.onboardingCompleted })
+    })
+  })
+
+  router.get('/userpassport', (req, res, next) => {
+    return res.status(200).json({})
+  })
 
   return router
+}
 
+const errorResponse = (err, res) => {
+  logger.error(err)
+  if (err.statusCode) {
+    res.status(err.statusCode).json(err.message)
+  } else {
+    res.status(500).json('Internal Server Error')
+  }
 }

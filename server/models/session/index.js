@@ -3,14 +3,19 @@ const mongoose = require('mongoose')
 module.exports = function (db) {
   const schema = new mongoose.Schema({
     token: { type: String, required: true },
-    expires: { type: Date, required: true },
-    creation_date: { type: Date, default: new Date(), required: true },
+    expires: { type: Date },
+    creation_date: { type: Date, default: () => { return new Date() }, required: true },
+    last_update: { type: Date, default: () => { return new Date() }, required: true },
+    member: { type: mongoose.Schema.Types.ObjectId, ref: 'Member', required: true },
+    member_id: { type: mongoose.Schema.Types.ObjectId, required: true },
     user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
     user_id: { type: mongoose.Schema.Types.ObjectId, required: true },
-    customer: { type: mongoose.Schema.Types.ObjectId, ref: 'Customer' },
-    customer_id: { type: mongoose.Schema.Types.ObjectId }
+    customer: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+    customer_id: { type: mongoose.Schema.Types.ObjectId, required: true },
+    credential: { type: String, required: true },
+    protocol: { type: String, required: true }
   }, {
-    collection: 'web_session',
+    collection: 'gw_session',
     discriminatorKey: '_type'
   })
 
@@ -27,6 +32,11 @@ module.exports = function (db) {
 
   schema.set('toJSON', def)
   schema.set('toObject', def)
+
+  schema.pre('save', function (next) {
+    this.last_update = new Date()
+    next(null)
+  })
 
   return db.model('Session', schema)
 }

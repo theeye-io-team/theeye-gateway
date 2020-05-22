@@ -1,70 +1,51 @@
 const express = require('express')
 const passport = require('passport')
+const logger = require('../logger')('router:auth')
 
 module.exports = (app) => {
   const router = express.Router()
 
+  //const bearerMiddleware = app.service.authentication.middlewares.bearerPassport
   router.post(
     '/login',
     (req, res, next) => {
-      passport.authenticate('basic', { session: false })(req, res, (err, user) => {
-        if (err) {
-          if (err.status >= 400) {
-            res.status(err.status)
-            res.json(err.message)
-          }
-        } else {
-          next(err, user)
-        }
-      })
+      if (app.config.services.authentication.strategies.ldapauth) {
+        app.service.authentication.middlewares.ldapPassport(req, res, next)
+      } else {
+        app.service.authentication.middlewares.basicPassport(req, res, next)
+      }
     },
     async (req, res, next) => {
       try {
-        var user = req.user
-        let access_token = app.service.authentication.issue({ user_id: user.id })
+        let user = req.user
+        let passport = req.passport
+        let customer = req.query.customer || null
+        let query = { user_id: user._id }
+        if (customer) {
+          query.customer_name = customer
+        }
 
-        let expiration = new Date()
-        let expSecs = app.config.services.authentication.expires
-        expiration.setSeconds( expiration.getSeconds() + expSecs )
+        let memberOf = await app.models.member.find(query)
 
-        let session = new app.models.session()
-        session.user_id = user._id
-        session.user = user
-        session.token = access_token
-        session.expires = expiration
-        await session.save()
+        if (memberOf.length === 0) {
+          return res
+            .status(403)
+            .json({
+              message: 'Forbidden',
+              reason: 'you are not a member',
+              statusCode: 403
+            })
+        }
 
-        // TODO: register all issued tokens
-        res.json({ access_token })
+        let member = memberOf[0]
+        const session = await app.service.authentication.createSession({ member, protocol: passport.protocol })
+        res.json({ access_token: session.token })
       } catch (err) {
-        res.json(err)
+        logger.error(err)
+        res.status(500).json({message:'internal server error'})
       }
     }
   )
-
-  router.post(
-    '/logout',
-    passport.authenticate('bearer', { session: false }),
-    (req, res, next) => {
-      if (!req.user) {
-        return res.send(400)
-      }
-      // TODO: de-register issued token
-      // let token = req.query.access_token
-      res.status(200).json()
-    }
-  )
-
-  router.post(
-    '/refresh',
-    passport.authenticate('bearer', { session: false }),
-    (req, res, next) => {
-      const user = req.user
-      const access_token = app.service.authentication.issue({ user_id: user.id })
-      return res.json({ access_token })
-    }
-  )
-
 
   /**
    *

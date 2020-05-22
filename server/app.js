@@ -2,21 +2,17 @@ const express = require('express')
 const path = require('path')
 const http = require('http')
 const https = require('https')
-const socket = require('socket.io')
 const Router = require('./router')
 const Models = require('./models')
 
 const logger = require('./logger')('app')
 const Authentication = require('./services/authentication')
 const Notifications = require('./services/notifications')
+const EventEmitter = require('events')
 
 const aws = require('aws-sdk')
 
-//const cookieParser = require('cookie-parser')
-
-class App {
-  constructor () {
-  }
+class App extends EventEmitter {
 
   async configure (config) {
     this.config = config
@@ -32,13 +28,17 @@ class App {
 
     // routes require models
     this.setupApi()
+
+    this.emit('configured')
   }
 
   start () {
     const port = this.config.app.port
-    this.api.listen(port, () => {
+    const server = this.server = this.api.listen(port, () => {
       logger.log(`API ready at port ${port}`)
     })
+
+    this.service.notifications.sockets.start(server)
   }
 
   setupApi () {
@@ -48,10 +48,50 @@ class App {
 
     api.use(express.json())
     api.use(express.urlencoded({ extended: true }))
-    //api.use(cookieParser())
 
     // authentication require models
-    this.service.authentication.middleware(this)
+    //this.service.authentication.middleware()
+    //api.use((req, res, next) => {
+    //  logger.log('INCOMMING REQUEST %s %s', req.method, req.url)
+    //  next()
+    //})
+
+    api.use((req, res, next) => {
+      // intercepts OPTIONS method. CORS
+      if (req.headers && req.headers.origin) {
+        res.setHeader('Access-Control-Allow-Origin', req.headers.origin)
+      } else {
+        res.setHeader('Access-Control-Allow-Origin', '*')
+      }
+
+      res.setHeader('Access-Control-Allow-Methods', 'GET,PUT,PATCH,POST,DELETE,OPTIONS')
+      res.setHeader('Access-Control-Allow-Credentials', 'true')
+
+      let headers = [
+        'Origin',
+        'Accept',
+        'User-Agent',
+        'Accept-Charset',
+        'Cache-Control',
+        'Accept-Encoding',
+        'Content-Type',
+        'Authorization',
+        'Content-Length',
+        'X-Requested-With'
+      ]
+
+      res.setHeader("Access-Control-Allow-Headers", headers.join(', '))
+
+      if ('OPTIONS' === req.method.toUpperCase()) {
+        //respond with 200
+        res.status(204)
+        res.setHeader('Content-Length', '0')
+        res.end()
+      } else {
+        //move on
+        next()
+      }
+    })
 
     api.use(express.static(path.join(__dirname, '../client/dist')))
     new Router(this)
@@ -82,14 +122,15 @@ class App {
   }
 }
 
+module.exports = App
+
 const isClientError = (statusCode) => {
   return statusCode && statusCode >= 400 && statusCode < 500
 }
+
 const isServerError = (statusCode) => {
   return statusCode && statusCode >= 500
 }
-
-module.exports = App
 
 const setupAuth = (app) => {
   return 

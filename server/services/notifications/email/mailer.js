@@ -1,10 +1,14 @@
 const nodemailer = require('nodemailer')
+const logger = require('../../../logger')('services:notifications:email:mailer')
 
 /** http://www.nodemailer.com/ **/
 class Mailer {
   constructor (config) {
     const trType = config.transport.type
     const options = config.transport.options || {}
+
+    this.config = config
+
     let transport
 
     switch (trType) {
@@ -32,21 +36,28 @@ class Mailer {
     this.transporter = nodemailer.createTransport(transport)
   }
 
+  /**
+   *
+   * @param {Object} options
+   * @property {String} options.to
+   * @property {String} options.bcc
+   * @property {String} options.subject
+   * @property {String} options.body
+   *
+   */
   sendMail (options, callback) {
-    let from = config
-      .from
-      .replace(/%customer%/g, options.customer_name)
+    let from = this.config.from.replace(/%customer%/g, options.customer_name)
 
     options.from = from
-    options.replyTo = config.reply_to
+    options.replyTo = this.config.reply_to
 
     if (
-      config.only_support ||
+      this.config.only_support ||
       (!options.to && !options.bcc)
     ) {
-      options.to = config.support.join(',')
-    } else if (config.include_support_bcc) {
-      options.bcc = config.support.join(',')
+      options.to = this.config.support.join(',')
+    } else if (this.config.include_support_bcc) {
+      options.bcc = this.config.support.join(',')
     }
 
     if (options.to) {
@@ -57,6 +68,7 @@ class Mailer {
       options.bcc = options.bcc.toLowerCase()
     }
 
+    logger.debug(options)
     this.transporter.sendMail(options, callback)
   }
 }

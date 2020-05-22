@@ -1,15 +1,20 @@
 {
-  "name": "web-api",
+  "name": "TheEye-APIGateway",
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
-  "scripts": {},
+  "scripts": {
+    "start": "node ./server",
+    "build": "docker build . --tag 'theeye-gateway:1.0.0'"
+  },
   "author": "",
   "dependencies": {
     "aws-sdk": "~2.648.0",
     "bcrypt": "~4.0.1",
     "express": "~4.17.1",
+    "fast-proxy": "~1.5.0",
     "jsonwebtoken": "~8.5.1",
+    "moment": "~2.24.0",
     "mongoose": "~5.9.7",
     "nodemailer": "~6.4.6",
     "nodemailer-sendmail-transport": "~1.0.2",
@@ -18,7 +23,9 @@
     "passport": "~0.4.1",
     "passport-http": "~0.3.0",
     "passport-http-bearer": "~1.0.1",
+    "passport-ldapauth": "^2.1.4",
     "socket.io": "~2.3.0",
-    "socket.io-redis": "~5.2.0"
+    "socket.io-redis": "~5.2.0",
+    "validator": "^13.0.0"
   }
 }
