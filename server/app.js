@@ -51,6 +51,47 @@ class App extends EventEmitter {
 
     // authentication require models
     //this.service.authentication.middleware()
+    //api.use((req, res, next) => {
+    //  logger.log('INCOMMING REQUEST %s %s', req.method, req.url)
+    //  next()
+    //})
+
+    api.use((req, res, next) => {
+      // intercepts OPTIONS method. CORS
+      if (req.headers && req.headers.origin) {
+        res.setHeader('Access-Control-Allow-Origin', req.headers.origin)
+      } else {
+        res.setHeader('Access-Control-Allow-Origin', '*')
+      }
+
+      res.setHeader('Access-Control-Allow-Methods', 'GET,PUT,PATCH,POST,DELETE,OPTIONS')
+      res.setHeader('Access-Control-Allow-Credentials', 'true')
+
+      let headers = [
+        'Origin',
+        'Accept',
+        'User-Agent',
+        'Accept-Charset',
+        'Cache-Control',
+        'Accept-Encoding',
+        'Content-Type',
+        'Authorization',
+        'Content-Length',
+        'X-Requested-With'
+      ]
+
+      res.setHeader("Access-Control-Allow-Headers", headers.join(', '))
+
+      if ('OPTIONS' === req.method.toUpperCase()) {
+        //respond with 200
+        res.status(204)
+        res.setHeader('Content-Length', '0')
+        res.end()
+      } else {
+        //move on
+        next()
+      }
+    })
 
     api.use(express.static(path.join(__dirname, '../client/dist')))
     new Router(this)

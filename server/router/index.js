@@ -11,6 +11,7 @@ const MessageRouter = require('./message')
 const CustomerRouter = require('./customer')
 const UserRouter = require('./user')
 const RegistrationRouter = require('./registration')
+const logger = require('../logger')('router')
 
 //const GatewayRouter = require('./gateway')
 
@@ -30,6 +31,13 @@ class Router {
     api.get('/admin/*', staticRoute)
 
     const bearerMiddleware = app.service.authentication.middlewares.bearerPassport
+
+    api.use((req, res, next) => {
+      if (/api./.test(req.url)) {
+        logger.log('INCOMMING API REQUEST %s %s', req.method, req.url)
+      }
+      next()
+    })
 
     api.use('/api/auth', AuthRouter(app))
     api.use('/api/notification', NotificationRouter(app))
