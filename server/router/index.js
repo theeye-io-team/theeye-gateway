@@ -12,8 +12,9 @@ const CustomerRouter = require('./customer')
 const UserRouter = require('./user')
 const RegistrationRouter = require('./registration')
 const logger = require('../logger')('router')
+const CompatibilityRouter = require('./compatibility')
 
-//const GatewayRouter = require('./gateway')
+const GatewayRouter = require('./gateway')
 
 class Router {
   constructor (app) {
@@ -51,7 +52,11 @@ class Router {
     api.use('/api/user', bearerMiddleware, UserRouter(app))
     api.use('/api/registration', RegistrationRouter(app))
 
-    //api.use('/api', bearerMiddleware, GatewayRouter(app))
+    // compatibilityRoutes
+    api.use('/apiv2', bearerMiddleware, GatewayRouter(app))
+    api.use('/apiv3', bearerMiddleware, GatewayRouter(app))
+    api.use('/', CompatibilityRouter(app))
+
   }
 }
 
