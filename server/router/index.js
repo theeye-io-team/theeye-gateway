@@ -35,7 +35,7 @@ class Router {
 
     api.use((req, res, next) => {
       if (/api./.test(req.url)) {
-        logger.log('INCOMMING API REQUEST %s %s', req.method, req.url)
+        logger.log('INCOMMING API REQUEST %s %s %j', req.method, req.url, req.headers)
       }
       next()
     })
