@@ -57,9 +57,10 @@ class App extends EventEmitter {
     //})
 
     api.use((req, res, next) => {
+      let origin = (req.headers && (req.headers.origin||req.headers.Origin))
       // intercepts OPTIONS method. CORS
-      if (req.headers && req.headers.origin) {
-        res.setHeader('Access-Control-Allow-Origin', req.headers.origin)
+      if (origin) {
+        res.setHeader('Access-Control-Allow-Origin', origin)
       } else {
         res.setHeader('Access-Control-Allow-Origin', '*')
       }
