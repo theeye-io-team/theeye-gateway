@@ -18,6 +18,22 @@ module.exports = (app) => {
   )
 
   router.all(
+    '/task/:id/schedule',
+    addCustomerToUrl(app),
+    (req, res, next) => {
+      proxy(req, res, req.url, {})
+    }
+  )
+
+  router.all(
+    '/job',
+    addCustomerToUrl(app),
+    (req, res, next) => {
+      proxy(req, res, req.url, {})
+    }
+  )
+
+  router.all(
     '/event',
     addCustomerToUrl(app),
     (req, res, next) => {
@@ -35,10 +51,14 @@ module.exports = (app) => {
 
   router.all(
     '/resource',
+    addCustomerToUrl(app),
     (req, res, next) => {
-      console.log(req.url)
-      return next()
-    },
+      proxy(req, res, req.url, {})
+    }
+  )
+
+  router.all(
+    '/resource/:id',
     addCustomerToUrl(app),
     (req, res, next) => {
       proxy(req, res, req.url, {})

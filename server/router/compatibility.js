@@ -2,6 +2,7 @@ const express = require('express')
 const logger = require('../logger')('router:auth')
 const CredentialsConstants = require('../constants/credentials')
 const mongoose = require('mongoose')
+const { REPLACE, DELETE } = require('../constants/operations')
 
 module.exports = (app) => {
   const router = express.Router()
@@ -111,12 +112,80 @@ module.exports = (app) => {
     }
   )
 
-  router.post('/session/refresh', async (req, res, next) => {
-    //const user = req.user
-    const session = req.session
-    await app.service.authentication.refreshSession(session)
-    return res.status(200).json({ access_token: session.token })
-  })
+  router.post(
+    '/session/refresh',
+    bearerMiddleware,
+    async (req, res, next) => {
+      const session = req.session
+
+      let expiration = new Date()
+      let expSecs = app.config.services.authentication.expires
+      expiration.setSeconds(expiration.getSeconds() + expSecs)
+      //session.token = token // maintain same token
+      session.expires = expiration
+      await session.save()
+
+      return res.status(200).json({ access_token: session.token })
+    }
+  )
+
+  router.get(
+    '/customer/:customer',
+    bearerMiddleware,
+    async (req, res, next) => {
+      const session = req.session
+      const customer_id = req.params.customer
+      if (session.customer_id.toString() !== customer_id) {
+        return res.send(403).json('Forbidden')
+      }
+
+      let customer = await app.models.customer.findById(customer_id)
+      return res.status(200).json(customer)
+    }
+  )
+
+  router.post(
+    '/session/customer/:customer',
+    bearerMiddleware,
+    async (req, res, next) => {
+      try {
+        const user = req.user
+        const customer_name = req.params.customer
+        const session = req.session
+
+        const member = await app.models.member.findOne({
+          user_id: user._id,
+          customer_name
+        })
+
+        if (!member) {
+          let err = new Error('Forbidden')
+          err.statusCode = 403
+          throw err
+        }
+
+        session.member = member._id
+        session.member_id = member._id
+        session.customer = member.customer_id
+        session.customer_id = member.customer_id
+      if (member.user.credential) {
+        session.credential = member.user.credential
+      } else {
+        session.credential = member.credential
+      }
+        let expiration = new Date()
+        let expSecs = app.config.services.authentication.expires
+        expiration.setSeconds(expiration.getSeconds() + expSecs)
+        //session.token = token // maintain same token
+        session.expires = expiration
+        await session.save()
+
+        res.json({ access_token: session.token })
+      } catch (err) {
+        errorResponse(err, res)
+      }
+    }
+  )
 
   router.get(
     '/member/',
