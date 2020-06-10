@@ -10,8 +10,8 @@ class Email {
   send (message, address) {
     return new Promise((resolve, reject) => {
       let mail = {}
-      mail.bcc = address
-      mail.html = message.body
+      mail.bcc = message.address || address
+      mail.html = message.body || message.html
       mail.subject = message.subject
 
       this.mailer.sendMail(mail, (err, response) => {

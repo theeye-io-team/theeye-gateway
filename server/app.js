@@ -10,6 +10,8 @@ const Authentication = require('./services/authentication')
 const Notifications = require('./services/notifications')
 const EventEmitter = require('events')
 
+const ErrorHandler = require('./errors')
+
 const aws = require('aws-sdk')
 
 class App extends EventEmitter {
@@ -103,20 +105,24 @@ class App extends EventEmitter {
       logger.log(payload)
       res.status(payload.status)
       res.json(payload)
+      return
     })
 
+    // error middleware
     api.use((err, req, res, next) => {
-      let statusCode = err.status||err.statusCode
+      let statusCode = err.status || err.statusCode
       if (isClientError(statusCode) === true) {
-        logger.log(err.stack)
-        res.status(statusCode).json({ message: err.message })
+        logger.log(`[${statusCode}] Invalid client request: ${err.message}`)
+        //res.status(statusCode).json({ message: err.message })
+        res.status(statusCode).json(err.toJSON())
       } else if (isServerError(statusCode)) {
         logger.error(err.stack)
-        res.status(statusCode).json({ message: 'internal error' })
+        res.status(statusCode).json({ message: 'Internal Server Error' })
       } else {
         logger.error(err.stack)
-        res.status(500).json({ message: 'internal error' })
+        res.status(500).json({ message: 'Internal Server Error' })
       }
+      return
     })
 
     return api

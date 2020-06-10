@@ -6,9 +6,8 @@ module.exports = {
     secret: '692fc164a0c06a9fd02575cf17688c9e'
   },
   mongodb: {
-    uri: "mongodb://127.0.0.1/theeye?retryWrites=true&w=majority",
-    //hosts: "127.0.0.1:27017",
-    //database: "theeye",
+    hosts: "localhost:27017",
+    database: "theeye",
     // options are passed directly to the mongo-native driver
     options: {
       useNewUrlParser: true,

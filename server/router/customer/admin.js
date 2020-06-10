@@ -1,15 +1,13 @@
 const express = require('express')
-const mongoose = require('mongoose')
-const logger = require('../logger')('router:customer')
+const logger = require('../../logger')('router:customer')
 const crypto = require('crypto')
-const CredentialsConstants = require('../constants/credentials')
+const CredentialsConstants = require('../../constants/credentials')
 
 module.exports = (app) => {
   const router = express.Router()
 
   router.get(
     '/',
-    credentialControl([CredentialsConstants.ROOT]),
     async (req, res, next) => {
       try {
         let customers = await app.models.customer.find({}).exec()
@@ -23,7 +21,6 @@ module.exports = (app) => {
 
   router.post(
     '/',
-    credentialControl([CredentialsConstants.ROOT]),
     async (req, res, next) => {
       try {
         const data = req.body
@@ -48,51 +45,7 @@ module.exports = (app) => {
   )
 
   router.put(
-    '/config',
-    credentialControl([CredentialsConstants.ROOT, CredentialsConstants.OWNER, CredentialsConstants.ADMIN]),
-    async (req, res, next) => {
-      try {
-        const session = req.session
-
-        if (!session.customer_id) {
-          return res.status(400).json({ message: "Missing param customer id." })
-        }
-
-        if (!req.body.integration) {
-          return res.status(400).json({ message: "Missing param integration." })
-        }
-
-        if (!req.body.config) {
-          return res.status(400).json({ message: "Missing param config." })
-        }
-
-        const id = session.customer_id
-        const integration = req.body.integration
-        const config = req.body.config
-
-        let customer = await app.models.customer.findById(id)
-        if (!customer) {
-          let err = new Error('Customer Not Found')
-          err.status = 404
-          throw err
-        }
-
-        let key = 'config.' + integration
-        customer.set({[key]: config})
-
-        await customer.save()
-
-        res.json({[integration]: config})
-      } catch (err) {
-        if (err.status) { res.status(err.status).json( { message: err.message }) }
-        else res.status(500).json('Internal Server Error')
-      }
-    }
-  )
-
-  router.put(
     '/:id',
-    credentialControl([CredentialsConstants.ROOT]),
     async (req, res, next) => {
       try {
         const id = req.params.id
@@ -118,7 +71,6 @@ module.exports = (app) => {
 
   router.delete(
     '/:id',
-    credentialControl([CredentialsConstants.ROOT]),
     async (req, res, next) => {
       try {
         const id = req.params.id
@@ -201,18 +153,4 @@ const createCustomerAgent = async (app, customer) => {
 const validateCustomerName = (name) => {
    let re = /^[a-zA-Z0-9._]+$/
    return re.test(name)
-}
-
-const credentialControl = (requiredCredentials) => {
-  return (req, res, next) => {
-    const checkCredentials = (credential, accepted) => {
-      return (accepted.indexOf(credential) !== -1)
-    }
-
-    let hasAccessLevel= checkCredentials(req.session.credential, requiredCredentials)
-    if(!hasAccessLevel) {
-        return res.status(403).json('Forbidden')
-    }
-    return next()
-  }
 }

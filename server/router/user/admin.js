@@ -1,7 +1,7 @@
 const express = require('express')
-const logger = require('../logger')('router:user')
-const CredentialsConstants = require('../constants/credentials')
-const emailTemplates = require('../services/notifications/email/templates')
+const logger = require('../../logger')('router:user')
+const CredentialsConstants = require('../../constants/credentials')
+const emailTemplates = require('../../services/notifications/email/templates')
 const isEmail = require('validator/lib/isEmail')
 
 module.exports = (app) => {
@@ -9,7 +9,6 @@ module.exports = (app) => {
 
   router.get(
     '/',
-    credentialControl([CredentialsConstants.ROOT]),
     async (req, res, next) => {
       try {
         let query = {}
@@ -28,7 +27,6 @@ module.exports = (app) => {
 
   router.post(
     '/',
-    credentialControl([CredentialsConstants.ROOT]),
     async (req, res, next) => {
       try {
         if (!req.body.hasOwnProperty('enabled')) return res.status(400).json({message: 'enabled is required'})
@@ -74,7 +72,6 @@ module.exports = (app) => {
 
   router.put(
     '/:id',
-    credentialControl([CredentialsConstants.ROOT]),
     async (req, res, next) => {
       try {
         const id = req.params.id
@@ -111,7 +108,6 @@ module.exports = (app) => {
 
   router.delete(
     '/:id',
-    credentialControl([CredentialsConstants.ROOT]),
     async (req, res, next) => {
       try {
         const id = req.params.id
@@ -138,7 +134,6 @@ module.exports = (app) => {
 
   router.put(
     '/:id/reinvite',
-    credentialControl([CredentialsConstants.ROOT]),
     async (req, res, next) => {
       try {
         const id = req.params.id
@@ -225,67 +220,34 @@ const createUser = async (app, inviter, data) => {
 }
 
 const getActivationLink = function (user, activateUrl) {
-  let queryToken = new Buffer( JSON.stringify({ invitation_token: user.invitation_token }) ).toString('base64')
+  let payload = JSON.stringify({ invitation_token: user.invitation_token })
+  let queryToken = Buffer.from(payload).toString('base64')
   let url = activateUrl
   return (url + queryToken)
 }
 
-const sendActivationEMail = (app, data) => {
-  return new Promise((resolve, reject) => {
-    let html = emailTemplates.activation(data)
+const sendActivationEMail = async (app, data) => {
+  let html = emailTemplates.activation(data)
 
-    var options = {
-      to: data.invitee.email,
-      subject: 'TheEye Account Activation',
-      html: html
-    }
+  var options = {
+    subject: 'TheEye Account Activation',
+    body: html
+  }
 
-    app.service.notifications.email.send(options, function(err) {
-      if (err) {
-        let err = Error('Error sending activation email.')
-        err.status = 500
-        reject(err)
-      }
-      resolve()
-    })
-  })
+  await app.service.notifications.email.send(options, data.invitee.email)
 }
 
-const sendInvitationEMail = (app, data) => {
-  return new Promise((resolve, reject) => {
-    let html = emailTemplates.invitation(data)
+const sendInvitationEMail = async (app, data) => {
+  let html = emailTemplates.invitation(data)
 
-    var options = {
-      to: data.invitee.email,
-      subject: 'TheEye Invitation',
-      html: html
-    }
+  var options = {
+    subject: 'TheEye Invitation',
+    body: html
+  }
 
-    app.service.notifications.email.send(options, function(err) {
-      if (err) {
-        let err = Error('Error sending invitation email.')
-        err.status = 500
-        reject(err)
-      }
-      resolve()
-    })
-  })
+  await app.service.notifications.email.send(options, data.invitee.email)
 }
 
 const validateUsername = (username) => {
   return (isEmail(username) || isEmail(username + '@theeye.io'))
-}
-
-const credentialControl = (requiredCredentials) => {
-  return (req, res, next) => {
-    const checkCredentials = (credential, accepted) => {
-      return (accepted.indexOf(credential) !== -1)
-    }
-
-    let hasAccessLevel= checkCredentials(req.session.credential, requiredCredentials)
-    if(!hasAccessLevel) {
-      return res.status(403).json('Forbidden')
-    }
-    return next()
-  }
 }
