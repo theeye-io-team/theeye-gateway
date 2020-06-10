@@ -1,5 +1,6 @@
 const express = require('express')
-const passport = require('passport')
+const emailTemplates = require('../services/notifications/email/templates')
+
 const logger = require('../logger')('router:auth')
 
 module.exports = (app) => {
@@ -54,33 +55,33 @@ module.exports = (app) => {
    */
   router.post(
     '/password/recover',
-    (req, res, next) => {
-      if (sails.config.passport.ldapauth) {
-        return res.send(400, {error: 'ldapSet'});
-      }
-      var email = req.params.all().email; // every posible param
-      logger.debug('searching ' + email);
+    async (req, res, next) => {
+      try {
+        if (app.config.services.authentication.strategies.ldapauth) {
+          return res.status(400).json({ error: 'ldapSet' })
+        }
+        let email = req.body.email
+        if (!email) {
+          return res.status(400).json({ message: "Missing param email." })
+        }
 
-      User.findOne({ email: email },function(err,user){
-        if( err ) return res.send(500,err);
-        if( ! user ) return res.send(400,"User not found");
+        let user = await app.models.users.uiUser.findOne({ email: email })
+        if(!user) return res.status(404).json({ message: "User not found" })
 
-        let token = app.service.authentication.issue({ user }, { expiresIn: "12h" })
-        var url = passport.protocols.local.getPasswordResetLink(token)
+        let token = app.service.authentication.issue({ email: user.email, expiresIn: "12h" })
+        const queryToken = new Buffer( JSON.stringify({ token: token }) ).toString('base64')
+        const passwordResetUrl = app.config.app.base_url + '/passwordreset?' + queryToken
 
-        mailer.sendPasswordRecoveryEMail({
-          url: url,
-          user: user
-        },function(err){
-          if(err) {
-            logger.error("Error sending email to " + email);
-            logger.error('%o',err);
-            return res.send(500,err);
-          }
-
-          return res.send(200,{ message: 'ok' });
+        await sendPasswordRecoverEmail(app, {
+          url: passwordResetUrl,
+          email: user.email
         })
-      })
+
+        res.json({})
+      } catch (err) {
+        if (err.status) { res.status(err.status).json( { message: err.message }) }
+        else res.status(500).json('Internal Server Error')
+      }
     }
   )
 
@@ -89,13 +90,12 @@ module.exports = (app) => {
     (req, res, next) => {
       try {
         if (!req.query.token) {
-          return res.send(400)
+          return res.status(400).json({ message: "Missing param token." })
         }
 
         let decoded = app.service.authentication.verify(req.query.token)
-        var user = decoded.user
 
-        var resetToken = app.service.authentication.issue({ user }, { expiresIn: "5m" })
+        var resetToken = app.service.authentication.issue({email: decoded.email, expiresIn: "5m" })
         return res.json({ resetToken })
       } catch (err) {
         logger.error('%o', err)
@@ -106,43 +106,100 @@ module.exports = (app) => {
 
   router.put(
     '/password/reset',
-    (req, res, next) => {
-      var params = req.params.all()
-
-      if(
-        ! params.token ||
-        ! params.password ||
-        ! params.confirmation
-      ) {
-        return res.send(400)
-      }
-
-      if (params.password != params.confirmation) {
-        return res.send(400,'Passwords does not match')
-      }
-
+    async (req, res, next) => {
       try {
-        let decoded = app.tokens.verify(params.token)
-        var user = decoded.user;
-        passport.protocols.local.reset({
-          email: user.email,
-          password: params.password
-        }, err => {
-          if(err){
-            if(err.message == 'Invalid password'){
-              return res.send(400, 'The password must have at least 8 characters long')
-            }
-            logger.error('%o', err)
-            return res.send(500, 'Error updating password, try again.')
-          }
-          res.send(200)
-        })
+        if (!req.body.token) {
+          return res.status(400).json({ message: "Missing param token." })
+        }
+        if (!req.body.password) {
+          return res.status(400).json({ message: "Missing param password." })
+        }
+        if (!req.body.confirmation) {
+          return res.status(400).json({ message: "Missing param confirmation." })
+        }
+
+        if (req.body.password != req.body.confirmation) {
+          return res.status(400).json({ message: "Passwords dont match." })
+        }
+
+        let decoded = app.service.authentication.verify(req.body.token)
+        let email = decoded.email
+
+        let user = await app.models.users.uiUser.findOne({ email: email })
+        if (!user) {
+          return res.status(404).json({ message: "User not found." })
+        }
+
+        let passport = await app.models.passport.findOne({ protocol: 'local', user_id: user.id })
+        if (!passport) {
+          return res.status(404).json({ message: "User passport not found." })
+        }
+        passport.password = await passport.hashPassword(req.body.password)
+        await passport.save()
+
+        res.json({})
       } catch (err) {
-        logger.error('%o',err)
-        return res.send(400,'Invalid password reset token, try again.')
+        if (err.status) { res.status(err.status).json( { message: err.message }) }
+        else res.status(500).json('Internal Server Error')
+      }
+    }
+  )
+
+  router.post(
+    '/password/change',
+    async (req, res, next) => {
+      try {
+        if (!req.body.password) {
+          return res.status(400).json({ message: "Missing param password." })
+        }
+        if (!req.body.newPassword) {
+          return res.status(400).json({ message: "Missing param new password." })
+        }
+        if (!req.body.confirmPassword) {
+          return res.status(400).json({ message: "Missing param confirm password." })
+        }
+        if (!req.body.id) {
+          return res.status(400).json({ message: "Missing param user id." })
+        }
+
+        if (req.body.newPassword != req.body.confirmPassword) {
+          return res.status(400).json({ message: "New passwords dont match." })
+        }
+
+        let user = await app.models.users.uiUser.findById(req.body.id)
+        if (!user) {
+          return res.status(404).json({ message: "User not found." })
+        }
+
+        let passport = await app.models.passport.findOne({ protocol: 'local', user_id: user.id })
+        if (!passport) {
+          return res.status(404).json({ message: "User passport not found." })
+        }
+
+        await passport.validatePassword(req.body.password)
+
+        passport.password = await passport.hashPassword(req.body.newPassword)
+        await passport.save()
+
+        res.json({})
+      } catch (err) {
+        if (err.status) { res.status(err.status).json( { message: err.message }) }
+        else res.status(500).json('Internal Server Error')
       }
     }
   )
 
   return router
+}
+
+const sendPasswordRecoverEmail = async (app, data) => {
+  let html = emailTemplates.passwordRecover(data)
+
+  var options = {
+    to: data.email,
+    subject: 'TheEye Password Recover',
+    body: html
+  }
+
+  await app.service.notifications.email.send(options, data.email)
 }

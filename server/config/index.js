@@ -64,7 +64,7 @@ module.exports = {
         support: [],
         invitation: 'contact@theeye.io',
         transport: {
-          type: 'sendmail'
+          type: "sendmail"
         }
       },
       push: {

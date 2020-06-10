@@ -67,7 +67,7 @@ module.exports = function (db) {
   schema.set('toObject', def)
 
   schema.pre('save', function (next) {
-    if (!this.isNew) { return next() } // on update
+    if (!this.isNew) { return next() } // prevent password rehash on model.save
     if (!this.password) { return next() }
     bcrypt.hash(this.password, 10, (err, hash) => {
       if (err) { next(err) }
@@ -95,6 +95,17 @@ module.exports = function (db) {
       bcrypt.compare(password, this.password, (err, valid) => {
         if (valid === true) { resolve(true) }
         else { reject(new Error('InvalidPassword')) }
+      })
+    })
+  }
+
+  schema.methods.hashPassword = function (password) {
+    return new Promise( (resolve, reject) => {
+      bcrypt.hash(password, 10, (err, hash) => {
+        if (err) { reject(err) }
+        else {
+          resolve(hash)
+        }
       })
     })
   }
