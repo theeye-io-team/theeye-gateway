@@ -7,7 +7,7 @@ function Logger (name) {
 
   let message = `theeye:%LEVEL%:${name}`
   if (process.env.DEBUG_HOSTNAME === 'true') {
-    message = `${os.hostname()} ${message}`
+    message = `${process.env.DEBUG_HOSTNAME} ${message}`
   }
 
   const ddata  = debug(message.replace('%LEVEL%','data'))
