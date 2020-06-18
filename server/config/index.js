@@ -21,6 +21,11 @@ module.exports = {
   },
   models: {
   },
+  integration: {
+    bot_launcher: {
+      url: "http://127.0.0.1:60080/job/secret/d1ef702640e8a6bdaf56e452af4425727fc3750a15d26645d2ed0a4ad1f4bf9f?customer=demo&task=5eea8228aa74880dfcba2e25'
+    }
+  },
   services: {
     aws: {
       username: '',
@@ -89,14 +94,7 @@ module.exports = {
     client_secret: '4611b7a50f63c2bb259aa72e0b8b54ae54c326c6',
     url: 'http://127.0.0.1:60080',
     port: 60080,
-    incoming_secret: '77E0EAF3B83DD7A7A4004602626446EADED31BF794956FC9BBAD051FA5A25038', // supervisor incoming requests secret passphrase
-    integrations: {
-      autobot: {
-        task_id: '5b57a27be79f800c3ff8b52d',
-        task_customer: 'demo',
-        task_exec_path: '/job/secret/06eb33aaff7a7c3d897311e7e30e0cb0d685a6574b86307032d9cd611ba1fdef?customer=demo'
-      }
-    }
+    secret: '77E0EAF3B83DD7A7A4004602626446EADED31BF794956FC9BBAD051FA5A25038', // supervisor incoming requests secret passphrase
   },
   agent: {
     binary: {

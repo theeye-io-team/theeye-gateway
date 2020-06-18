@@ -13,6 +13,7 @@
     "bcrypt": "~4.0.1",
     "express": "~4.17.1",
     "fast-proxy": "~1.5.0",
+    "got": "~11.3.0",
     "jsonwebtoken": "~8.5.1",
     "moment": "~2.24.0",
     "mongoose": "~5.9.7",

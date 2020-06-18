@@ -210,22 +210,29 @@ module.exports = (app) => {
     }
   )
 
-  router.put('/profile/onboarding', (req, res, next) => {
-    const user = req.user
-    const params = req.params.all()
-
-    user.onboardingCompleted = params.onboardingCompleted
-    user.save(err => {
-      if (err) {
-        sails.log.error(err)
-        return res.send(500, 'internal server error')
-      }
-
-      res.send(200, { onboardingCompleted: user.onboardingCompleted })
-    })
+  router.put('/profile/onboarding/completed', async (req, res, next) => {
+    try {
+      const user = req.user
+      user.onboardingCompleted = true
+      await user.save()
+      res.status(200).send({})
+    } catch (err) {
+      next(err)
+    }
   })
 
-  router.get('/userpassport', (req, res, next) => {
+  router.put('/profile/onboarding', async (req, res, next) => {
+    try {
+      const user = req.user
+      user.onboardingCompleted = req.body.onboardingCompleted
+      await user.save()
+      res.status(200).send({})
+    } catch (err) {
+      next(err)
+    }
+  })
+
+  router.get('/passports', (req, res, next) => {
     return res.status(200).json({})
   })
 

@@ -44,8 +44,18 @@ class Router {
       next()
     })
 
+    const supervisorArrivalMiddleware = (req, res, next) => {
+      let Unauthorized = new Error('Unauthorized')
+      Unauthorized.status = 401
+
+      if (!req.query) return next( Unauthorized  )
+      if (!req.query.secret) return next( Unauthorized )
+      if (req.query.secret !== app.config.supervisor.secret) return next( Unauthorized )
+      next()
+    }
+
     api.use('/api/auth', AuthRouter(app))
-    api.use('/api/notification', NotificationRouter(app))
+    api.use('/api/notification', supervisorArrivalMiddleware, NotificationRouter(app))
     api.use('/api/inbox', bearerMiddleware, InboxRouter(app))
     api.use('/api/session', bearerMiddleware, SessionRouter(app))
     api.use('/api/member', bearerMiddleware, MemberRouter(app))
