@@ -156,10 +156,11 @@ module.exports = (app) => {
 
           await user.save()
 
-          await sendActivationEMail(app, {
-            inviter: req.user,
-            invitee: user,
-            activationLink: getActivationLink(user, app.config.activateUrl)
+          await sendUserActivationEMail(app, {
+            name: user.name,
+            email: user.email,
+            customer_name: '',
+            activation_link: getActivationLink(user.invitation_token, app.config.activateUrl)
           })
         }
 
@@ -209,32 +210,30 @@ const createUser = async (app, inviter, data) => {
       invitee: newUser
     })
   } else {
-    await sendActivationEMail(app, {
-      inviter: inviter,
-      invitee: newUser,
-      activationLink: getActivationLink(newUser, app.config.activateUrl)
+    await sendUserActivationEMail(app, {
+      name: newUser.name,
+      email: newUser.email,
+      customer_name: '',
+      activation_link: getActivationLink(newUser.invitation_token, app.config.activateUrl)
     })
   }
 
   return newUser
 }
 
-const getActivationLink = function (user, activateUrl) {
-  let payload = JSON.stringify({ invitation_token: user.invitation_token })
-  let queryToken = Buffer.from(payload).toString('base64')
-  let url = activateUrl
-  return (url + queryToken)
+const getActivationLink = (invitation_token, activate_url) => {
+  let params = JSON.stringify({ invitation_token })
+  let query = Buffer.from(params).toString('base64')
+  return (activate_url + query)
 }
 
-const sendActivationEMail = async (app, data) => {
-  let html = emailTemplates.activation(data)
-
-  var options = {
+const sendUserActivationEMail = (app, data) => {
+  let options = {
     subject: 'TheEye Account Activation',
-    body: html
+    body: emailTemplates.activation(data)
   }
 
-  await app.service.notifications.email.send(options, data.invitee.email)
+  return app.service.notifications.email.send(options, data.email)
 }
 
 const sendInvitationEMail = async (app, data) => {

@@ -68,14 +68,27 @@ module.exports = (app) => {
         let user = await app.models.users.uiUser.findOne({ email: email })
         if(!user) return res.status(404).json({ message: "User not found" })
 
-        let token = app.service.authentication.issue({ email: user.email, expiresIn: "12h" })
-        const queryToken = new Buffer( JSON.stringify({ token: token }) ).toString('base64')
-        const passwordResetUrl = app.config.app.base_url + '/passwordreset?' + queryToken
+        if (user.enabled) {
+          let token = app.service.authentication.issue({ email: user.email, expiresIn: "12h" })
+          const queryToken = new Buffer( JSON.stringify({ token: token }) ).toString('base64')
+          const passwordResetUrl = app.config.app.base_url + '/passwordreset?' + queryToken
 
-        await sendPasswordRecoverEmail(app, {
-          url: passwordResetUrl,
-          email: user.email
-        })
+          await sendPasswordRecoverEmail(app, {
+            url: passwordResetUrl,
+            email: user.email
+          })
+        } else {
+          let token = app.service.authentication.issue({ email: user.email })
+          user.set({invitation_token: token})
+          await user.save()
+
+          await sendUserActivationEMail(app, {
+            name: user.name,
+            email: user.email,
+            customer_name: '',
+            activation_link: getActivationLink(user.invitation_token, app.config.activateUrl)
+          })
+        }
 
         res.json({})
       } catch (err) {
@@ -202,4 +215,20 @@ const sendPasswordRecoverEmail = async (app, data) => {
   }
 
   await app.service.notifications.email.send(options, data.email)
+}
+
+const sendUserActivationEMail = (app, data) => {
+  let options = {
+    subject: 'TheEye Account Activation',
+    body: emailTemplates.activation(data)
+  }
+
+  return app.service.notifications.email.send(options, data.email)
+}
+
+
+const getActivationLink = (invitation_token, activate_url) => {
+  let params = JSON.stringify({ invitation_token })
+  let query = Buffer.from(params).toString('base64')
+  return (activate_url + query)
 }
