@@ -97,7 +97,7 @@ module.exports = function (app, config) {
         return next({ status: 400, body: { message: 'nothing to subscribe' } })
       }
 
-      if (!topics.every(topic => topic in TopicConstants)) {
+      if (!topics.every(topic => Object.values(TopicConstants).indexOf(topic) !== -1) ) {
         return next({ status: 400, body: { message: 'invalid topics' } })
       }
 

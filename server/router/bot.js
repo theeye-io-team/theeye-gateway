@@ -3,6 +3,7 @@ const mongoose = require('mongoose')
 const format = require('util').format
 const logger = require('../logger')('router:bot')
 const CredentialsConstants = require('../constants/credentials')
+const got = require('got')
 
 module.exports = (app) => {
   const router = express.Router()
@@ -83,34 +84,59 @@ module.exports = (app) => {
     }
   })
 
-//  router.post('/launch', () => {
-//		let bot_launcher = app.config.integration.bot_launcher
-//        
-//		let payload = {
-//			task: autobot.task_id,
-//			task_arguments: [
-//				{ order: 0, value: agent.client_id },
-//				{ order: 1, value: agent.client_secret },
-//				{ order: 2, value: customer_name },
-//				{ order: 3, value: sails.config.supervisor.url },
-//				{ order: 4, value: customer_name },
-//				{ order: 5, value: 'latest' }
-//			] 
-//		}
-//
-//"task_arguments":["'${client id}'","'${client secret}'","'${customer}'","'${supervisor url}'","'${client hostname}'","'${agent branch}'","'${volume mount point}'","'${client port}'"]
-//
-//        // execute integration task
-//        supervisor.client_customer = autobot.task_customer
-//        supervisor.create({
-//          route: autobot.task_exec_path,
-//          body: payload,
-//          success: job => res.send(200, job),
-//          failure: err => res.send(err.statusCode, err)
-//        })
-//      } 
-//    ) 
-//  })
+  router.post('/launcher', async (req, res, next) => {
+    try {
+      const bot_launcher = app.config.integration.bot_launcher
+      const session = req.session
+
+      let agentMember = await app.models.member.findOne({
+        credential: CredentialsConstants.AGENT,
+        customer_id: session.customer_id
+      })
+
+      if (!agentMember || !agentMember.user_id) {
+        let err = new Error('bot agent is not available.')
+        err.statusCode = 404
+        throw err
+      }
+
+      let agentPassport = await app.models.passport.findOne({
+        protocol: 'local',
+        user_id: agentMember.user_id
+      })
+
+      if (!agentPassport) {
+        let err = new Error('bot agent credentials not available.')
+        err.statusCode = 404
+        throw err
+      }
+
+      let payload = {
+        task_arguments: [
+          agentPassport.identifier, // client id
+          agentPassport.tokens.refresh_token, // client secret
+          agentMember.customer_name, // customer name
+          app.config.supervisor.url,
+          agentMember.customer_name, // hostname
+          req.body.branch || 'latest', // branch or tag
+          req.body.mount || `/mnt/theeye/${agentMember.customer_name}_agent`,
+          req.body.port || '6000'
+        ]
+      }
+
+      let response = await got.post(bot_launcher.url, {
+        headers: {
+          'content-type': 'application/json'
+        },
+        body: JSON.stringify(payload)
+      })
+
+      res.status(200).send({})
+      // execute integration task
+    } catch (err) {
+      next(err)
+    }
+  })
 
   return router
 }
