@@ -33,6 +33,9 @@ module.exports = {
       secretAccessKey: '',
       region: ''
     },
+    registration: {
+      //enabled: false
+    },
     authentication: {
       secret: '692fc164a0c06a9fd02575cf17688c9e',
       expires: 3 * (60 * 60), // in seconds
@@ -112,7 +115,7 @@ module.exports = {
       }
     }
   },
-  activateUrl: 'http://127.0.0.1:6080/activate?'
+  activateUrl: 'http://127.0.0.1:6080/activate?',
   ///**
   // *
   // * redis options to pass directly to node redis client
@@ -124,9 +127,9 @@ module.exports = {
   // * google recaptcha
   // *
   // */
-  //grecaptcha: {
-  //  v2_secret: null,
-  //  v3_secret: null,
-  //  url: 'https://www.google.com/recaptcha/api/siteverify'
-  //},
+	grecaptcha: {
+    v2_secret: '',
+		//v3_secret: '',
+		url: 'https://www.google.com/recaptcha/api/siteverify'
+	}
 }

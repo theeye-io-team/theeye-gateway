@@ -5,6 +5,9 @@ const got = require('got')
 const emailTemplates = require('../services/notifications/email/templates')
 const crypto = require('crypto')
 const CredentialsConstants = require('../constants/credentials')
+const FormData = require('form-data')
+
+const { ClientError, ServerError } = require('../errors')
 
 module.exports = (app) => {
   const router = express.Router()
@@ -123,83 +126,91 @@ module.exports = (app) => {
   router.post(
     '/register',
     async (req, res, next) => {
-      // verify grecaptcha
-      if (!req.body.grecaptcha) {
-        return res.status(400).json({ message: "Missing param grecaptcha." })
+      try {
+        // verify grecaptcha
+        if (!req.body.grecaptcha) {
+          throw new ClientError('Invalid payload. Verification error')
+        }
+
+        const config = app.config.grecaptcha
+        const secret = config.v2_secret
+        const url = config.url
+
+        const form = new FormData()
+        form.append('secret', secret)
+        form.append('response', req.body.grecaptcha)
+
+        let response = await got.post(url, { body: form })
+        let json = JSON.parse(response.body)
+
+        if (json.success !== true) {
+          throw new ClientError('Invalid payload. Verification error')
+        }
+
+        next()
+      } catch (err) {
+        return next(err)
       }
-      const config = app.config.grecaptcha
-      const secret = config.v2_secret
-      const url = config.url
-      const response = req.body.response
-      let result = await got.post(url, {
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({ secret: secret , response: response })
-      })
-      next()
     },
     async (req, res, next) => {
       try {
-        if (app.config.services.authentication.strategies.ldapauth) {
-          return res.status(400).json({ error: 'ldapSet' })
+        if (app.config.services.registration.enabled === false) {
+          throw new ClientError('Registration is disabled')
         }
-
+        if (app.config.services.authentication.strategies.ldapauth) {
+          throw new ClientError('Registration is disabled')
+        }
         if (!req.body.name) {
-          return res.status(400).json({ message: "Missing param name." })
+          throw new ClientError('Missing param name.')
         }
         if (!req.body.username) {
-          return res.status(400).json({ message: "Missing param username." })
+          throw new ClientError('Missing param username.')
         }
         if (!req.body.email) {
-          return res.status(400).json({ message: "Missing param email." })
+          throw new ClientError('Missing param email.')
         }
         if (!isEmail(req.body.email)) {
-          return res.status(400).json({ message: "Invalid email." })
+          throw new ClientError('Invalid email.')
         }
 
-        let prevUser = await app.models.users.uiUser.findOne({$or:[
-          {email: req.body.email},
-          {username: req.body.username}
-        ]})
+        let user = await app.models.users.uiUser.findOne({
+          $or: [
+            { email: req.body.email },
+            { username: req.body.username }
+          ]
+        })
 
-        if (prevUser) {
-          if(prevUser.username == req.body.username)
-            return res.status(400).json({ error: 'usernameTaken' })
-
-          if(prevUser.email == req.body.email)
-            return res.status(400).json({ error: 'emailTaken' })
-
-        } else {
-          let token = app.service.authentication.issue({ email: req.body.email })
-
-          let userData = {
-            username: req.body.email,
-            name: req.body.name,
-            email: req.body.email,
-            enabled: false,
-            invitation_token: token
+        if (user) {
+          if (user.username === req.body.username) {
+            throw new ClientError('Username in use', { code: 'usernameTaken'})
           }
-
-          let user = await app.models.users.uiUser.create(userData)
-          if (user) {
-            await sendUserRegistrationEMail(app, {
-              name: user.name,
-              email: user.email,
-              activation_link: getActivationLink(user.invitation_token, app.config.finishRegistrationUrl)
-            })
-
-
-            res.json({message: 'success'})
-          } else {
-            let err = new Error('New User Not Found')
-            err.status = 404
-            throw err
+          if (user.email === req.body.email) {
+            throw new ClientError('Email in use', { code: 'emailTaken'})
           }
         }
 
+        let userData = {
+          username: req.body.email,
+          name: req.body.name,
+          email: req.body.email,
+          enabled: false,
+          invitation_token: app.service.authentication.issue({ email: req.body.email })
+        }
+
+        user = await app.models.users.uiUser.create(userData)
+        if (!user) {
+          throw new ServerError()
+        }
+
+        await sendUserRegistrationEMail(app, {
+          name: user.name,
+          email: user.email,
+          activation_link: getActivationLink(user.invitation_token, app.config.finishRegistrationUrl)
+        })
+
+        return res.status(200).json({ message: 'success' })
       } catch (err) {
-        console.log(err)
-        if (err.status) { res.status(err.status).json( { message: err.message }) }
-        else res.status(500).json('Internal Server Error')
+        next(err)
       }
     }
   )

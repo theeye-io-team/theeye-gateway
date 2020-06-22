@@ -1,26 +1,11 @@
 
-Error.prototype.toJSON = function () {
-  let alt = {}
-  let storeKey = function (key) {
-    if (key === 'stack') {
-      if (process.env.NODE_ENV !== 'production') {
-        alt[key] = this[key]
-      }
-    } else {
-      alt[key] = this[key]
-    }
-  }
-  Object.getOwnPropertyNames(this).forEach(storeKey, this)
-  return alt
-}
-
 class ErrorHandler {
   constructor () {
     this.errors = []
   }
 
   required (name, value, message) {
-    var e = new Error(name + ' is required')
+    var e = new ExtendedError(name + ' is required')
     e.statusCode = 400
     e.field = name
     e.value = value
@@ -31,7 +16,7 @@ class ErrorHandler {
   }
 
   invalid (name, value, message) {
-    var e = new Error(name + ' is invalid')
+    var e = new ExtendedError(name + ' is invalid')
     e.statusCode = 400
     e.field = name
     e.value = value
@@ -76,8 +61,24 @@ class ErrorHandler {
 
 module.exports = ErrorHandler
 
-const htmlErrorLine = (error) => {
+class ExtendedError extends Error {
+  toJSON () {
+    let alt = {}
+    let storeKey = function (key) {
+      if (key === 'stack') {
+        if (process.env.NODE_ENV !== 'production') {
+          alt[key] = this[key]
+        }
+      } else {
+        alt[key] = this[key]
+      }
+    }
+    Object.getOwnPropertyNames(this).forEach(storeKey, this)
+    return alt
+  }
+}
 
+const htmlErrorLine = (error) => {
   let dump = error.toJSON()
   let html = `<h2>Exception</h2><pre>${dump.stack}</pre>`
 
@@ -90,3 +91,28 @@ const htmlErrorLine = (error) => {
 
   return html
 }
+
+class ClientError extends ExtendedError {
+  constructor (message, options) {
+    super(message || 'Invalid Request')
+    options||(options={})
+    this.name = this.constructor.name
+    this.code = options.code || ''
+    this.status = options.statusCode || 400
+  }
+}
+
+class ServerError extends ExtendedError {
+  constructor (message, options) {
+    super(message || 'Internal Server Error')
+    options||(options={})
+    this.name = this.constructor.name
+    this.code = options.code || ''
+    this.status = options.statusCode || 500
+  }
+}
+
+ErrorHandler.ClientError = ClientError
+
+ErrorHandler.ServerError = ServerError
+
