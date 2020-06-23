@@ -16,6 +16,7 @@ const CustomerAdminRouter = require('./customer/admin')
 const credentialMiddleware = require ('./credentialMiddleware')
 const logger = require('../logger')('router')
 const CompatibilityRouter = require('./compatibility')
+const HelperRouter = require('./helper')
 
 const GatewayRouter = require('./gateway')
 
@@ -55,6 +56,8 @@ class Router {
       if (req.query.secret !== app.config.supervisor.secret) return next( Unauthorized )
       next()
     }
+
+    api.use('/helper', bearerMiddleware, HelperRouter(app))
 
     api.use('/api/auth', AuthRouter(app))
     api.use('/api/notification', supervisorArrivalMiddleware, NotificationRouter(app))
