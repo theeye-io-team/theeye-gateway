@@ -2,7 +2,9 @@ const express = require('express')
 const mongoose = require('mongoose')
 const format = require('util').format
 const logger = require('../logger')('router:bot')
+const { ClientError, ServerError } = require('../errors')
 const CredentialsConstants = require('../constants/credentials')
+const PassportConstants = require('../constants/passport')
 const got = require('got')
 
 module.exports = (app) => {
@@ -17,15 +19,17 @@ module.exports = (app) => {
         customer_id: session.customer_id
       })
 
+      if (!agentMember || !agentMember.user_id) {
+        throw new ServerError('Bot Agent Not Available.')
+      }
+
       let agentPassport = await app.models.passport.findOne({
-        protocol: 'local',
+        protocol: PassportConstants.PROTOCOL_LOCAL,
         user_id: agentMember.user_id
       })
 
       if (!agentPassport || (!agentMember && !agentMember.user_id)) {
-        let err = new Error('Error getting agent credentials.')
-        err.statusCode = 500
-        throw err
+        throw new ServerError('Bot Agent Credentials Not Available.')
       }
 
       let botAgent = {
@@ -76,11 +80,7 @@ module.exports = (app) => {
 
       res.status(200).json(botAgent)
     } catch (err) {
-      logger.error(err)
-      let message = err.message || 'Internal Server Error'
-      let statusCode = err.statusCode || 500
-      res.status(statusCode)
-      res.json({ message, statusCode })
+      next(err)
     }
   })
 
@@ -95,20 +95,16 @@ module.exports = (app) => {
       })
 
       if (!agentMember || !agentMember.user_id) {
-        let err = new Error('bot agent is not available.')
-        err.statusCode = 404
-        throw err
+        throw new ServerError('Bot Agent Not Available.')
       }
 
       let agentPassport = await app.models.passport.findOne({
-        protocol: 'local',
+        protocol: PassportConstants.PROTOCOL_LOCAL,
         user_id: agentMember.user_id
       })
 
       if (!agentPassport) {
-        let err = new Error('bot agent credentials not available.')
-        err.statusCode = 404
-        throw err
+        throw new ServerError('Bot Agent Credentials Not Available.')
       }
 
       let payload = {
@@ -125,9 +121,7 @@ module.exports = (app) => {
       }
 
       let response = await got.post(bot_launcher.url, {
-        headers: {
-          'content-type': 'application/json'
-        },
+        headers: { 'content-type': 'application/json' },
         body: JSON.stringify(payload)
       })
 
