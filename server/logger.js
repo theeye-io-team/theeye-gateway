@@ -6,7 +6,7 @@ function Logger (name) {
   const self = {}
 
   let message = `theeye:%LEVEL%:${name}`
-  if (process.env.THEEYE_NODE_HOSTNAME === 'true') {
+  if (process.env.THEEYE_NODE_HOSTNAME) {
     message = `${process.env.DEBUG_HOSTNAME} ${message}`
   }
 
