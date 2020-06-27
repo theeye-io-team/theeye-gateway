@@ -123,8 +123,7 @@ module.exports = function (app) {
       }
 
       try {
-        let decoded = app.service.authentication.verify(token)
-
+        //let decoded = app.service.authentication.verify(token)
         app.models.session
           .findOne({ token })
           .exec((err, session) => {
