@@ -12,7 +12,7 @@ const EventEmitter = require('events')
 
 const ErrorHandler = require('./errors')
 
-const aws = require('aws-sdk')
+const AWS = require('aws-sdk')
 
 class App extends EventEmitter {
 
@@ -23,7 +23,7 @@ class App extends EventEmitter {
     this.service = {}
     this.service.authentication = new Authentication(this)
     this.service.notifications = new Notifications(this)
-    this.service.sns = setupSNS(this)
+    this.service.sns = new AWS.SNS(new AWS.Config(config.services.aws))
 
     this.models = new Models(this)
     await this.models.configure()
@@ -137,12 +137,4 @@ const isClientError = (statusCode) => {
 
 const isServerError = (statusCode) => {
   return statusCode && statusCode >= 500
-}
-
-const setupAuth = (app) => {
-  return 
-}
-
-const setupSNS = (app) => {
-  return new aws.SNS(new aws.Config(app.config.services.aws))
 }

@@ -424,7 +424,7 @@ module.exports = (app) => {
   /**
    * @return {Promise}
    */
-  const createNotifications = (event, users) => {
+  const createNotifications = async (event, users) => {
     // Persist notifications
     // rulez for updates stopped/updates started.
     // only create notification for host
@@ -434,7 +434,15 @@ module.exports = (app) => {
       notifications.push(Object.assign({}, event, { user_id: user._id, user: user._id }))
     })
 
-    return app.models.notification.create(notifications)
+    //return app.models.notification.create(notifications)
+
+    // temp disable notifications in database
+    // create model but dont save it to database
+    let models = []
+    for (let notification of notifications) {
+      models.push(new app.models.notification(notification))
+    }
+    return models
   }
 
   /**
@@ -560,6 +568,7 @@ module.exports = (app) => {
   const sendMembersEmailNotification = (event, members) => {
     if (!event.data.subject || !event.data.body) {
       logger.error(`${event.id}|cannot send mail without subject and body`)
+      logger.error(`${event.id}|${event} ${members}`)
       return
     }
 

@@ -1,4 +1,3 @@
-const app = require('../../app')
 const logger = require('../../logger')('service:notifications:push')
 const fs = require('fs')
 const TopicsConstants = require('../../constants/topics')
@@ -59,11 +58,11 @@ class Push {
       params.TargetArn = device.endpoint_arn
       logger.debug('Sending notification to target arn: ' + params.TargetArn)
 
-      app.sns.publish(params, (error, data) => {
+      app.service.sns.publish(params, (error, data) => {
         if (error) {
           logger.error('%o', error)
           logger.error('Error sending notification, deleting endpoint arn: ' + params.TargetArn)
-          handleSNSError(user, device)
+          this.handleSNSError(user, device)
         } else {
           logger.debug('Push notification sent.')
         }
@@ -73,6 +72,33 @@ class Push {
     if (this.config.debug) {
       dumpSNSMessage(`arn:user:${user.username}`, this.config.debug_filename, params)
     }
+  }
+
+  handleSNSError (user, device) {
+    app.service.sns.deleteEndpoint({
+      EndpointArn: device.endpoint_arn
+    }, function(error, data) {
+      if (error) {
+        logger.error('Error deleting previous Endpoint Arn')
+        logger.error('%o',error);
+        return
+      }
+
+      //remove user device on db
+      user.devices = user.devices || []
+      var index = user.devices.findIndex(elem => elem.uuid == device.uuid)
+      if (index > -1) {
+        user.devices.splice(index, 1)
+      }
+      User.update({id: user.id}, {devices: user.devices}).exec((error,user) => {
+        if (error) {
+          logger.error('Error creating new Endpoint Arn')
+          logger.error('%o',error);
+          return
+        }
+        logger.debug('Successfully removed Endpoint Arn.')
+      })
+    })
   }
 }
 
@@ -169,29 +195,3 @@ const dumpSNSMessage = (dummyArn, filename, payload) => {
   }
 }
 
-const handleSNSError = (user, device) => {
-  app.sns.deleteEndpoint({
-    EndpointArn: device.endpoint_arn
-  }, function(error, data) {
-    if (error) {
-      logger.error('Error deleting previous Endpoint Arn')
-      logger.error('%o',error);
-      return
-    }
-
-    //remove user device on db
-    user.devices = user.devices || []
-    var index = user.devices.findIndex(elem => elem.uuid == device.uuid)
-    if (index > -1) {
-      user.devices.splice(index, 1)
-    }
-    User.update({id: user.id}, {devices: user.devices}).exec((error,user) => {
-      if (error) {
-        logger.error('Error creating new Endpoint Arn')
-        logger.error('%o',error);
-        return
-      }
-      logger.debug('Successfully removed Endpoint Arn.')
-    })
-  })
-}
