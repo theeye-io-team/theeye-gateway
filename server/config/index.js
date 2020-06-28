@@ -27,12 +27,12 @@ module.exports = {
     }
   },
   services: {
-    aws: {
-      username: '',
-      accessKeyId: '',
-      secretAccessKey: '',
-      region: ''
-    },
+		aws: {
+			username: '',
+			accessKeyId: '',
+			secretAccessKey: '',
+			region: ''
+		},
     registration: {
       //enabled: false
     },

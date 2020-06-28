@@ -318,7 +318,7 @@ module.exports = (app) => {
 
     for (let user of users) {
       logger.debug(`${event.id}|sending push notification to user ${user._id}`)
-      app.service.notifications.push.dispatch(event, user)
+      app.service.notifications.push.send(event, user)
       logger.debug(`${event.id}|by push notified`)
     }
 

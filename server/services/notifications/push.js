@@ -5,6 +5,7 @@ const TopicsConstants = require('../../constants/topics')
 class Push {
 
   constructor (app, config) {
+    this.app = app
     this.config = config
   }
 
@@ -40,7 +41,7 @@ class Push {
     }
 
     if (!data.msg) {
-      return logger.error('invalid message, undefined')
+      return logger.error(`invalid message ${data}`)
     }
 
     let message = data.msg.replace(/['"]+/g, '')
@@ -58,7 +59,7 @@ class Push {
       params.TargetArn = device.endpoint_arn
       logger.debug('Sending notification to target arn: ' + params.TargetArn)
 
-      app.service.sns.publish(params, (error, data) => {
+      this.app.service.sns.publish(params, (error, data) => {
         if (error) {
           logger.error('%o', error)
           logger.error('Error sending notification, deleting endpoint arn: ' + params.TargetArn)
@@ -75,7 +76,7 @@ class Push {
   }
 
   handleSNSError (user, device) {
-    app.service.sns.deleteEndpoint({
+    this.app.service.sns.deleteEndpoint({
       EndpointArn: device.endpoint_arn
     }, function(error, data) {
       if (error) {
