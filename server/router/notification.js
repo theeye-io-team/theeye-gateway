@@ -33,8 +33,8 @@ module.exports = (app) => {
       logger.debug('%s|event arrived. %s', event.id, event.topic)
       logger.data('%o', event)
 
-      // dispatch original event to all clients
-      app.service.notifications.sockets.send(event)
+      // send original event to all clients
+      app.service.notifications.sockets.sendEvent(event)
 
       // handler for generic generated events by topic  
       await createTopicEventNotifications(req, res)
@@ -111,7 +111,7 @@ module.exports = (app) => {
 
     return new Promise((resolve, reject) => {
       // falta filtrar notifications
-      app.service.notifications.sockets.send({
+      app.service.notifications.sockets.sendEvent({
         id: event.id,
         topic: TopicsConstants.JOB_RESULT_RENDER,
         data: {
@@ -152,7 +152,7 @@ module.exports = (app) => {
     let organization = event.data.organization
     let organization_id = event.data.organization_id
 
-    logger.debug('%s|%s', event.id, 'dispatching custom notifications')
+    logger.debug('%s|%s', event.id, 'sending custom notifications')
 
     let users = await getUsersToNotify(null, null, recipients, [])
 
@@ -178,7 +178,7 @@ module.exports = (app) => {
           logger.debug('%s|%s', event.id, 'creating desktop notifications')
           for (let index in notifications) {
             const notification = notifications[index]
-            app.service.notifications.sockets.send({
+            app.service.notifications.sockets.sendEvent({
               id: event.id,
               topic: TopicsConstants.NOTIFICATION_CRUD,
               data: {
@@ -200,7 +200,7 @@ module.exports = (app) => {
     if (!notificationTypes || notificationTypes.push) {
       for (let user of users) {
         logger.debug(`${event.id}|sending push notification to user ${user._id}`)
-        app.service.notifications.push.dispatch({ msg: subject }, user)
+        app.service.notifications.push.send({ msg: subject }, user)
         logger.debug(`${event.id}|by push notified`)
       }
     }
@@ -212,7 +212,7 @@ module.exports = (app) => {
       }
     }
 
-    logger.debug('%s|%s', event.id, 'custome notifications dispatched')
+    logger.debug('%s|%s', event.id, 'custome notifications sent')
   }
 
   const parseRecipients = (emails) => {
@@ -246,7 +246,7 @@ module.exports = (app) => {
     const event = req.body
     const topic = event.topic
 
-    logger.debug('%s|dispatching event notification.', event.id)
+    logger.debug('%s|sending event notification.', event.id)
 
     if (!isHandledNotificationEvent(event)) {
       logger.debug('%s|dismissed. not handled', event.id)
@@ -297,7 +297,7 @@ module.exports = (app) => {
       if (notifications.length > 0) {
         for (let index in notifications) {
           const notification = notifications[index]
-          app.service.notifications.sockets.send({
+          app.service.notifications.sockets.sendEvent({
             id: event.id,
             topic: TopicsConstants.NOTIFICATION_CRUD,
             data: {
@@ -314,15 +314,15 @@ module.exports = (app) => {
       }
     })
 
-    sendMembersEmailNotification(event, members)
+    sendMembersEmailEvent(event, members)
 
     for (let user of users) {
       logger.debug(`${event.id}|sending push notification to user ${user._id}`)
-      app.service.notifications.push.send(event, user)
+      app.service.notifications.push.sendEvent(event, user)
       logger.debug(`${event.id}|by push notified`)
     }
 
-    logger.debug(`${event.id}|event notifications dispatched`)
+    logger.debug(`${event.id}|${event.topic} notifications sent`)
   }
 
   const handledTopics = [
@@ -565,34 +565,23 @@ module.exports = (app) => {
     return isCompleted(event.data.model.lifecycle)
   }
 
-  const sendMembersEmailNotification = (event, members) => {
-    if (!event.data.subject || !event.data.body) {
-      logger.error(`${event.id}|cannot send mail without subject and body`)
-      logger.error(`${event.id}|${event} ${members}`)
-      return
-    }
-
-    let message = {
-      body: event.data.body,
-      subject: event.data.subject
-    }
-
+  const sendMembersEmailEvent = (event, members) => {
     for (let member of members) {
-      if (!member.user.email) {
-        logger.error(`${event.id}|cannot send email to ${member.user._id}. address not set`)
-      } else {
-        if (member.notifications.mute !== true && member.notifications.email !== false) {
-          // member user is ready to receive emails
-          app.service.notifications.email
-            .send(message, member.user.email)
-            .then(response => {
-              logger.debug(`${event.id}|mailer respose: ${response}`)
-              logger.debug(`${event.id}|${member.user.email} notified`)
-            })
-            .catch(err => {
-              logger.error(`${event.id}|mailer error: ${err}`)
-            })
-        }
+      if (
+        member.notifications.mute !== true &&
+        member.notifications.email !== false
+      ) {
+        // try to deliver emails to the user
+        let user = member.user
+        app.service.notifications.email
+          .sendEvent(event, user)
+          .then(response => {
+            logger.debug(`${event.id}|mail service respose: ${response}`)
+            logger.debug(`${event.id}|${user.email} notified`)
+          })
+          .catch(err => {
+            logger.error(`${event.id}|mail service error: ${err}`)
+          })
       }
     }
   }

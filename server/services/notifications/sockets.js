@@ -19,9 +19,9 @@ module.exports = function (app, config) {
       })
     }
 
-    send (message, next) {
+    sendEvent (message, next) {
       try {
-        emit(this.io, message.topic, message)
+        emitEvent(this.io, message.topic, message)
         next && next()
       } catch (err) {
         logger.error(err)
@@ -187,7 +187,7 @@ module.exports = function (app, config) {
     }
   }
 
-  const emit = (io, topic, message) => {
+  const emitEvent = (io, topic, message) => {
     const data = message.data
     logger.debug('emit event "%s"', topic)
 

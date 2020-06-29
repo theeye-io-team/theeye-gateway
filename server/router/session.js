@@ -98,7 +98,7 @@ module.exports = (app) => {
         const newSession = await app.service.authentication.createSession({ member, protocol: session.protocol })
         const model = { _id: session._id, user_id: session.user_id } // information to identify target user
 
-        app.service.notifications.sockets.send({
+        app.service.notifications.sockets.sendEvent({
           topic: 'session',
           data: {
             model,
@@ -119,7 +119,7 @@ module.exports = (app) => {
 
   const logout = async (req, res, next) => {
     const session = req.session
-    app.service.notifications.sockets.send({
+    app.service.notifications.sockets.sendEvent({
       topic: 'session',
       data: {
         model: { _id: session._id, user_id: session.user_id },

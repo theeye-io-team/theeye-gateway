@@ -127,9 +127,9 @@ module.exports = {
   // * google recaptcha
   // *
   // */
-	grecaptcha: {
+  grecaptcha: {
     v2_secret: '',
-		//v3_secret: '',
-		url: 'https://www.google.com/recaptcha/api/siteverify'
-	}
+    //v3_secret: '',
+    url: 'https://www.google.com/recaptcha/api/siteverify'
+  }
 }

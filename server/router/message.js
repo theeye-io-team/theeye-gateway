@@ -14,7 +14,7 @@ module.exports = (app) => {
     const session = req.session
     const body = req.body
 
-    app.service.notifications.sockets.send({
+    app.service.notifications.sockets.sendEvent({
       //id: ,
       topic: TopicConstants.MESSAGE_CRUD,
       data: {
