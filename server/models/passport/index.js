@@ -40,7 +40,7 @@ module.exports = function (db) {
     user_id: { type: mongoose.Schema.Types.ObjectId, required: true },
     creation_date: { type: Date, default: () => { return new Date() }, required: true },
     last_update: { type: Date, default: () => { return new Date() }, required: true },
-    last_access: { type: Date }
+    last_login: { type: Date }
   }, {
     collection: 'gw_passport',
     discriminatorKey: '_type'

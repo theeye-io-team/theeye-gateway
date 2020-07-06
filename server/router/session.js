@@ -2,6 +2,8 @@ const express = require('express')
 const mongoose = require('mongoose')
 const logger = require('../logger')('router:session')
 const { REPLACE, DELETE } = require('../constants/operations')
+const TopicConstants = require('../constants/topics')
+const { ServerError, ClientError } = require('../errors')
 
 module.exports = (app) => {
   const router = express.Router()
@@ -15,14 +17,16 @@ module.exports = (app) => {
     try {
       const user = req.user
       const session = req.session
+      const customers = []
 
       const members = await app.models.member.find({ user_id: user._id })
-      const customers = []
-      if (members.length > 0) {
-        for (let member of members) {
-          await member.populate('customer', { id: 1, name: 1 }).execPopulate()
-          customers.push(member.customer)
-        }
+      if (members.length === 0) {
+        throw new ServerError('No Members', {code: 'UserNoMembers'})
+      }
+
+      for (let member of members) {
+        await member.populate('customer', { id: 1, name: 1 }).execPopulate()
+        customers.push(member.customer)
       }
 
       await session.populate({
@@ -33,6 +37,12 @@ module.exports = (app) => {
       }).execPopulate()
 
       let member = session.member
+      if (!member) {
+        throw new ServerError('Invalid Session', {code: 'SessionNoMember'})
+      }
+      if (!member.customer) {
+        throw new ServerError('Invalid Session', {code: 'SessionNoCustomerMember'})
+      }
 
       let profile = {}
       profile.id = user._id.toString()
@@ -52,14 +62,12 @@ module.exports = (app) => {
 
       return res.json(profile)
     } catch (err) {
-      errorResponse(err, res)
+      next(err)
     }
   })
 
   /**
-   *
    * replace current session customer. need to generate a new session
-   *
    */
   router.put(
     '/customer/:customer',
@@ -74,21 +82,13 @@ module.exports = (app) => {
         })
 
         if (!member) {
-          let err = new Error('Forbidden')
-          err.statusCode = 403
-          throw err
+          throw new ClientError('Forbidden', {code:'UserIsNoMember', statusCode: 403})
         }
 
         req.member = member
         next()
       } catch (err) {
-        if (err.statusCode) {
-          res.status(err.statusCode)
-          res.json({ message: 'Internal Server Error', statusCode: 500 })
-        } else {
-          res.status(500)
-          res.json({ message: 'Internal Server Error', statusCode: 500 })
-        }
+        next(err)
       }
     },
     async (req, res, next) => {
@@ -99,7 +99,7 @@ module.exports = (app) => {
         const model = { _id: session._id, user_id: session.user_id } // information to identify target user
 
         app.service.notifications.sockets.sendEvent({
-          topic: 'session',
+          topic: TopicConstants.SESSION,
           data: {
             model,
             model_type: 'session',
@@ -109,26 +109,31 @@ module.exports = (app) => {
 
         // destroy current session
         await req.session.remove()
+
         // return new session
         res.json({ access_token: newSession.token })
       } catch (err) {
-        errorResponse(err, res)
+        next(err)
       }
     }
   )
 
   const logout = async (req, res, next) => {
-    const session = req.session
-    app.service.notifications.sockets.sendEvent({
-      topic: 'session',
-      data: {
-        model: { _id: session._id, user_id: session.user_id },
-        model_type: 'session',
-        operation: DELETE
-      }
-    })
-    await session.remove()
-    return res.status(200).json('OK')
+    try {
+      const session = req.session
+      app.service.notifications.sockets.sendEvent({
+        topic: TopicConstants.SESSION,
+        data: {
+          model: { _id: session._id, user_id: session.user_id },
+          model_type: 'session',
+          operation: DELETE
+        }
+      })
+      await session.remove()
+      return res.status(200).json('OK')
+    } catch (err) {
+      next(err)
+    }
   }
 
   router.post('/logout', logout)
@@ -136,9 +141,13 @@ module.exports = (app) => {
 
   router.put('/refresh', async (req, res, next) => {
     //const user = req.user
-    const session = req.session
-    await app.service.authentication.refreshSession(session)
-    return res.status(200).json({ access_token: session.token })
+    try {
+      const session = req.session
+      await app.service.authentication.refreshSession(session)
+      return res.status(200).json({ access_token: session.token })
+    } catch (err) {
+      next(err)
+    }
   })
 
   router.get('/verify', (req, res, next) => {
@@ -156,9 +165,7 @@ module.exports = (app) => {
       try {
         //const params = req.params.all()
         if (!req.body) {
-          let err = new Error('Invalid Payload')
-          err.statusCode(400)
-          throw err
+          throw new ClientError('Invalid Payload', { code: 'EmptyBody' })
         }
 
         let payload = req.body
@@ -182,15 +189,13 @@ module.exports = (app) => {
         }
 
         if (Object.keys(updates) === 0) {
-          let err = new Error('Invalid Payload')
-          err.statusCode(400)
-          throw err
+          throw new ClientError('Invalid Payload', { code: 'EmptyNotificationsUpdate' })
         }
 
         req.notifications = updates
         next()
       } catch (err) {
-        errorResponse(err, res)
+        next(err)
       }
     },
     async (req, res, next) => {
@@ -205,7 +210,7 @@ module.exports = (app) => {
 
         res.status(200).json({ notifications: member.notifications })
       } catch (err) {
-        errorResponse(err, res)
+        next(err)
       }
     }
   )
@@ -237,13 +242,4 @@ module.exports = (app) => {
   })
 
   return router
-}
-
-const errorResponse = (err, res) => {
-  logger.error(err)
-  if (err.statusCode) {
-    res.status(err.statusCode).json(err.message)
-  } else {
-    res.status(500).json('Internal Server Error')
-  }
 }

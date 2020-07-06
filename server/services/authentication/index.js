@@ -5,6 +5,7 @@ const passportLdap = require('passport-ldapauth')
 const ldapauth = require('./ldapauth')
 
 const logger = require('../../logger')(':services:authentication')
+const { ClientError } = require('../../errors')
 
 /**
  * jwToken
@@ -67,21 +68,24 @@ module.exports = function (app) {
         let user = await userFetch({ $or: [{ email: username }, { username }] })
 
         if (!user) {
-          logger.error('invalid request, client %s', username)
-          return unauthorized(next)
+          // username does not exists
+          throw new ClientError('Unauthorized',{code: 'UsernameNotFound', statusCode: 401})
         }
 
         // basic authentication requires a local passport
-        let passport = await app.models.passport.findOne({
-          user: user._id,
-          protocol: 'local'
-        })
+        let passport = await app.models.passport.findOne({ user: user._id, protocol: 'local' })
 
+        if (!passport) {
+          // user is not authorized to authenticate with username / password
+          throw new ClientError('Unauthorized',{code: 'LocalPassportNotFound', statusCode: 401})
+        }
+
+        // verify provided password
         await passport.validatePassword(password)
 
-        // WARNING ! dont change. password is changed is .save is used.
+        // WARNING ! dont change. password is changed if .save is used.
         // every time passport is saved the password is bcrypted
-        await app.models.passport.updateOne({ _id: passport._id },{ $set: { last_access: new Date() } })
+        await app.models.passport.updateOne({ _id: passport._id },{ $set: { last_login: new Date() } })
 
         logger.log('client %s/%s connected [basic]', user.username, user.email)
         return next(null, { user, passport })
@@ -90,7 +94,6 @@ module.exports = function (app) {
           logger.error(`unauthorized. u:${username}/p:${password}`)
           return unauthorized(next)
         } else {
-          logger.error('error fetching user by token')
           logger.error(err)
           return next(err)
         }
