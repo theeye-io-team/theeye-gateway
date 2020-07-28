@@ -580,7 +580,8 @@ module.exports = (app) => {
             logger.debug(`${event.id}|${user.email} notified`)
           })
           .catch(err => {
-            logger.error(`${event.id}|mail service error: ${err}`)
+            let org = (event.data && event.data.organization)
+            logger.error(`${event.id}|${event.topic}|${org} mail service error: ${err}`)
           })
       }
     }

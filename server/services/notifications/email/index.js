@@ -10,17 +10,18 @@ class Email {
 
   async sendEvent (event, user) {
     if (!isHandledEvent(event)) {
-      logger.log(`${event.id}|${event.topic} dismiss. not handled`)
+      logger.log(`topic dismiss. not handled`)
       // ignore
       return
     }
 
     if (!user.email) {
-      throw new Error(`${event.id}|${event.topic} - ${user._id} address not set`)
+      throw new Error(`${user._id} address not set`)
     }
 
     if (!event.data.subject || !event.data.body) {
-      throw new Error(`${event.id}|${event.topic} - missing subject and body`)
+      logger.data(event)
+      throw new Error(`missing subject and body`)
     }
 
     let message = {
