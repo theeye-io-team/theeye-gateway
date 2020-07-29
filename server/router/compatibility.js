@@ -29,26 +29,9 @@ module.exports = (app) => {
       try {
         let user = req.user
         let passport = req.passport
-        let customer = req.query.customer || null
-        let query = { user_id: user._id }
-        if (customer) {
-          query.customer_name = customer
-        }
+        let customerName = req.query.customer || null
 
-        let memberOf = await app.models.member.find(query)
-
-        if (memberOf.length === 0) {
-          return res
-            .status(403)
-            .json({
-              message: 'Forbidden',
-              reason: 'you are not a member',
-              statusCode: 403
-            })
-        }
-
-        let member = memberOf[0]
-        const session = await app.service.authentication.createSession({ member, protocol: passport.protocol })
+        const session = await app.service.authentication.membersLogin({ user, passport, customerName })
         res.json({ access_token: session.token })
       } catch (err) {
         logger.error(err)
