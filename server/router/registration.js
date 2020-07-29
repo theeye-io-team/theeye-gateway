@@ -35,7 +35,7 @@ module.exports = (app) => {
         }
         let fields = 'username email invitation_token'
 
-        let user = await app.models.users.uiUser.findOne(query, fields).exec()
+        let user = await app.models.users.uiUser.findOne(query, fields)
         if (!user) {
           let err = new Error('User Not Found')
           err.status = 404
@@ -50,101 +50,74 @@ module.exports = (app) => {
     }
   )
 
-  router.post(
-    '/activate',
-    async (req, res, next) => {
-      try {
-        if (!req.body.invitation_token) return res.status(400).json({message: 'invitation_token is required'})
-        if (!req.body.password) return res.status(400).json({message: 'password is required'})
-        if (!req.body.email) return res.status(400).json({message: 'email is required'})
-        if (!req.body.username) return res.status(400).json({message: 'username is required'})
-        if (!validateUsername(req.body.username)) return res.status(400).json({message: 'incorrect username format'})
+  router.post('/activate', async (req, res, next) => {
+    try {
+      if (!req.body.invitation_token) return res.status(400).json({message: 'invitation_token is required'})
+      if (!req.body.password) return res.status(400).json({message: 'password is required'})
+      if (!req.body.email) return res.status(400).json({message: 'email is required'})
+      if (!req.body.username) return res.status(400).json({message: 'username is required'})
+      if (!validUsername(req.body.username)) return res.status(400).json({message: 'incorrect username format'})
 
-        const invitation_token = req.body.invitation_token
-        let decoded = app.service.authentication.verify(invitation_token)
-        if (!decoded.email || (decoded.email !== req.body.email)) {
-          let err = new Error('Invalid invitation_token')
-          err.status = 400
-          throw err
-        }
-
-        let body = req.body
-
-        // check if username is taken
-        let prevUser = await app.models.users.uiUser.findOne({username: body.username}).exec()
-        if (prevUser) {
-          let err = new Error('usernameTaken')
-          err.status = 400
-          throw err
-        }
-
-        // activate user
-        let query = {
-          invitation_token: body.invitation_token,
-          email: body.email,
-          enabled: false
-        }
-
-        let user = await app.models.users.uiUser.findOne(query).exec()
-        if (!user) {
-          let err = new Error('User Not Found')
-          err.status = 404
-          throw err
-        }
-
-        // authenticate user
-        let member = await app.models.member.findOne({user_id: user._id})
-        if (!member) {
-          let err = new Error('Member Not Found')
-          err.status = 404
-          throw err
-        }
-
-        user.set({ enabled: true, username: body.username })
-        await user.save()
-
-        // create passport
-        let passportData = {
-          protocol: 'local',
-          provider: 'theeye',
-          password: body.password,
-          user: user._id,
-          user_id: user._id
-        }
-
-        let passport = await app.models.passport.create(passportData)
-
-        const session = await app.service.authentication.createSession({ member, protocol: passport.protocol })
-        res.json({ access_token: session.token })
-      } catch (err) {
-        if (err.status) { res.status(err.status).json( { message: err.message }) }
-        else res.status(500).json('Internal Server Error')
+      const invitation_token = req.body.invitation_token
+      let decoded = app.service.authentication.verify(invitation_token)
+      if (!decoded.email || (decoded.email !== req.body.email)) {
+        throw new ClientError('Invalid invitation_token')
       }
+
+      let body = req.body
+      let user = await verifyUserActivationData(body)
+
+      // activate user
+      user.set({ enabled: true, username: body.username })
+      await user.save()
+
+      // create local passport
+      const passportData = {
+        protocol: 'local',
+        provider: 'theeye',
+        password: body.password,
+        user: user._id,
+        user_id: user._id
+      }
+      const passport = await app.models.passport.create(passportData)
+
+      let session = await app.service.authentication.membersLogin({ user, passport })
+      res.json({ access_token: session.token })
+    } catch (err) {
+      next(err)
     }
-  )
+  })
 
   router.post(
     '/register',
     async (req, res, next) => {
       try {
-        // verify grecaptcha
-        if (!req.body.grecaptcha) {
-          throw new ClientError('Invalid payload. Verification error')
-        }
-
         const config = app.config.grecaptcha
-        const secret = config.v2_secret
-        const url = config.url
+        if (config.enabled !== false) {
+          // verify grecaptcha
+          if (!req.body.grecaptcha) {
+            throw new ClientError('Invalid payload. Verification error')
+          }
 
-        const form = new FormData()
-        form.append('secret', secret)
-        form.append('response', req.body.grecaptcha)
+          const secret = config.v2_secret
+          if (!secret) {
+            throw new ServerError('Verification key config error')
+          }
+          const url = config.url
+          if (!url) {
+            throw new ServerError('Verification url config error')
+          }
 
-        let response = await got.post(url, { body: form })
-        let json = JSON.parse(response.body)
+          const form = new FormData()
+          form.append('secret', secret)
+          form.append('response', req.body.grecaptcha)
 
-        if (json.success !== true) {
-          throw new ClientError('Invalid payload. Verification error')
+          let response = await got.post(url, { body: form })
+          let json = JSON.parse(response.body)
+
+          if (json.success !== true) {
+            throw new ClientError('Invalid payload. Verification error')
+          }
         }
 
         next()
@@ -205,7 +178,7 @@ module.exports = (app) => {
         await sendUserRegistrationEMail(app, {
           name: user.name,
           email: user.email,
-          activation_link: getActivationLink(user.invitation_token, app.config.finishRegistrationUrl)
+          activation_link: getActivationLink(user.invitation_token, app.config.services.registration.finishUrl)
         })
 
         return res.status(200).json({ message: 'success' })
@@ -236,8 +209,7 @@ module.exports = (app) => {
 
         res.json({})
       } catch (err) {
-        if (err.status) { res.status(err.status).json( { message: err.message }) }
-        else res.status(500).json('Internal Server Error')
+        next(err)
       }
     }
   )
@@ -251,8 +223,8 @@ module.exports = (app) => {
         if (!req.body.email) return res.status(400).json({message: 'email is required'})
         if (!req.body.username) return res.status(400).json({message: 'username is required'})
         if (!req.body.customername) return res.status(400).json({message: 'customername is required'})
-        if (!validateUsername(req.body.username)) return res.status(400).json({message: 'incorrect username format'})
-        if (!validateCustomerName(req.body.customername)) return res.status(400).json({message: 'incorrect username format'})
+        if (!validUsername(req.body.username)) return res.status(400).json({message: 'incorrect username format'})
+        if (!validCustomerName(req.body.customername)) return res.status(400).json({message: 'incorrect username format'})
 
         const invitation_token = req.body.invitation_token
         let decoded = app.service.authentication.verify(invitation_token)
@@ -265,7 +237,7 @@ module.exports = (app) => {
         let body = req.body
 
         // check if username is taken
-        let prevUser = await app.models.users.uiUser.findOne({username: body.username}).exec()
+        let prevUser = await app.models.users.uiUser.findOne({username: body.username})
         if (prevUser) {
           let err = new Error('usernameTaken')
           err.status = 400
@@ -290,7 +262,7 @@ module.exports = (app) => {
         await user.save()
 
         // create customer
-        let customer = await app.models.customer.create({name: body.customername})
+        const customer = await app.models.customer.create({ name: body.customername.toLowerCase() })
         if (!customer) {
           let err = new Error('Error creating customer')
           err.status = 500
@@ -333,14 +305,47 @@ module.exports = (app) => {
       }
     }
   )
+
+  const verifyUserActivationData = async ({ invitation_token, email, username }) => {
+    let query = { invitation_token, email, enabled: false }
+
+    // search user to activate
+    let users = await app.models.users.uiUser.find(query)
+    if (!users || users.length === 0) {
+      throw new ClientError('User not found', { statusCode: 404 })
+    }
+
+    if (users.length > 1) {
+      throw new ServerError('Invalid activation data')
+    }
+
+    let user = users[0]
+
+    // check if username is taken
+    const prevUsers = await app.models.users.uiUser.find({ username })
+    if (Array.isArray(prevUsers) && prevUsers.length > 0) {
+      if (prevUsers.length > 1) {
+        throw new ClientError('usernameTaken')
+      }
+
+      if (prevUsers.length === 1) {
+        if (user._id.toString() !== prevUsers[0]._id.toString()) {
+          throw new ClientError('usernameTaken')
+        }
+      }
+    }
+
+    return user
+  }
+
   return router
 }
 
-const validateUsername = (username) => {
+const validUsername = (username) => {
   return (isEmail(username) || isEmail(username + '@theeye.io'))
 }
 
-const validateCustomerName = (name) => {
+const validCustomerName = (name) => {
    let re = /^[a-zA-Z0-9._]+$/
    return re.test(name)
 }
@@ -357,7 +362,12 @@ const sendUserRegistrationEMail = (app, data) => {
     body: emailTemplates.registration(data)
   }
 
-  return app.service.notifications.email.send(options, data.email)
+  let addresses = data.email
+  if (app.config.services.registration.notifyUs === true) {
+    // bcc us
+    addresses += `,${app.config.app.supportEmail}`
+  }
+  return app.service.notifications.email.send(options, addresses)
 }
 
 const randomToken = () => {

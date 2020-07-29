@@ -31,7 +31,7 @@ let html = `
                     Hi there <strong>${data.name}</strong>,
                   </p>
                   <p style="font-family: 'Helvetica Neue', 'Helvetica', Helvetica, Arial, sans-serif; font-size: 14px; line-height: 1.6em; font-weight: normal; margin: 0 0 10px; padding: 0;">
-                    You've been invited to be part of the organization ${data.customer_name}
+                    You've been invited to be part of TheEye.io
                   </p>
                   <h1 style="font-family: 'Helvetica Neue', Helvetica, Arial, 'Lucida Grande', sans-serif; font-size: 36px; line-height: 1.2em; color: #111111; font-weight: 200; margin: 40px 0 10px; padding: 0;">
                     Everything is simpler with theEye

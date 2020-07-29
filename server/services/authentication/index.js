@@ -143,11 +143,42 @@ module.exports = function (app) {
       }
     }
 
+    async membersLogin ({ user, passport, customerName }) {
+      let query = { user_id: user._id }
+      if (customerName) {
+        query.customer_name = customerName
+      }
+
+      let memberOf = await app.models.member.find(query)
+      if (memberOf.length === 0) {
+        app.service.notifications.eventNotifySupport({
+          subject: 'USER LOGIN MEMBERS ERROR.',
+          body: `
+            <div>
+              User is not assigned to any Organization. Cannot login.<br/>
+              <p>id: ${user._id}</p>
+              <p>username: ${user.username}</p>
+              <p>email: ${user.email}</p>
+            </div>
+          `
+        })
+
+        throw new ClientError('Forbidden', {
+          message: 'Forbidden',
+          reason: 'not a member',
+          statusCode: 403
+        })
+      }
+
+      let member = memberOf[0]
+      return this.createSession({ member, protocol: passport.protocol })
+    }
+
     /**
      * @param {Object} params
      * @property {Member} params.member
      * @property {Passport} params.passport
-     * @return {Promise}
+     * @return {Promise} session
      */
     async createSession (params) {
       let { member, protocol, expiration } = params

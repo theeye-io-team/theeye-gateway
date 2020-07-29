@@ -3,7 +3,8 @@ module.exports = {
   app: {
     base_url: 'http://127.0.0.1',
     port: 6080,
-    secret: '692fc164a0c06a9fd02575cf17688c9e'
+    secret: '692fc164a0c06a9fd02575cf17688c9e',
+    supportEmail: 'info@theeye.io'
   },
   mongodb: {
     hosts: "localhost:27017",
@@ -26,6 +27,7 @@ module.exports = {
       url: 'http://127.0.0.1:60080/job/secret/d1ef702640e8a6bdaf56e452af4425727fc3750a15d26645d2ed0a4ad1f4bf9f?customer=demo&task=5eea8228aa74880dfcba2e25'
     }
   },
+  activateUrl: 'http://127.0.0.1:6080/activate?',
   services: {
 		aws: {
 			username: '',
@@ -34,6 +36,8 @@ module.exports = {
 			region: ''
 		},
     registration: {
+      notifyUs: true,
+      finishUrl: 'http://127.0.0.1:6080/finishregistration?'
       //enabled: false
     },
     authentication: {
@@ -115,7 +119,6 @@ module.exports = {
       }
     }
   },
-  activateUrl: 'http://127.0.0.1:6080/activate?',
   ///**
   // *
   // * redis options to pass directly to node redis client
@@ -128,6 +131,7 @@ module.exports = {
   // *
   // */
   grecaptcha: {
+    enabled: false,
     v2_secret: '',
     //v3_secret: '',
     url: 'https://www.google.com/recaptcha/api/siteverify'

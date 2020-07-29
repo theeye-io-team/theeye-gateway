@@ -6,7 +6,6 @@ const logger = require('../logger')('router:auth')
 module.exports = (app) => {
   const router = express.Router()
 
-  //const bearerMiddleware = app.service.authentication.middlewares.bearerPassport
   router.post(
     '/login',
     (req, res, next) => {
@@ -20,30 +19,12 @@ module.exports = (app) => {
       try {
         let user = req.user
         let passport = req.passport
-        let customer = req.query.customer || null
-        let query = { user_id: user._id }
-        if (customer) {
-          query.customer_name = customer
-        }
+        let customerName = req.query.customer || null
 
-        let memberOf = await app.models.member.find(query)
-
-        if (memberOf.length === 0) {
-          return res
-            .status(403)
-            .json({
-              message: 'Forbidden',
-              reason: 'you are not a member',
-              statusCode: 403
-            })
-        }
-
-        let member = memberOf[0]
-        const session = await app.service.authentication.createSession({ member, protocol: passport.protocol })
+        let session = await app.service.authentication.membersLogin({ user, passport, customerName })
         res.json({ access_token: session.token })
       } catch (err) {
-        logger.error(err)
-        res.status(500).json({message:'internal server error'})
+        next(err)
       }
     }
   )
@@ -85,7 +66,6 @@ module.exports = (app) => {
           await sendUserActivationEMail(app, {
             name: user.name,
             email: user.email,
-            customer_name: '',
             activation_link: getActivationLink(user.invitation_token, app.config.activateUrl)
           })
         }

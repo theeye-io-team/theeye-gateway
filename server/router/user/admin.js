@@ -4,175 +4,161 @@ const CredentialsConstants = require('../../constants/credentials')
 const emailTemplates = require('../../services/notifications/email/templates')
 const isEmail = require('validator/lib/isEmail')
 
+const { ClientError, ServerError } = require('../../errors')
+
 module.exports = (app) => {
   const router = express.Router()
 
-  router.get(
-    '/',
-    async (req, res, next) => {
-      try {
-        let query = {}
-        let ninCredentials = [CredentialsConstants.AGENT, CredentialsConstants.INTEGRATION]
-        query.credential = { $nin: ninCredentials }
+  router.get('/', async (req, res, next) => {
+    try {
+      let query = {}
+      let ninCredentials = [CredentialsConstants.AGENT, CredentialsConstants.INTEGRATION]
+      query.credential = { $nin: ninCredentials }
 
-        let users = await app.models.users.uiUser.find(query).exec()
-        res.json(users)
-      } catch (err) {
-        if (err.status) { res.status(err.status).json( { message: err.message }) }
-        else res.status(500).json('Internal Server Error')
+      let users = await app.models.users.uiUser.find(query).exec()
+      res.json(users)
+    } catch (err) {
+      next(err)
+    }
+  })
+
+  router.post('/', async (req, res, next) => {
+    try {
+      const body = req.body
+      validateUserData(body)
+
+      let { email, username } = body
+      let user = await app.models.users.uiUser.findOne({
+        $or: [ { email }, { username } ]
+      })
+
+      if (user) {
+        if (user.username == username) {
+          throw new ClientError('Username is in use. Choose another one')
+        }
+        if (user.email == email) {
+          throw new ClientError('Email is in user. Choose another one')
+        }
       }
 
-    }
-  )
-
-  router.post(
-    '/',
-    async (req, res, next) => {
-      try {
-        if (!req.body.hasOwnProperty('enabled')) return res.status(400).json({message: 'enabled is required'})
-        if (!req.body.username) return res.status(400).json({message: 'username is required'})
-        if (!req.body.name) return res.status(400).json({message: 'name is required'})
-        if (!req.body.email) return res.status(400).json({message: 'email is required'})
-        if (!validateUsername(req.body.username)) return res.status(400).json({message: 'incorrect username format'})
-        if (!isEmail(req.body.email)) return res.status(400).json({message: 'incorrect email format'})
-
-        var data = {
-          username: req.body.username,
-          name: req.body.name,
-          email: req.body.email,
-          credential: null,
-          enabled: req.body.enabled
-        }
-
-        if (data.enabled) {
-          if (!req.body.password) return res.status(400).json({message: 'password is required'})
-          if(req.body.password !== req.body.confirmPassword) return res.status(400).json({message: 'passwords dont match'})
-          if(req.body.password.length < 8) return res.status(400).json({message: 'password should have at least 8 characters'})
-          data.password = req.body.password
-        }
-
-        let prevUser = await app.models.users.uiUser.findOne({$or:[
-          {email: data.email},
-          {username: data.username}
-        ]})
-
-        if (prevUser) {
-          if (prevUser.username == data.username) return res.status(400).json({message: 'The username is taken. Choose another one'})
-          if (prevUser.email == data.email) return res.status(400).json({message: 'The email is taken. Choose another one'})
-        } else {
-          let newUser = await createUser(app, req.user, data)
-          res.json(newUser)
-        }
-      } catch (err) {
-        if (err.status) { res.status(err.status).json( { message: err.message }) }
-        else res.status(500).json('Internal Server Error')
+      const data = {
+        username: body.username,
+        name: body.name,
+        email: body.email,
+        enabled: body.enabled,
+        password: body.password
       }
+
+      user = await createUser(app, req.user, data)
+      res.json(user)
+    } catch (err) {
+      next(err)
     }
-  )
+  })
 
-  router.put(
-    '/:id',
-    async (req, res, next) => {
-      try {
-        const id = req.params.id
+  router.put('/:id', async (req, res, next) => {
+    try {
+      const body = req.body
+      const id = req.params.id
 
-        if (!req.body.hasOwnProperty('enabled')) return res.status(400).json({message: 'enabled is required'})
-        if (!req.body.username) return res.status(400).json({message: 'username is required'})
-        if (!req.body.name) return res.status(400).json({message: 'name is required'})
-        if (!req.body.email) return res.status(400).json({message: 'email is required'})
-        if (!validateUsername(req.body.username)) return res.status(400).json({message: 'incorrect username format'})
-        if (!isEmail(req.body.email)) return res.status(400).json({message: 'incorrect email format'})
+      validateUserData(body)
 
-        let user = await app.models.users.uiUser.findById(id)
-        if (!user) {
-          let err = new Error('User Not Found')
-          err.status = 404
-          throw err
-        }
+      const user = await app.models.users.uiUser.findById(id)
+      if (!user) {
+        throw new ClientError('User not found', { statusCode: 404 })
+      }
 
-        user.set({
-          name: req.body.name,
-          username: req.body.username,
-          email: req.body.email,
-          enabled: req.body.enabled
-        })
+      user.set({
+        name: body.name,
+        username: body.username,
+        email: body.email,
+        enabled: body.enabled
+      })
 
+      await user.save()
+      res.json(user)
+    } catch (err) {
+      next(err)
+    }
+  })
+
+  router.delete('/:id', async (req, res, next) => {
+    try {
+      const id = req.params.id
+      const user = await app.models.users.uiUser.findById(id)
+      if (!user) {
+        throw new ClientError('User not found', { statusCode: 404 })
+      }
+
+      await app.models.passport.deleteMany({ user_id: user._id })
+      await app.models.member.deleteMany({ user_id: user._id })
+      await user.remove()
+
+      res.json({})
+    } catch (err) {
+      next(err)
+    }
+  })
+
+  router.put('/:id/reinvite', async (req, res, next) => {
+    try {
+      const id = req.params.id
+      const user = await app.models.users.uiUser.findById(id)
+      if (!user) {
+        throw new ClientError('User not found', { statusCode: 404 })
+      }
+
+      if (user.enabled === true) {
+        await sendInvitationEMail(app, { inviter: req.user, invitee: user })
+      } else {
+        const token = app.service.authentication.issue({ email: user.email })
+
+        user.set({ invitation_token: token })
         await user.save()
-        res.json(user)
-      } catch (err) {
-        if (err.status) { res.status(err.status).json( { message: err.message }) }
-        else res.status(500).json('Internal Server Error')
+
+        await sendActivationEMail(app, {
+          name: user.name,
+          email: user.email,
+          activation_link: getActivationLink(user.invitation_token, app.config.activateUrl)
+        })
       }
+
+      res.json(user)
+    } catch (err) {
+      next(err)
     }
-  )
-
-  router.delete(
-    '/:id',
-    async (req, res, next) => {
-      try {
-        const id = req.params.id
-
-        let user = await app.models.users.uiUser.findById(id)
-        if (!user) {
-          let err = new Error('User Not Found')
-          err.status = 404
-          throw err
-        }
-
-        await app.models.passport.deleteMany({user_id: user._id})
-        await app.models.member.deleteMany({user_id: user._id})
-
-        await user.remove()
-
-        res.json({})
-      } catch (err) {
-        if (err.status) { res.status(err.status).json( { message: err.message }) }
-        else res.status(500).json('Internal Server Error')
-      }
-    }
-  )
-
-  router.put(
-    '/:id/reinvite',
-    async (req, res, next) => {
-      try {
-        const id = req.params.id
-
-        let user = await app.models.users.uiUser.findById(id)
-        if (!user) {
-          let err = new Error('User Not Found')
-          err.status = 404
-          throw err
-        }
-
-        if (user.enabled === true) {
-          await sendInvitationEMail(app, {
-            inviter: req.user,
-            invitee: user
-          })
-        } else {
-          const token = app.service.authentication.issue({ email: user.email })
-          user.set({invitation_token: token})
-
-          await user.save()
-
-          await sendUserActivationEMail(app, {
-            name: user.name,
-            email: user.email,
-            customer_name: '',
-            activation_link: getActivationLink(user.invitation_token, app.config.activateUrl)
-          })
-        }
-
-        res.json(user)
-      } catch (err) {
-        if (err.status) { res.status(err.status).json( { message: err.message }) }
-        else res.status(500).json('Internal Server Error')
-      }
-    }
-  )
+  })
 
   return router
+}
+
+const validateUserData = (data) => {
+  if (typeof data.enabled !== 'boolean') {
+    throw new ClientError('enabled is required')
+  }
+  if (!data.username) {
+    throw new ClientError('username is required')
+  }
+  if (!validateUsername(data.username)) {
+    throw new ClientError('username is invalid')
+  }
+  if (!data.name) {
+    throw new ClientError('name is required')
+  }
+  if (!data.email) {
+    throw new ClientError('email is required')
+  }
+  if (!isEmail(data.email)) {
+    throw new ClientError('email is invalid')
+  }
+  if (data.password) {
+    if (data.password !== data.confirmPassword) {
+      throw new ClientError('Passwords doesn\'t match')
+    }
+    if (data.password.length < 8) {
+      throw new ClientError('Passwords should be at least 8 characters long')
+    }
+  }
 }
 
 const createUser = async (app, inviter, data) => {
@@ -188,37 +174,31 @@ const createUser = async (app, inviter, data) => {
     onboardingCompleted: false
   }
 
-  if(!data.enabled) {
-    userData.invitation_token = app.service.authentication.issue({ email: data.email })
-  }
+  const user = new app.models.users.uiUser(userData)
 
-  let newUser = await app.models.users.uiUser.create(userData)
-
-  if (newUser.enabled===true) {
+  if (user.enabled === true) {
     let passportData = {
       protocol: 'local',
       provider: 'theeye',
       password: data.password,
-      user: newUser._id,
-      user_id: newUser._id
+      user: user._id,
+      user_id: user._id
     }
 
     await app.models.passport.create(passportData)
-
-    await sendInvitationEMail(app, {
-      inviter: inviter,
-      invitee: newUser
-    })
+    await sendInvitationEMail(app, { inviter, invitee: user })
   } else {
-    await sendUserActivationEMail(app, {
-      name: newUser.name,
-      email: newUser.email,
-      customer_name: '',
-      activation_link: getActivationLink(newUser.invitation_token, app.config.activateUrl)
+    user.invitation_token = app.service.authentication.issue({ email: data.email })
+
+    await sendActivationEMail(app, {
+      name: user.name,
+      email: user.email,
+      activation_link: getActivationLink(user.invitation_token, app.config.activateUrl)
     })
   }
 
-  return newUser
+  await user.save()
+  return user
 }
 
 const getActivationLink = (invitation_token, activate_url) => {
@@ -227,7 +207,7 @@ const getActivationLink = (invitation_token, activate_url) => {
   return (activate_url + query)
 }
 
-const sendUserActivationEMail = (app, data) => {
+const sendActivationEMail = (app, data) => {
   let options = {
     subject: 'TheEye Account Activation',
     body: emailTemplates.activation(data)
@@ -238,12 +218,7 @@ const sendUserActivationEMail = (app, data) => {
 
 const sendInvitationEMail = async (app, data) => {
   let html = emailTemplates.invitation(data)
-
-  var options = {
-    subject: 'TheEye Invitation',
-    body: html
-  }
-
+  var options = { subject: 'TheEye Invitation', body: html }
   await app.service.notifications.email.send(options, data.invitee.email)
 }
 
