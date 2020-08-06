@@ -2,105 +2,86 @@ const express = require('express')
 const logger = require('../../logger')('router:customer')
 const crypto = require('crypto')
 const CredentialsConstants = require('../../constants/credentials')
+const isEmail = require('validator/lib/isEmail')
+
+const { ClientError, ServerError } = require('../../errors')
 
 module.exports = (app) => {
   const router = express.Router()
 
-  router.get(
-    '/',
-    async (req, res, next) => {
-      try {
-        let customers = await app.models.customer.find({}).exec()
-        res.json(customers)
-      } catch (err) {
-        if (err.status) { res.status(err.status).json( { message: err.message }) }
-        else res.status(500).json('Internal Server Error')
-      }
+  router.get('/', async (req, res, next) => {
+    try {
+      let customers = await app.models.customer.find({}).exec()
+      res.json(customers)
+    } catch (err) {
+      next(err)
     }
-  )
+  })
 
-  router.post(
-    '/',
-    async (req, res, next) => {
-      try {
-        const data = req.body
+  router.post('/', async (req, res, next) => {
+    try {
+      const data = req.body
+      let customer
+      let name = data.name.toLowerCase()
 
-        if (!validateCustomerName(req.body.name)) return res.status(400).json({message: 'incorrect customer name format'})
-
-        let customer = await app.models.customer.create(data)
-        if (!customer) {
-          let err = new Error('Error creating customer')
-          err.status = 500
-          throw err
-        }
-
-        await createCustomerAgent(app, customer)
-
-        res.json(customer)
-      } catch (err) {
-        if (err.status) { res.status(err.status).json( { message: err.message }) }
-        else res.status(500).json('Internal Server Error')
+      if (!isValidCustomerName(name)) {
+        throw new ClientError('Invalid customer name format')
       }
-    }
-  )
 
-  router.put(
-    '/:id',
-    async (req, res, next) => {
-      try {
-        const id = req.params.id
-        const update = req.body
-
-        let customer = await app.models.customer.findById(id)
-        if (!customer) {
-          let err = new Error('Customer Not Found')
-          err.status = 404
-          throw err
-        }
-
-        customer.set(update)
-        await customer.save()
-
-        res.json(customer)
-      } catch (err) {
-        if (err.status) { res.status(err.status).json( { message: err.message }) }
-        else res.status(500).json('Internal Server Error')
+      customer = await app.models.customer.findOne({ name })
+      if (customer !== null) {
+        throw new ClientError(`customer already exists with name ${name}.`)
       }
+
+      customer = await app.models.customer.create(data)
+      await createCustomerAgent(app, customer)
+
+      res.json(customer)
+    } catch (err) {
+      next(err)
     }
-  )
+  })
 
-  router.delete(
-    '/:id',
-    async (req, res, next) => {
-      try {
-        const id = req.params.id
+  router.put('/:id', async (req, res, next) => {
+    try {
+      const id = req.params.id
+      const update = req.body
 
-        let customer = await app.models.customer.findById(id)
-        if (!customer) {
-          let err = new Error('Customer Not Found')
-          err.status = 404
-          throw err
-        }
-
-        await app.models.member.deleteMany({customer_id: customer._id})
-
-        await customer.remove()
-
-        res.json({})
-      } catch (err) {
-        if (err.status) { res.status(err.status).json( { message: err.message }) }
-        else res.status(500).json('Internal Server Error')
+      let customer = await app.models.customer.findById(id)
+      if (!customer) {
+        throw new ClientError('Customer Not Found')
       }
+
+      customer.set(update)
+      await customer.save()
+
+      res.json(customer)
+    } catch (err) {
+      next(err)
     }
-  )
+  })
+
+  router.delete('/:id', async (req, res, next) => {
+    try {
+      const id = req.params.id
+
+      let customer = await app.models.customer.findById(id)
+      if (!customer) {
+        throw new ClientError('Customer Not Found', { statusCode: 404 })
+      }
+
+      await app.models.member.deleteMany({ customer_id: customer._id })
+      await customer.remove()
+      res.json({})
+    } catch (err) {
+      next(err)
+    }
+  })
 
   return router
 }
 
-const randomToken = () => {
-  return crypto.randomBytes(20).toString('hex')
-}
-
+// @TODO move to IAM service
 const createCustomerAgent = async (app, customer) => {
   let cliendId = randomToken()
   let clientSecret = randomToken()
@@ -133,7 +114,7 @@ const createCustomerAgent = async (app, customer) => {
     user_id: agentUser._id
   }
 
-  await app.models.passport.create(passportData)
+  let passport = await app.models.passport.create(passportData)
 
   let memberData = {
     user: agentUser._id,
@@ -145,12 +126,11 @@ const createCustomerAgent = async (app, customer) => {
     enabled: true
   }
 
-  await app.models.member.create(memberData)
+  let member = await app.models.member.create(memberData)
 
-  return
+  return agentUser
 }
 
-const validateCustomerName = (name) => {
-   let re = /^[a-zA-Z0-9._]+$/
-   return re.test(name)
-}
+const randomToken = () => crypto.randomBytes(20).toString('hex')
+
+const isValidCustomerName = (name) => isEmail(`${name}@theeye.io`)

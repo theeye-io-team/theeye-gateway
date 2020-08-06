@@ -11,11 +11,13 @@ module.exports = (app) => {
 
   router.get('/', async (req, res, next) => {
     try {
-      let query = {}
-      let ninCredentials = [CredentialsConstants.AGENT, CredentialsConstants.INTEGRATION]
-      query.credential = { $nin: ninCredentials }
+      let { where } = req.query
 
-      let users = await app.models.users.uiUser.find(query).exec()
+      if (!where) {
+        where = { _type: { $ne: 'BotUser' } }
+      }
+
+      let users = await app.models.users.user.find(where)
       res.json(users)
     } catch (err) {
       next(err)
