@@ -237,8 +237,24 @@ module.exports = (app) => {
     }
   })
 
-  router.get('/passports', (req, res, next) => {
-    return res.status(200).json({})
+  router.get('/passports', async (req, res, next) => {
+    try {
+      const user = req.user
+      const passports = await app.models.passport
+        .find(
+          { user_id: user.id, provider: { $ne: 'theeye' } },
+          {
+            provider: 1,
+            protocol: 1,
+            last_login: 1,
+            creation_date: 1
+          }
+        )
+
+      res.status(200).json(passports)
+    } catch (err) {
+      next(err)
+    }
   })
 
   return router

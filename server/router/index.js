@@ -1,6 +1,7 @@
 const express = require('express')
 const path = require('path')
 const AuthRouter = require('./auth')
+const SocialAuthRouter = require('./auth/social')
 const SessionRouter = require('./session')
 const NotificationRouter = require('./notification')
 const InboxRouter = require('./inbox')
@@ -37,6 +38,7 @@ class Router {
     api.get('/finishregistration', staticRoute)
     api.get('/passwordreset', staticRoute)
     api.get('/admin/*', staticRoute)
+    api.get('/sociallogin', staticRoute)
 
     const bearerMiddleware = app.service.authentication.middlewares.bearerPassport
 
@@ -60,6 +62,7 @@ class Router {
     api.use('/helper', bearerMiddleware, HelperRouter(app))
 
     api.use('/api/auth', AuthRouter(app))
+    api.use('/api/auth/social', SocialAuthRouter(app))
     api.use('/api/notification', supervisorArrivalMiddleware, NotificationRouter(app))
     api.use('/api/inbox', bearerMiddleware, InboxRouter(app))
     api.use('/api/session', bearerMiddleware, SessionRouter(app))

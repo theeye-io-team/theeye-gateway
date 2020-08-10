@@ -1,6 +1,7 @@
 const passport = require('passport')
 const passportBearer = require('passport-http-bearer').Strategy
 const passportBasic = require('passport-http').BasicStrategy
+const googleStrategy = require('passport-google-oauth').OAuth2Strategy
 const passportLdap = require('passport-ldapauth')
 const ldapauth = require('./ldapauth')
 
@@ -22,8 +23,13 @@ module.exports = function (app) {
       passport.use(new passportBasic(this.verifyUserPassword))
       passport.use(new passportBearer(this.verifySessionToken))
 
-      if (this.config.strategies.ldapauth) {
-        passport.use(new passportLdap(this.config.strategies.ldapauth, ldapauth(app)))
+      let strategies = this.config.strategies
+      if (strategies.ldapauth) {
+        passport.use(new passportLdap(strategies.ldapauth, ldapauth(app)))
+      }
+
+      if (strategies.google) {
+        passport.use(new googleStrategy(strategies.google.options, this.verifyGoogle))
       }
 
       this.middlewares = { basicPassport, bearerPassport, ldapPassport }
@@ -62,10 +68,50 @@ module.exports = function (app) {
       return decoded
     }
 
+    async verifyGoogle (accessToken, refreshToken, profile, done) {
+      try {
+        let strategy = app.config.services.authentication.strategies['google']
+        let options = strategy.options
+        let identifier = profile.id
+        let email = profile._json.email
+
+        let user = await app.models.users.uiUser.findOne({email: email, enabled: true})
+
+        if (!user) {
+          let err = new Error('User not found')
+          err.status = 404
+          throw err
+        }
+
+        let passportData = {
+          protocol: options.protocol,
+          provider: 'google',
+          identifier: identifier,
+          user_id: user._id,
+          user: user._id,
+        }
+
+        let passport = await app.models.passport.findOne(passportData)
+        if (!passport) {
+          passportData.last_login = new Date()
+          passport = await app.models.passport.create(passportData)
+        } else {
+          passport.last_login = new Date()
+          passport.save()
+        }
+
+
+        done (null, { user, passport })
+      } catch (err) {
+        done(err)
+      }
+    }
+
     async verifyUserPassword (username, password, next) {
       try {
         logger.log('new connection [basic]')
-        let user = await userFetch({ $or: [{ email: username }, { username }] })
+        let user = await app.models.users
+          .user.findOne({ $or: [{ email: username }, { username }] })
 
         if (!user) {
           // username does not exists
@@ -85,7 +131,10 @@ module.exports = function (app) {
 
         // WARNING ! dont change. password is changed if .save is used.
         // every time passport is saved the password is bcrypted
-        await app.models.passport.updateOne({ _id: passport._id },{ $set: { last_login: new Date() } })
+        //await app.models.passport.updateOne({ _id: passport._id },{ $set: { last_login: new Date() } })
+
+        passport.last_login = new Date()
+        await passport.save()
 
         logger.log('client %s/%s connected [basic]', user.username, user.email)
         return next(null, { user, passport })
@@ -100,43 +149,23 @@ module.exports = function (app) {
       }
     }
 
-    verifySessionToken (token, next) {
+    async verifySessionToken (token, next) {
       logger.log('new connection [bearer]')
-
-      const findError = (err) => {
-        logger.error('error fetching user by token')
-        logger.error(err)
-        return next(err)
-      }
-
-      const success = async (session) => {
-        // fetch profile
-        try {
-          let user = await userFetch({ _id: session.user_id })
-          if (!user) {
-            // why ??
-            unauthorized(next)
-          } else {
-            logger.log('client %s/%s connected [bearer]', user.username, user.email)
-            next(null, user, session)
-          }
-        } catch (err) {
-          next(err)
-        }
-      }
 
       try {
         //let decoded = app.service.authentication.verify(token)
-        app.models.session
-          .findOne({ token })
-          .exec((err, session) => {
-            if (err) { findError(err) }
-            else if (!session) {
-              logger.error('invalid or outdated token %s', token)
-              unauthorized(next)
-            }
-            else { success(session) }
-          })
+        let session = await app.models.session.findOne({ token })
+        if (!session) {
+          throw new Error('invalid or outdated token')
+        }
+
+        let user = await app.models.users.user.findOne({ _id: session.user_id })
+        if (!user) {
+          throw new Error('user no longer available')
+        }
+
+        logger.log('client %s/%s connected [bearer]', user.username, user.email)
+        next(null, user, session)
       } catch (err) { // jwt verify error
         logger.error(err)
         unauthorized(next)
@@ -296,17 +325,6 @@ module.exports = function (app) {
         next()
       }
     }, {session: false})(req, res, next)
-  }
-
-  const userFetch = (where) => {
-    return new Promise((resolve, reject) => {
-      app.models.users.user
-        .findOne(where)
-        .exec((err, user) => {
-          if (err) { reject(err) }
-          else { resolve(user) }
-        })
-    })
   }
 
   const unauthorized = (next) => {

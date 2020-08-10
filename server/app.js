@@ -2,6 +2,7 @@ const express = require('express')
 const path = require('path')
 const http = require('http')
 const https = require('https')
+const passport = require('passport')
 const Router = require('./router')
 const Models = require('./models')
 
@@ -50,6 +51,8 @@ class App extends EventEmitter {
 
     api.use(express.json())
     api.use(express.urlencoded({ extended: true }))
+
+    api.use(passport.initialize())
 
     // authentication require models
     //this.service.authentication.middleware()

@@ -1,4 +1,3 @@
-
 module.exports = {
   app: {
     base_url: 'http://127.0.0.1',
@@ -64,7 +63,17 @@ module.exports = {
         //     groups: 'memberOf'
         //   },
         //   customerName: '' // default customer name
-        // }
+        // },
+        google: {
+          name: 'Google',
+          options: {
+            protocol: 'oauth2',
+            clientID : '212014499186-msvd283en9ltde098rq3romo2blkpr80.apps.googleusercontent.com',
+            clientSecret : '_RmCygMFw5-IHQ4y7x09Ez0m',
+            callbackURL: 'http://localhost:6080/api/auth/social/google/callback',
+            scope : ['profile', 'email']
+          }
+        }
       }
     },
     notifications: {

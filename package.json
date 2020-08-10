@@ -23,6 +23,7 @@
     "nodemailer-ses-transport": "~1.5.1",
     "nodemailer-smtp-transport": "~2.7.4",
     "passport": "~0.4.1",
+    "passport-google-oauth": "^2.0.0",
     "passport-http": "~0.3.0",
     "passport-http-bearer": "~1.0.1",
     "passport-ldapauth": "^2.1.4",
