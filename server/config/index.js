@@ -73,6 +73,14 @@ module.exports = {
             callbackURL: 'http://localhost:6080/api/auth/social/google/callback',
             scope : ['profile', 'email']
           }
+        },
+        googlemobile: {
+          name: 'GoogleMobile',
+          options: {
+            protocol: 'oauth2',
+            clientID: '',
+            scopes : ['profile', 'email']
+          }
         }
       }
     },

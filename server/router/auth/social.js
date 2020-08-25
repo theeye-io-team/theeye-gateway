@@ -1,6 +1,8 @@
 const Router = require('express').Router
 const passport = require('passport')
 const ObjectId = require('mongoose').Types.ObjectId
+const {OAuth2Client} = require('google-auth-library');
+const logger = require('../../logger')('router:auth')
 const { ClientError, ServerError } = require('../../errors')
 
 module.exports = (app) => {
@@ -16,6 +18,72 @@ module.exports = (app) => {
     } catch (err) {
       logger.error('%o', err)
       return res.sendStatus(400)
+    }
+  })
+
+  router.post('/:provider/verifytoken', async (req, res, next) => {
+    let provider = req.params.provider
+    let strategy = app.config.services.authentication.strategies[provider]
+    let options = strategy.options
+    if (!strategy) {
+      throw new Error(`Strategy ${provider} not found on config file.`)
+    }
+
+    if (provider === 'googlemobile') {
+      let idToken = req.body.idToken
+      let email = req.body.email
+      if (!idToken) {
+        throw new ClientError('idToken is required')
+      }
+      if (!email) {
+        throw new ClientError('email is required')
+      }
+
+      try {
+        // verificar el idToken conforme:
+        // https://developers.google.com/identity/sign-in/web/backend-auth
+        const CLIENT_ID = options.clientID
+        const client = new OAuth2Client(CLIENT_ID)
+        const ticket = await client.verifyIdToken({
+          idToken: idToken,
+          audience: CLIENT_ID
+        })
+        // valido el payload
+        const payload = ticket.getPayload()
+        const identifier = payload['sub']
+        if (!identifier || email !== payload['email']) {
+          throw new ClientError('Invalid social credentials.', { statusCode: 404 })
+        }
+
+        // verifico user
+        let user = await app.models.users.uiUser.findOne({ email: email })
+        if (!user) {
+          throw new ClientError('User email not found.', { statusCode: 404 })
+        }
+
+        // verifico passport
+        let passport = await app.models.passport.findOne({ user: user._id, protocol: options.protocol, provider: provider })
+        if (!passport) {
+          let passportData = {
+            protocol: options.protocol,
+            provider: provider,
+            identifier: identifier,
+            user_id: user._id,
+            user: user._id,
+            last_login: new Date()
+          }
+
+          passport = await app.models.passport.create(passportData)
+        }
+
+        let customerName = req.query.customer || null
+        // hago el login
+        let session = await app.service.authentication.membersLogin({ user, passport, customerName })
+        res.json({ access_token: session.token })
+      } catch (err) {
+        console.log(err)
+        next(err)
+      }
     }
   })
 
