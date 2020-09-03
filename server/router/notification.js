@@ -33,6 +33,9 @@ module.exports = (app) => {
       logger.debug('%s|event arrived. %s', event.id, event.topic)
       logger.data('%o', event)
 
+      // send event via pub/sub messages system
+      app.service.notifications.messages.sendEvent(event)
+
       // send original event to all clients
       app.service.notifications.sockets.sendEvent(event)
 

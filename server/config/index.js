@@ -15,7 +15,6 @@ module.exports = {
     }
   },
   redis: {
-    prefix: 'app_',
     host: '127.0.0.1',
     port: 6379
   },
@@ -105,10 +104,8 @@ module.exports = {
         }
       },
       sockets: {
-        redis: {
-          host: '127.0.0.1',
-          port: 6379
-        }
+      },
+      messages: {
       }
     }
   },

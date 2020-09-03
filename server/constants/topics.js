@@ -14,5 +14,6 @@ module.exports = {
   NOTIFICATION_TASK: 'notification-task',
   JOB_RESULT_RENDER: 'job-result-render',
   SESSION: 'session',
-  WEBHOOK_TRIGGERED: 'webhook-triggered'
+  WEBHOOK_TRIGGERED: 'webhook-triggered',
+  TASK_COMPLETED: 'task-completed'
 }

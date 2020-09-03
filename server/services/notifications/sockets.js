@@ -6,13 +6,12 @@ const TopicConstants = require('../../constants/topics')
 module.exports = function (app, config) {
   class Sockets {
     constructor () {
-      this.config = config
       this.io
     }
 
     start (server) {
       const io = this.io = socketIO.listen(server)
-      io.adapter(socketIOredis(this.config.redis))
+      io.adapter(socketIOredis(app.config.redis))
       io.sockets.on('connection', function onConnection (socket) {
         logger.log('user connected')
         let handler = new SocketHandler(socket)
@@ -193,8 +192,6 @@ module.exports = function (app, config) {
 
     switch (topic) {
       case TopicConstants.NOTIFICATION_CRUD:
-        //sendNotificationMessages(io, topic, data)
-        //break;
       case TopicConstants.JOB_RESULT_RENDER:
         sendOrganizationUserEvent(io, topic, data)
         break;
@@ -209,24 +206,6 @@ module.exports = function (app, config) {
     }
   }
 
-  //const sendNotificationMessages = (io, topic, data) => {
-  //  if (!Array.isArray(data.model)) {
-  //    let msg = `ERROR: invalid notification structure. Array expected, received ${data.model}`
-  //    logger.error(msg)
-  //    throw new Error(msg)
-  //  }
-  //  // send a socket event for each user that need to be notified
-  //  // @TODO: user and organization should not be read from model.
-  //  // model is internal implementation of the message. must be abstracted
-  //  for (let idx in data.model) {
-  //    const model = data.model[idx]
-  //    const room = `${model.data.organization_id}:${model.user_id}:${topic}`
-  //    logger.debug(`sending message to ${room}`)
-  //    let payload = Object.assign({}, data, { model })
-  //    io.sockets.in(room).emit(topic, payload)
-  //  }
-  //}
-
   const sendOrganizationUserEvent = (io, topic, data) => {
     const user_id = data.user_id
     const room = `${data.organization_id}:${user_id}:${topic}`
@@ -234,11 +213,11 @@ module.exports = function (app, config) {
     io.sockets.in(room).emit(topic, data)
   }
 
-  const sendUserEvent = (io, topic, data) => {
-    const room = `${data.model.id}:${topic}`
-    logger.debug(`sending message to ${room}`)
-    io.sockets.in(room).emit(topic, data)
-  }
+  //const sendUserEvent = (io, topic, data) => {
+  //  const room = `${data.model.id}:${topic}`
+  //  logger.debug(`sending message to ${room}`)
+  //  io.sockets.in(room).emit(topic, data)
+  //}
 
   const sendOrganizationEvent = (io, topic, data) => {
     const room = `${data.organization_id}:${topic}`

@@ -1,5 +1,5 @@
-const express = require('express')
 const path = require('path')
+const StatusRouter = require('./status')
 const AuthRouter = require('./auth')
 const SocialAuthRouter = require('./auth/social')
 const SessionRouter = require('./session')
@@ -61,6 +61,7 @@ class Router {
 
     api.use('/helper', bearerMiddleware, HelperRouter(app))
 
+    api.use('/api/status', StatusRouter(app))
     api.use('/api/auth', AuthRouter(app))
     api.use('/api/auth/social', SocialAuthRouter(app))
     api.use('/api/notification', supervisorArrivalMiddleware, NotificationRouter(app))

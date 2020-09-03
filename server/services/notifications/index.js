@@ -1,6 +1,7 @@
 const Sockets = require('./sockets')
 const Push = require('./push')
 const Email = require('./email')
+const Messages = require('./messages')
 
 class Notifications {
   constructor (app) {
@@ -10,6 +11,7 @@ class Notifications {
     this.sockets = new Sockets(app, config.sockets)
     this.push = new Push(app, config.push)
     this.email = new Email(app, config.email)
+    this.messages = new Messages(app, config.messages)
   }
 
   eventNotifySupport ({ subject, body }) {
