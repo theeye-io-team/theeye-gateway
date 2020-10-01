@@ -13,23 +13,25 @@ module.exports = function (app, config) {
      * @return {Promise}
      */
     async sendEvent (message) {
-      const { id, topic } = message
+      const { id, topic, data } = message
 
-      if (!message.data.model_id) {
-        console.error(message)
-        throw new Error('no model_id in message')
-      }
-
-      let data = {}
-      for (let prop in message.data) {
-        if (prop !== 'model') {
-          data[prop] = message.data[prop]
+      if (!data.model_id) {
+        let err = new Error(`no model_id in message ${id}, ${topic}`)
+        err.data = message
+        logger.error('%o',err)
+      } else {
+        let payload = {}
+        for (let prop in data) {
+          if (prop !== 'model') {
+            payload[prop] = data[prop]
+          }
         }
-      }
 
-      const channel = `${data.organization_id}:${topic}:${data.model_id}`
-      logger.debug('%s|publishing message to %s', message.id, channel)
-      this.redis.publish(channel, JSON.stringify({ topic, id, data }))
+        const channel = `${data.organization_id}:${topic}:${data.model_id}`
+        logger.debug('%s|publishing message to %s', message.id, channel)
+
+        this.redis.publish(channel, JSON.stringify({ topic, id, data: payload }))
+      }
     }
   }
 

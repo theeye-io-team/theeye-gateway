@@ -23,6 +23,7 @@
     "nodemailer-sendmail-transport": "~1.0.2",
     "nodemailer-ses-transport": "~1.5.1",
     "nodemailer-smtp-transport": "~2.7.4",
+    "nodemon": "~2.0.4",
     "passport": "~0.4.1",
     "passport-google-oauth": "^2.0.0",
     "passport-http": "~0.3.0",

@@ -41,3 +41,7 @@ to start the API
 to navigate web client in local environment, clone theeye web https://github.com/theeye-io/web into the client directory. 
 
 statics files will be served at localhost:6080
+
+### Start development
+
+`DEBUG=*eye* node server/`
