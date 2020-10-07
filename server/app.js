@@ -20,14 +20,17 @@ class App extends EventEmitter {
   async configure (config) {
     this.config = config
 
-    // services
-    this.service = {}
-    this.service.authentication = new Authentication(this)
-    this.service.notifications = new Notifications(this)
-    this.service.sns = new AWS.SNS(new AWS.Config(config.services.aws))
-
     this.models = new Models(this)
     await this.models.configure()
+
+    // services
+    this.service = {}
+
+    this.service.authentication = new Authentication(this)
+    await this.service.authentication.configure()
+
+    this.service.notifications = new Notifications(this)
+    this.service.sns = new AWS.SNS(new AWS.Config(config.services.aws))
 
     // routes require models
     this.setupApi()

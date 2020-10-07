@@ -25,6 +25,27 @@ module.exports = (app) => {
     }
   })
 
+  router.post(
+    '/login/local',
+    app.service.authentication.middlewares.basicPassport,
+    async (req, res, next) => {
+      try {
+        let user = req.user
+        let passport = req.passport
+        let customerName = req.query.customer || null
+
+        let session = await app.service.authentication.membersLogin({ user, passport, customerName })
+        res.json({ access_token: session.token })
+      } catch (err) {
+        next(err)
+      }
+    }
+  )
+
+  router.post('/login/enterprise', (req, res, next) => {
+
+  })
+
   /**
    *
    * send reset password email
@@ -35,13 +56,16 @@ module.exports = (app) => {
       if (app.config.services.authentication.strategies.ldapauth) {
         return res.status(400).json({ error: 'ldapSet' })
       }
+
       let email = req.body.email
       if (!email) {
         return res.status(400).json({ message: "Missing param email." })
       }
 
       let user = await app.models.users.uiUser.findOne({ email: email })
-      if(!user) return res.status(404).json({ message: "User not found" })
+      if (!user) {
+        return res.status(404).json({ message: "User not found" })
+      }
 
       if (user.enabled) {
         let token = app.service.authentication.issue({ email: user.email, expiresIn: "12h" })
@@ -190,8 +214,8 @@ const sendUserActivationEMail = (app, data) => {
 }
 
 
-const getActivationLink = (invitation_token, activate_url) => {
+const getActivationLink = (invitation_token, activateUrl) => {
   let params = JSON.stringify({ invitation_token })
   let query = Buffer.from(params).toString('base64')
-  return (activate_url + query)
+  return (activateUrl + query)
 }

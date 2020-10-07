@@ -1,38 +1,25 @@
 const nodemailer = require('nodemailer')
 const logger = require('../../../logger')('services:notifications:email:mailer')
 
-/** http://www.nodemailer.com/ **/
+/**
+ *
+ * http://www.nodemailer.com/
+ *
+ */
 class Mailer {
   constructor (config) {
-    const trType = config.transport.type
-    const options = config.transport.options || {}
-
     this.config = config
 
-    let transport
+    const options = (config.transport.options || {})
+    const transportType = config.transport.type
 
-    switch (trType) {
-      case 'ses':
-        transport = require('nodemailer-ses-transport')(options)
-        break;
-      case 'sendmail':
-        transport = require('nodemailer-sendmail-transport')(options)
-        break;
-      case 'gmail':
-        transport = {
-          service: 'Gmail',
-          auth: { user: options.user, pass: options.pass }
-        };
-        break;
-      case 'smtp':
-        transport = require('nodemailer-smtp-transport')(options)
-        break;
-      default:
-        var msg = 'nodemailer transport ' + trType + ' not implemented.'
-        throw new Error(msg)
-        break
+    if (!Object.prototype.hasOwnProperty.call(TransportMap, transportType)) {
+      throw new Error('mail service exception. invalid type ' + transportType)
     }
 
+    logger.log(`creating transport ${transportType} with options %o`, options)
+
+    const transport = TransportMap[transportType](options)
     this.transporter = nodemailer.createTransport(transport)
   }
 
@@ -74,3 +61,25 @@ class Mailer {
 }
 
 module.exports = Mailer
+
+const TransportMap = {}
+TransportMap['ses'] = (options) => {
+  return require('nodemailer-ses-transport')(options)
+}
+TransportMap['sendmail'] = (options) => {
+  return require('nodemailer-sendmail-transport')(options)
+}
+TransportMap['smtp'] = (options) => {
+  return require('nodemailer-smtp-transport')(options)
+}
+TransportMap['gmail'] = (options) => {
+  const settings = {
+    service: 'Gmail',
+    auth: {
+      user: options.user,
+      pass: options.pass
+    }
+  }
+  logger.log(settings)
+  return settings
+}

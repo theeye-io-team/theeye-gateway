@@ -19,13 +19,16 @@ module.exports = function (app) {
   class Authentication {
     constructor () {
       this.config = app.config.services.authentication
+    }
 
+    async configure () {
       passport.use(new passportBasic(this.verifyUserPassword))
       passport.use(new passportBearer(this.verifySessionToken))
 
       let strategies = this.config.strategies
       if (strategies.ldapauth) {
-        passport.use(new passportLdap(strategies.ldapauth, ldapauth(app)))
+        const ldapHandler = await ldapauth(app)
+        passport.use(new passportLdap(strategies.ldapauth, ldapHandler))
       }
 
       if (strategies.google) {
@@ -306,25 +309,46 @@ module.exports = function (app) {
   }
 
   const ldapPassport = (req, res, next) => {
-    passport.authenticate('ldapauth', (err, auth) => {
-      let { user, passport } = auth
-      if (err) {
-        if (err.status >= 400) {
-          res.status(err.status)
-          return res.json(err.message)
-        }
-        next(err)
-      } else {
-        if (user === false || !user) {
-          logger.log('Invalid credentials.')
-          let err = unauthorized()
-          return res.status(err.statusCode).json(err.message)
-        }
-        req.user = user
-        req.passport = passport
-        next()
+    const loginFailed = (user) => {
+      logger.log('Invalid LDAP credentials.')
+
+      if (app.config.services.authentication.localBypass === true) {
+        logger.log('Local Login Fallback Enabled.')
+        return basicPassport(req, res, next)
       }
-    }, {session: false})(req, res, next)
+
+      let err = unauthorized()
+      return res.status(err.statusCode).json(err.message)
+    }
+
+    const loginError = (err) => {
+      logger.error(err)
+
+      if (err.status >= 400) {
+        res.status(err.status)
+        res.json(err.message)
+      } else {
+        next(err)
+      }
+
+      return
+    }
+
+    passport.authenticate('ldapauth', (err, auth) => {
+      if (err) {
+        return loginError(err)
+      }
+
+      const { user, passport } = auth
+
+      if (user === false || !user) {
+        return loginFailed(user)
+      }
+
+      req.user = user
+      req.passport = passport
+      next()
+    }, { session: false })(req, res, next)
   }
 
   const unauthorized = (next) => {

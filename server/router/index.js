@@ -50,7 +50,7 @@ class Router {
     })
 
     const supervisorArrivalMiddleware = (req, res, next) => {
-      let Unauthorized = new Error('Unauthorized')
+      const Unauthorized = new Error('Unauthorized')
       Unauthorized.status = 401
 
       if (!req.query) return next( Unauthorized  )
