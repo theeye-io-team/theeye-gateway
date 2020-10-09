@@ -3,20 +3,25 @@ const logger = require('../../logger')('router:customer')
 const crypto = require('crypto')
 const CredentialsConstants = require('../../constants/credentials')
 const isEmail = require('validator/lib/isEmail')
+const dbFilterMiddleware = require('..//db-filter-middleware')
 
 const { ClientError, ServerError } = require('../../errors')
 
 module.exports = (app) => {
   const router = express.Router()
 
-  router.get('/', async (req, res, next) => {
-    try {
-      let customers = await app.models.customer.find({}).exec()
-      res.json(customers)
-    } catch (err) {
-      next(err)
+  router.get('/',
+    dbFilterMiddleware({}),
+    async (req, res, next) => {
+      try {
+        const dbFilters = req.filters
+        const customers = await app.models.customer.apiFetch(dbFilters)
+        res.json(customers)
+      } catch (err) {
+        next(err)
+      }
     }
-  })
+  )
 
   router.post('/', async (req, res, next) => {
     try {

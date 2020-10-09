@@ -1,4 +1,5 @@
 const mongoose = require('mongoose')
+const apiFetch = require('../api-fetch')
 
 module.exports = function (db) {
   const schema = new mongoose.Schema({
@@ -54,6 +55,8 @@ module.exports = function (db) {
 
   schema.set('toJSON', def)
   schema.set('toObject', def)
+
+  schema.statics.apiFetch = apiFetch
 
   return db.model('Customer', schema)
 }
