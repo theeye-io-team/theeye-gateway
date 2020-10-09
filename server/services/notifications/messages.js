@@ -16,9 +16,8 @@ module.exports = function (app, config) {
       const { id, topic, data } = message
 
       if (!data.model_id) {
-        let err = new Error(`no model_id in message ${id}, ${topic}`)
-        err.data = message
-        logger.error('%o',err)
+        logger.error(`no model_id in message ${topic}, ${data.operation}, ${data.organization}`)
+        logger.error('%o', data.model)
       } else {
         let payload = {}
         for (let prop in data) {
