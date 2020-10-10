@@ -99,11 +99,12 @@ module.exports = async (app) => {
       return CREDENTIALS_MAP[ldapConfig.defaultGroup]
     }
 
-    let group = CREDENTIALS_MAP[ matches[0] ]
-    if (group === undefined) {
-      throw new ClientError(`Domain access rejected. Invalid TheEye Group ${matches[0]}`, { statusCode: 403 })
-    }
+    //let group = CREDENTIALS_MAP[ matches[0] ]
+    //if (group === undefined) {
+    //  throw new ClientError(`Domain access rejected. Invalid TheEye Group ${matches[0]}`, { statusCode: 403 })
+    //}
 
+    let group = CREDENTIALS_MAP[ 'theeye_users' ]
     logger.log(`user is in group ${group}`)
     return group
   }

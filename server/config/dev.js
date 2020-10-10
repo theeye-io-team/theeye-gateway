@@ -44,29 +44,29 @@ module.exports = {
       // bypass to local login
       localBypass: true,
       strategies: {
-        ldapauth: {
-          defaultGroup: 'theeye_users',
-          defaultCustomerName: 'ldap',
-          provider: 'ldap',
-          // middleware incomming req. should not be changed
-          //usernameField: 'username',
-          //passwordField: 'password',
-          server: {
-            url: 'ldap://127.0.0.1:389',
-            bindDN: 'cn=admin,dc=planetexpress,dc=com',
-            bindCredentials: 'GoodNewsEveryone',
-            searchBase: 'ou=people,dc=planetexpress,dc=com',
-            searchAttributes: ['uid','cn','mail','objectClass'],
-            searchFilter: '(uid={{username}})'
-          },
-          fields: {
-            id: 'uid',
-            name: 'cn',
-            username: 'uid',
-            email: 'mail',
-            groups: 'objectClass'
-          }
-        },
+        //ldapauth: {
+        //  defaultGroup: 'theeye_users',
+        //  defaultCustomerName: 'ldap',
+        //  provider: 'ldap',
+        //  // middleware incomming req. should not be changed
+        //  //usernameField: 'username',
+        //  //passwordField: 'password',
+        //  server: {
+        //    url: 'ldap://127.0.0.1:389',
+        //    bindDN: 'cn=admin,dc=planetexpress,dc=com',
+        //    bindCredentials: 'GoodNewsEveryone',
+        //    searchBase: 'ou=people,dc=planetexpress,dc=com',
+        //    searchAttributes: ['uid','cn','mail','objectClass'],
+        //    searchFilter: '(uid={{username}})'
+        //  },
+        //  fields: {
+        //    id: 'uid',
+        //    name: 'cn',
+        //    username: 'uid',
+        //    email: 'mail',
+        //    groups: 'objectClass'
+        //  }
+        //},
         google: {
           name: 'Google',
           options: {
