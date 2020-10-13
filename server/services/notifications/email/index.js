@@ -45,7 +45,7 @@ class Email {
           reject(err)
         } else {
           logger.log(response)
-          resolve()
+          resolve(response)
         }
       })
     })

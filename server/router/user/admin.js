@@ -1,9 +1,9 @@
 const express = require('express')
+const isEmail = require('validator/lib/isEmail')
+
 const logger = require('../../logger')('router:user')
 const CredentialsConstants = require('../../constants/credentials')
 const emailTemplates = require('../../services/notifications/email/templates')
-const isEmail = require('validator/lib/isEmail')
-
 const { ClientError, ServerError } = require('../../errors')
 
 module.exports = (app) => {

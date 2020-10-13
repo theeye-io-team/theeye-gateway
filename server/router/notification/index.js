@@ -1,8 +1,10 @@
-const express = require('express')
-const logger = require('../logger')('router:notifications')
 const moment = require('moment')
-const CredentialsConstants = require('../constants/credentials')
-const TopicsConstants = require('../constants/topics')
+const express = require('express')
+
+const logger = require('../../logger')('router:notifications')
+const CredentialsConstants = require('../../constants/credentials')
+const TopicsConstants = require('../../constants/topics')
+const { ClientError, ServerError } = require('../../errors')
 
 module.exports = (app) => {
   const router = express.Router()
