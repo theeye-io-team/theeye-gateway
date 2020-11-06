@@ -37,6 +37,8 @@ const migrate = async () => {
         let customers = passport.profile.customers
 
         for (let customer of customers) {
+          console.log(`creating member passport ${passport._id.toString()}`)
+
           let member = new app.models.member({
             user: user,
             user_id: user,

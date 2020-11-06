@@ -39,8 +39,7 @@ module.exports = async (app) => {
     const profile = buildProfile(ldapProfile)
     const user = await handleUserProfile(profile)
     const passport = await handleUserPassport({ user, profile })
-
-    const member = await handleUserMembers({ user, profile })
+    await handleUserMembers({ user, profile })
 
     logger.log('User %s authenticated via LDAP strategy.', user.username)
     return { user, passport }
@@ -73,6 +72,7 @@ module.exports = async (app) => {
       identifier: profile[ldapConfig.fields.id],
       username: profile[ldapConfig.fields.username],
       credential: getUserCredential(profile[ldapConfig.fields.groups]),
+      //credential: getUserCredential(['Test_TheEye_Managers']),
       enabled: true
     }
 
@@ -85,6 +85,10 @@ module.exports = async (app) => {
    */
   const getUserCredential = (groups) => {
     let matches = []
+    if (!Array.isArray(groups)) {
+      groups = [ groups ]
+    }
+
     for (let group of groups) {
       if (/theeye_/i.test(group) === true) {
         matches.push(group)
@@ -99,12 +103,13 @@ module.exports = async (app) => {
       return CREDENTIALS_MAP[ldapConfig.defaultGroup]
     }
 
-    //let group = CREDENTIALS_MAP[ matches[0] ]
-    //if (group === undefined) {
-    //  throw new ClientError(`Domain access rejected. Invalid TheEye Group ${matches[0]}`, { statusCode: 403 })
-    //}
+    const parts = matches[0].match(/theeye_[a-z]+/i)
+    const group = CREDENTIALS_MAP[ parts[0].toLowerCase() ]
+    if (group === undefined) {
+      throw new ClientError(`Domain access rejected. Invalid TheEye Group ${matches[0]}`, { statusCode: 403 })
+    }
+    //let group = CREDENTIALS_MAP[ 'theeye_users' ]
 
-    let group = CREDENTIALS_MAP[ 'theeye_users' ]
     logger.log(`user is in group ${group}`)
     return group
   }
@@ -147,20 +152,17 @@ module.exports = async (app) => {
   }
 
   /**
-   *
    * @param {Input}
    * @prop {User} user
    * @prop {Object} profile ldap profile
-   *
    * @return {Promise}
-   *
    */
   const handleUserMembers = async ({ user, profile }) => {
-    const member = await app.models.member.findOne({ user_id: user._id })
+    const members = await app.models.member.find({ user_id: user._id })
 
-    if (!member) {
+    if (members.length === 0) {
       if (!ldapConfig.defaultCustomerName) {
-        throw new ClientError('Domain access rejected. Not assigned organization', { statusCode: 403 })
+        throw new ClientError('Domain access rejected. Organization not assigned', { statusCode: 403 })
       }
 
       // verificar default customer
@@ -181,7 +183,13 @@ module.exports = async (app) => {
       return memberCreatePromise
     }
 
-    return member
+    if (members.length === 1) {
+      const member = members[0] 
+      member.credential = profile.credential
+      await member.save()
+    }
+
+    return members
   }
 
   /**
