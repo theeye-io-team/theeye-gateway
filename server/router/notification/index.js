@@ -333,7 +333,7 @@ module.exports = (app) => {
   const handledTopics = [
     TopicsConstants.MONITOR_STATE,
     TopicsConstants.JOB_CRUD,
-    TopicsConstants.JOB_SCHEDULER_CRUD,
+    TopicsConstants.SCHEDULE_CRUD,
     TopicsConstants.WEBHOOK_TRIGGERED
   ]
 

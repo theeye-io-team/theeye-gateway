@@ -6,7 +6,7 @@ module.exports = {
   HOST_STATS: 'host-stats',
   //CRUD: 'crud', // could replace all crud operations
   JOB_CRUD: 'job-crud',
-  JOB_SCHEDULER_CRUD: 'job-scheduler-crud',
+  SCHEDULE_CRUD: 'schedule-crud',
   INDICATOR_CRUD: 'indicator-crud',
   HOST_INTEGRATIONS_CRUD: 'host-integrations-crud',
   MESSAGE_CRUD: 'message-crud',

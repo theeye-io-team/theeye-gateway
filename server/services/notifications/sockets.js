@@ -67,7 +67,7 @@ module.exports = function (app, config) {
         TopicConstants.HOST_REGISTERED,
         //TopicConstants.CRUD,
         TopicConstants.JOB_CRUD,
-        TopicConstants.JOB_SCHEDULER_CRUD,
+        TopicConstants.SCHEDULE_CRUD,
         TopicConstants.INDICATOR_CRUD,
         TopicConstants.HOST_INTEGRATIONS_CRUD,
         TopicConstants.MESSAGE_CRUD,
