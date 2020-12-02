@@ -1,6 +1,7 @@
+const baseUrl = 'http://localhost:6080'
 module.exports = {
   app: {
-    base_url: 'http://127.0.0.1',
+    base_url: baseUrl,
     port: 6080,
     secret: '692fc164a0c06a9fd02575cf17688c9e',
     supportEmail: 'info@theeye.io'
@@ -25,7 +26,6 @@ module.exports = {
       url: 'http://127.0.0.1:60080/job/secret/d1ef702640e8a6bdaf56e452af4425727fc3750a15d26645d2ed0a4ad1f4bf9f?customer=demo&task=5eea8228aa74880dfcba2e25'
     }
   },
-  activateUrl: 'http://127.0.0.1:6080/activate?',
   services: {
 		aws: {
 			username: '',
@@ -34,9 +34,11 @@ module.exports = {
 			region: ''
 		},
     registration: {
-      //enabled: false
+      enabled: true,
       notifyUs: true,
-      finishUrl: 'http://127.0.0.1:6080/finishregistration?'
+      finishUrl: baseUrl + '/finishregistration?',
+      activateUrl: baseUrl + '/activate?',
+      passwordResetUrl: baseUrl + '/passwordreset?'
     },
     authentication: {
       secret: '692fc164a0c06a9fd02575cf17688c9e',
@@ -106,6 +108,23 @@ module.exports = {
               rejectUnauthorized: false
             },
             ignoreTLS: true
+          }
+        },
+        message: {
+          activation: {
+            enabled: true
+          },
+          customerInvitation: {
+            enabled: true
+          },
+          invitation: {
+            enabled: true
+          },
+          passwordRecover: {
+            enabled: true
+          },
+          registration: {
+            enabled: true
           }
         }
       },

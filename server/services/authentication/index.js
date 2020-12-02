@@ -78,7 +78,10 @@ module.exports = function (app) {
         let identifier = profile.id
         let email = profile._json.email
 
-        let user = await app.models.users.uiUser.findOne({email: email, enabled: true})
+        let user = await app.models.users.uiUser.findOne({
+          email: new RegExp(email, 'i'),
+          enabled: true
+        })
 
         if (!user) {
           let err = new Error('User not found')
@@ -114,11 +117,16 @@ module.exports = function (app) {
       try {
         logger.log('new connection [basic]')
         let user = await app.models.users
-          .user.findOne({ $or: [{ email: username }, { username }] })
+          .user.findOne({
+            $or: [
+              { email: new RegExp(username, 'i') },
+              { username: new RegExp(username, 'i') }
+            ]
+          })
 
         if (!user) {
           // username does not exists
-          throw new ClientError('Unauthorized',{code: 'UsernameNotFound', statusCode: 401})
+          throw new ClientError('Unauthorized',{ code: 'UsernameNotFound', statusCode: 401 })
         }
 
         // basic authentication requires a local passport
@@ -126,7 +134,7 @@ module.exports = function (app) {
 
         if (!passport) {
           // user is not authorized to authenticate with username / password
-          throw new ClientError('Unauthorized',{code: 'LocalPassportNotFound', statusCode: 401})
+          throw new ClientError('Unauthorized',{ code: 'LocalPassportNotFound', statusCode: 401 })
         }
 
         // verify provided password

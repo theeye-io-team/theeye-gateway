@@ -2,7 +2,6 @@ const express = require('express')
 const logger = require('../logger')('router:registration')
 const isEmail = require('validator/lib/isEmail')
 const got = require('got')
-const emailTemplates = require('../services/notifications/email/templates')
 const crypto = require('crypto')
 const CredentialsConstants = require('../constants/credentials')
 const FormData = require('form-data')
@@ -88,131 +87,132 @@ module.exports = (app) => {
     }
   })
 
-  router.post(
-    '/register',
-    async (req, res, next) => {
-      try {
-        const config = app.config.grecaptcha
-        if (config.enabled !== false) {
-          // verify grecaptcha
-          if (!req.body.grecaptcha) {
-            throw new ClientError('Invalid payload. Verification error')
-          }
-
-          const secret = config.v2_secret
-          if (!secret) {
-            throw new ServerError('Verification key config error')
-          }
-          const url = config.url
-          if (!url) {
-            throw new ServerError('Verification url config error')
-          }
-
-          const form = new FormData()
-          form.append('secret', secret)
-          form.append('response', req.body.grecaptcha)
-
-          let response = await got.post(url, { body: form })
-          let json = JSON.parse(response.body)
-
-          if (json.success !== true) {
-            throw new ClientError('Invalid payload. Verification error')
-          }
+  router.post('/register', async (req, res, next) => {
+    try {
+      const config = app.config.grecaptcha
+      if (config.enabled !== false) {
+        // verify grecaptcha
+        if (!req.body.grecaptcha) {
+          throw new ClientError('Invalid payload. Verification error')
         }
 
-        next()
-      } catch (err) {
-        return next(err)
+        const secret = config.v2_secret
+        if (!secret) {
+          throw new ServerError('Verification key config error')
+        }
+        const url = config.url
+        if (!url) {
+          throw new ServerError('Verification url config error')
+        }
+
+        const form = new FormData()
+        form.append('secret', secret)
+        form.append('response', req.body.grecaptcha)
+
+        let response = await got.post(url, { body: form })
+        let json = JSON.parse(response.body)
+
+        if (json.success !== true) {
+          throw new ClientError('Invalid payload. Verification error')
+        }
       }
-    },
-    async (req, res, next) => {
-      try {
-        if (app.config.services.registration.enabled === false) {
-          throw new ClientError('Registration is disabled')
-        }
-        if (app.config.services.authentication.strategies.ldapauth) {
-          throw new ClientError('Registration is disabled')
-        }
-        if (!req.body.name) {
-          throw new ClientError('Missing param name.')
-        }
-        if (!req.body.username) {
-          throw new ClientError('Missing param username.')
-        }
-        if (!req.body.email) {
-          throw new ClientError('Missing param email.')
-        }
-        if (!isEmail(req.body.email)) {
-          throw new ClientError('Invalid email.')
-        }
 
-        let user = await app.models.users.uiUser.findOne({
-          $or: [
-            { email: req.body.email },
-            { username: req.body.username }
-          ]
-        })
-
-        if (user) {
-          if (user.username === req.body.username) {
-            throw new ClientError('Username in use', { code: 'usernameTaken'})
-          }
-          if (user.email === req.body.email) {
-            throw new ClientError('Email in use', { code: 'emailTaken'})
-          }
-        }
-
-        let userData = {
-          username: req.body.email,
-          name: req.body.name,
-          email: req.body.email,
-          enabled: false,
-          invitation_token: app.service.authentication.issue({ email: req.body.email })
-        }
-
-        user = await app.models.users.uiUser.create(userData)
-        if (!user) {
-          throw new ServerError()
-        }
-
-        await sendUserRegistrationEMail(app, {
-          name: user.name,
-          email: user.email,
-          activation_link: getActivationLink(user.invitation_token, app.config.services.registration.finishUrl)
-        })
-
-        return res.status(200).json({ message: 'success' })
-      } catch (err) {
-        next(err)
-      }
+      next()
+    } catch (err) {
+      return next(err)
     }
-  )
-
-  router.get(
-    '/checkusername',
-    async (req, res, next) => {
-      try {
-        let username = req.query.username
-        let token = req.query.token
-        if (!username) {
-          return res.status(400).json({ message: "Missing param username." })
-        }
-        if (!token) {
-          return res.status(400).json({ message: "Missing param token." })
-        }
-
-        let user = await app.models.users.uiUser.findOne({invitation_token: token})
-        if (!user) return res.status(404).json({ message: "User not found." })
-
-        let prevUser = await app.models.users.uiUser.findOne({username: username})
-        if (prevUser) return res.status(409).json({ message: "Username already in use." })
-
-        res.json({})
-      } catch (err) {
-        next(err)
+  }, async (req, res, next) => {
+    try {
+      if (app.config.services.registration.enabled === false) {
+        throw new ClientError('Registration is disabled')
       }
+      if (app.config.services.authentication.strategies.ldapauth) {
+        throw new ClientError('Registration is disabled')
+      }
+      if (!req.body.name) {
+        throw new ClientError('Missing param name.')
+      }
+      if (!req.body.username) {
+        throw new ClientError('Missing param username.')
+      }
+      if (!req.body.email) {
+        throw new ClientError('Missing param email.')
+      }
+      if (!isEmail(req.body.email)) {
+        throw new ClientError('Invalid email.')
+      }
+
+      let user = await app.models.users.uiUser.findOne({
+        $or: [
+          { email: new RegExp(req.body.email, 'i') },
+          { username: new RegExp(req.body.username, 'i') }
+        ]
+      })
+
+      if (user) {
+        if (user.username.toLowerCase() === req.body.username.toLowerCase()) {
+          throw new ClientError('Username in use', { code: 'usernameTaken'})
+        }
+        if (user.email.toLowerCase() === req.body.email.toLowerCase()) {
+          throw new ClientError('Email in use', { code: 'emailTaken'})
+        }
+      }
+
+      const lcEmail = req.body.email.toLowerCase()
+
+      const userData = {
+        email: lcEmail,
+        username: lcEmail,
+        name: req.body.name,
+        enabled: false,
+        invitation_token: app.service.authentication.issue({ email: lcEmail })
+      }
+
+      user = await app.models.users.uiUser.create(userData)
+      if (!user) { throw new ServerError() }
+
+      await app.service
+        .notifications
+        .email
+        .sendRegistrationMessage({ user })
+
+      return res.status(200).json({ message: 'success' })
+    } catch (err) {
+      next(err)
     }
-  )
+  })
+
+  router.get('/checkusername', async (req, res, next) => {
+    try {
+      const username = req.query.username
+      const token = req.query.token
+
+      if (!token) {
+        throw new ClientError('Token required.')
+      }
+      if (!username) {
+        throw new ClientError('Username required.')
+      }
+
+      const user = await app.models.users.uiUser.findOne({ invitation_token: token })
+      if (!user) {
+        throw new ClientError('Invalid token.', { statusCode: 404 })
+      }
+
+      const usedUsername = await app.models.users.uiUser.find({
+        _id: { $ne: user._id },
+        username: new RegExp(username, 'i')
+      })
+
+      if (Array.isArray(usedUsername) && usedUsername.length > 0) {
+        throw new ClientError('Username already in use.', { statusCode: 409 })
+      }
+
+      res.json({})
+    } catch (err) {
+      next(err)
+    }
+  })
 
   router.post(
     '/finish',
@@ -237,36 +237,31 @@ module.exports = (app) => {
         let body = req.body
 
         // check if username is taken
-        let prevUser = await app.models.users.uiUser.findOne({username: body.username})
-        if (prevUser) {
-          let err = new Error('usernameTaken')
-          err.status = 400
-          throw err
-        }
+        const prevUser = await app.models.users.uiUser.findOne({ username: body.username })
+        if (prevUser) { throw new ClientError('usernameTaken') }
 
         // activate user
-        let query = {
+        const query = {
           invitation_token: body.invitation_token,
-          email: body.email,
+          email: new RegExp(body.email, 'i'),
           enabled: false
         }
 
         let user = await app.models.users.uiUser.findOne(query)
         if (!user) {
-          let err = new Error('User Not Found')
-          err.status = 404
-          throw err
+          throw new ClientError('User Not Found', { statusCode: 404 })
         }
 
-        user.set({ enabled: true, username: body.username })
+        user.set({ enabled: true, username: body.username.toLowerCase() })
         await user.save()
 
         // create customer
-        const customer = await app.models.customer.create({ name: body.customername.toLowerCase() })
+        const customer = await app.models.customer.create({
+          name: body.customername.toLowerCase()
+        })
+
         if (!customer) {
-          let err = new Error('Error creating customer')
-          err.status = 500
-          throw err
+          throw new ServerError()
         }
 
         // create agent customer
@@ -300,8 +295,7 @@ module.exports = (app) => {
         const session = await app.service.authentication.createSession({ member, protocol: passport.protocol })
         res.json({ access_token: session.token })
       } catch (err) {
-        if (err.status) { res.status(err.status).json( { message: err.message }) }
-        else res.status(500).json('Internal Server Error')
+        next(err)
       }
     }
   )
@@ -350,26 +344,6 @@ const validCustomerName = (name) => {
    return re.test(name)
 }
 
-const getActivationLink = (invitation_token, activate_url) => {
-  let params = JSON.stringify({ invitation_token })
-  let query = Buffer.from(params).toString('base64')
-  return (activate_url + query)
-}
-
-const sendUserRegistrationEMail = (app, data) => {
-  let options = {
-    subject: 'TheEye Registration',
-    body: emailTemplates.registration(data)
-  }
-
-  let addresses = data.email
-  if (app.config.services.registration.notifyUs === true) {
-    // bcc us
-    addresses += `,${app.config.app.supportEmail}`
-  }
-  return app.service.notifications.email.send(options, addresses)
-}
-
 const randomToken = () => {
   return crypto.randomBytes(20).toString('hex')
 }
@@ -378,7 +352,7 @@ const createCustomerAgent = async (app, customer) => {
   let cliendId = randomToken()
   let clientSecret = randomToken()
 
-  let userData = {
+  const userData = {
     username: cliendId,
     email: customer.name + '-agent@theeye.io',
     name: customer.name + '-agent',

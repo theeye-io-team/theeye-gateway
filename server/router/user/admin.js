@@ -3,7 +3,6 @@ const isEmail = require('validator/lib/isEmail')
 
 const logger = require('../../logger')('router:user')
 const CredentialsConstants = require('../../constants/credentials')
-const emailTemplates = require('../../services/notifications/email/templates')
 const { ClientError, ServerError } = require('../../errors')
 
 module.exports = (app) => {
@@ -23,24 +22,27 @@ module.exports = (app) => {
       const body = req.body
       validateUserData(body)
 
-      let { email, username } = body
+      const { email, username } = body
       let user = await app.models.users.user.findOne({
-        $or: [ { email }, { username } ]
+        $or: [
+          { email: new RegExp(email, 'i') },
+          { username: new RegExp(username, 'i') }
+        ]
       })
 
       if (user) {
-        if (user.username == username) {
+        if (user.username.toLowerCase() === username.toLowerCase()) {
           throw new ClientError('Username is in use. Choose another one')
         }
-        if (user.email == email) {
+        if (user.email.toLowerCase() === email.toLowerCase()) {
           throw new ClientError('Email is in user. Choose another one')
         }
       }
 
       const data = {
-        username: body.username,
+        username: username.toLowerCase(),
+        email: email.toLowerCase(),
         name: body.name,
-        email: body.email,
         enabled: body.enabled,
         password: body.password
       }
@@ -64,10 +66,30 @@ module.exports = (app) => {
         throw new ClientError('User not found', { statusCode: 404 })
       }
 
+      const { email, username } = body
+
+      // search users sharing username/email
+      const usedKey = await app.models.users.user.findOne({
+        _id: { $ne: user._id },
+        $or: [
+          { email: new RegExp(email, 'i') },
+          { username: new RegExp(username, 'i') }
+        ]
+      })
+
+      if (usedKey) {
+        if (usedKey.username.toLowerCase() === username.toLowerCase()) {
+          throw new ClientError('Username in use. Choose another one')
+        }
+        if (usedKey.email.toLowerCase() === email.toLowerCase()) {
+          throw new ClientError('Email in user. Choose another one')
+        }
+      }
+
       user.set({
+        username: username.toLowerCase(),
+        email: email.toLowerCase(),
         name: body.name,
-        username: body.username,
-        email: body.email,
         enabled: body.enabled
       })
 
@@ -105,17 +127,20 @@ module.exports = (app) => {
       }
 
       if (user.enabled === true) {
-        await sendInvitationEMail(app, { inviter: req.user, invitee: user })
+        await app.service
+          .notifications
+          .email
+          .sendInvitationMessage({
+            inviter: req.user,
+            invitee: user
+          })
       } else {
-        const token = app.service.authentication.issue({ email: user.email })
-        user.set({ invitation_token: token })
+        user.invitation_token = app.service.authentication.issue({ email: user.email })
+        await app.service
+          .notifications
+          .email
+          .sendActivationMessage({ user })
         await user.save()
-
-        await sendActivationEMail(app, {
-          name: user.name,
-          email: user.email,
-          activation_link: getActivationLink(user.invitation_token, app.config.activateUrl)
-        })
       }
 
       res.json(user)
@@ -124,10 +149,15 @@ module.exports = (app) => {
     }
   })
 
+  /**
+   * @param {User} inviter
+   * @param {Object} data
+   * @return {User}
+   */
   const createUser = async (inviter, data) => {
     const user = await app.models.users.uiUser.create({
-      username: data.username,
-      email: data.email,
+      username: data.username.toLowerCase(),
+      email: data.email.toLowerCase(),
       name: data.name,
       enabled: data.enabled,
       credential: null,
@@ -145,28 +175,24 @@ module.exports = (app) => {
         user: user._id,
         user_id: user._id
       })
-      await sendInvitationEMail(app, { inviter, invitee: user })
+
+      await app.service
+        .notifications
+        .email
+        .sendInvitationMessage({
+          inviter,
+          invitee: user
+        })
     } else {
-      user.invitation_token = app.service.authentication.issue({ email: data.email })
-      await sendActivationEMail(app, {
-        name: user.name,
-        email: user.email,
-        activation_link: getActivationLink(user.invitation_token, app.config.activateUrl)
-      })
+      user.invitation_token = app.service.authentication.issue({ email: user.email })
+      await app.service
+        .notifications
+        .email
+        .sendActivationMessage({ user })
       await user.save()
     }
 
     return user
-  }
-
-  const getActivationLink = (invitation_token, activate_url) => {
-    if (app.config.services.authentication.strategies.ldapauth) {
-      return app.config.app.base_url + '/login'
-    }
-
-    let params = JSON.stringify({ invitation_token })
-    let query = Buffer.from(params).toString('base64')
-    return (activate_url + query)
   }
 
   return router
@@ -199,21 +225,6 @@ const validateUserData = (data) => {
       throw new ClientError('Passwords should be at least 8 characters long')
     }
   }
-}
-
-const sendActivationEMail = (app, data) => {
-  let options = {
-    subject: 'TheEye Account Activation',
-    body: emailTemplates.activation(data)
-  }
-
-  return app.service.notifications.email.send(options, data.email)
-}
-
-const sendInvitationEMail = async (app, data) => {
-  let html = emailTemplates.invitation(data)
-  var options = { subject: 'TheEye Invitation', body: html }
-  await app.service.notifications.email.send(options, data.invitee.email)
 }
 
 const validateUsername = (username) => {

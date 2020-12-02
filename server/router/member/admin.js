@@ -4,6 +4,8 @@ const CredentialsConstants = require('../../constants/credentials')
 const isEmail = require('validator/lib/isEmail')
 const common = require('./common')
 
+const { ClientError, ServerError } = require('../../errors')
+
 module.exports = (app) => {
   const router = express.Router()
 
@@ -18,65 +20,48 @@ module.exports = (app) => {
         req.db_query = query
         next()
       } catch (err) {
-        if (err.status) { res.status(err.status).json( { message: err.message }) }
-        else res.status(500).json('Internal Server Error')
+        next(err)
       }
     },
     common(app).fetch
   )
 
-  router.delete(
-    '/:id',
-    async (req, res, next) => {
+  router.delete( '/:id', async (req, res, next) => {
       try {
         const id = req.params.id
-
-        let member = await app.models.member.findById(id)
-
+        const member = await app.models.member.findById(id)
         if (!member) {
-          let err = new Error('Member Not Found')
-          err.status = 404
-          throw err
+          throw new ClientError('Member Not Found',{statusCode:404})
         }
-
         await member.remove()
         res.status(204).json({})
       } catch (err) {
-        if (err.status) { res.status(err.status).json( { message: err.message }) }
-        else res.status(500).json('Internal Server Error')
+        next(err)
       }
     }
   )
 
-  router.patch(
-    '/:id',
-    async (req, res, next) => {
+  router.patch( '/:id', async (req, res, next) => {
       try {
         if (!req.body.credential) {
-          return res.status(400).json({ message: "Missing param credential." })
+          throw new ClientError('Missing credential')
         }
 
-        let member = await app.models.member.findById(req.params.id)
-
+        const member = await app.models.member.findById(req.params.id)
         if (!member) {
-          let err = new Error('Member Not Found')
-          err.status = 404
-          throw err
+          throw new ClientError('Member Not Found',{statusCode:404})
         }
 
         member.set({ credential: req.body.credential })
         await member.save()
         res.json(member)
       } catch (err) {
-        if (err.status) { res.status(err.status).json( { message: err.message }) }
-        else res.status(500).json('Internal Server Error')
+        next(err)
       }
     }
   )
 
-  router.post(
-    '/',
-    async (req, res, next) => {
+  router.post( '/', async (req, res, next) => {
       try {
         const body = req.body
 

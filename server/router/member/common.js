@@ -1,5 +1,4 @@
 const logger = require('../../logger')('router:member:common')
-const emailTemplates = require('../../services/notifications/email/templates')
 
 module.exports = function (app) {
   const handlers = {
@@ -49,20 +48,18 @@ module.exports = function (app) {
 
   const inviteNewUser = async (app, customer, context) => {
     // si el usuario no existe, creo un nuevo
-    let token = app.service.authentication.issue({ email: context.email })
-
-    let userData = {
+    const userData = {
       username: context.email,
       name: context.name,
       email: context.email,
       enabled: false,
-      invitation_token: token
+      invitation_token: app.service.authentication.issue({ email: context.email })
     }
 
-    let user = await app.models.users.uiUser.create(userData)
+    const user = await app.models.users.uiUser.create(userData)
 
     // creo el member para el nuevo user
-    let memberData = {
+    const memberData = {
       user: user._id,
       user_id: user.id,
       customer: customer._id,
@@ -71,21 +68,22 @@ module.exports = function (app) {
       credential: context.credential
     }
 
-    let member = await app.models.member.create(memberData)
+    const member = await app.models.member.create(memberData)
     member.user = user
 
-    await sendActivationEMail(app, {
-      name: user.name,
-      email: user.email,
-      customer_name: customer.name,
-      activation_link: getActivationLink(user.invitation_token, app.config.activateUrl)
-    })
+    await app.service
+      .notifications
+      .email
+      .sendActivationMessage({ user })
 
-    await sendCustomerInvitationEMail(app, {
-      name: user.name,
-      email: user.email, 
-      customer_name: customer.name
-    })
+    await app.service
+      .notifications
+      .email
+      .sendCustomerInvitationMessage({
+        name: user.name,
+        email: user.email,
+        customer_name: customer.name
+      })
 
     return member
   }
@@ -121,61 +119,28 @@ module.exports = function (app) {
 
     if (user.enabled !== true) {
       // resent user activation email
-      let token = app.service.authentication.issue({ email: user.email })
-      user.invitation_token = token
+      user.invitation_token = app.service.authentication.issue({ email: user.email })
+
+      await app.service
+        .notifications
+        .email
+        .sendActivationMessage({ user })
+
       await user.save()
       member.user = user
-
-      await sendActivationEMail(app, {
-        name: user.name,
-        email: user.email,
-        customer_name: customer.name,
-        activation_link: getActivationLink(user.invitation_token, app.config.activateUrl)
-      })
     }
 
     // resend customer invitation
-    await sendCustomerInvitationEMail(app, {
-      name: user.name,
-      email: user.email, 
-      customer_name: customer.name
-    })
+    await app.service
+      .notifications
+      .email
+      .sendCustomerInvitationMessage({
+        name: user.name,
+        email: user.email,
+        customer_name: customer.name
+      })
 
     return member
-  }
-
-  const getActivationLink = (invitation_token, activateUrl) => {
-    if (app.config.services.authentication.strategies.ldapauth) {
-      return app.config.app.base_url + '/login'
-    }
-
-    let params = JSON.stringify({ invitation_token })
-    let query = Buffer.from(params).toString('base64')
-    return (activateUrl + query)
-  }
-
-  /**
-   * @return {Promise}
-   */
-  const sendActivationEMail = (app, data) => {
-    let options = {
-      subject: 'TheEye Account Activation',
-      body: emailTemplates.activation(data)
-    }
-
-    return app.service.notifications.email.send(options, data.email)
-  }
-
-  /**
-   * @return {Promise}
-   */
-  const sendCustomerInvitationEMail = (app, data) => {
-    let options = {
-      subject: 'TheEye Invitation',
-      body: emailTemplates.customerInvitation(data)
-    }
-
-    return app.service.notifications.email.send(options, data.email)
   }
 
   return handlers

@@ -1,7 +1,8 @@
 const Router = require('express').Router
 const passport = require('passport')
-const emailTemplates = require('../../services/notifications/email/templates')
 const logger = require('../../logger')('router:auth')
+
+const { ClientError, ServerError } = require('../../errors')
 
 module.exports = (app) => {
   const router = Router()
@@ -54,51 +55,44 @@ module.exports = (app) => {
   router.post('/password/recover', async (req, res, next) => {
     try {
       if (app.config.services.authentication.strategies.ldapauth) {
-        return res.status(400).json({ error: 'ldapSet' })
+        throw new ClientError('ldapSet')
       }
 
-      let email = req.body.email
+      const email = req.body.email
       if (!email) {
-        return res.status(400).json({ message: "Missing param email." })
+        throw new ClientError('Email Required')
       }
 
-      let user = await app.models.users.uiUser.findOne({ email: email })
+      const user = await app.models.users.uiUser.findOne({ email: email })
       if (!user) {
-        return res.status(404).json({ message: "User not found" })
+        throw new ClientError('User not found', { statusCode: 404 })
       }
 
+      // @TODO verify local passport exists and is valid
       if (user.enabled) {
-        let token = app.service.authentication.issue({ email: user.email, expiresIn: "12h" })
-        const queryToken = new Buffer( JSON.stringify({ token: token }) ).toString('base64')
-        const passwordResetUrl = app.config.app.base_url + '/passwordreset?' + queryToken
-
-        await sendPasswordRecoverEmail(app, {
-          url: passwordResetUrl,
-          email: user.email
-        })
+        await app.service
+          .notifications
+          .email
+          .sendPasswordRecoverMessage({ user })
       } else {
-        let token = app.service.authentication.issue({ email: user.email })
-        user.set({invitation_token: token})
+        user.invitation_token = app.service.authentication.issue({ email: user.email })
+        await app.service
+          .notifications
+          .email
+          .sendActivationMessage({ user })
         await user.save()
-
-        await sendUserActivationEMail(app, {
-          name: user.name,
-          email: user.email,
-          activation_link: getActivationLink(user.invitation_token, app.config.activateUrl)
-        })
       }
 
       res.json({})
     } catch (err) {
-      if (err.status) { res.status(err.status).json( { message: err.message }) }
-      else res.status(500).json('Internal Server Error')
+      next(err)
     }
   })
 
   router.get('/password/recoververify', (req, res, next) => {
     try {
       if (!req.query.token) {
-        return res.status(400).json({ message: "Missing param token." })
+        throw new ClientError("Missing param token.")
       }
 
       let decoded = app.service.authentication.verify(req.query.token)
@@ -106,8 +100,7 @@ module.exports = (app) => {
       var resetToken = app.service.authentication.issue({email: decoded.email, expiresIn: "5m" })
       return res.json({ resetToken })
     } catch (err) {
-      logger.error('%o', err)
-      return res.send(400)
+      next(err)
     }
   })
 
@@ -190,32 +183,4 @@ module.exports = (app) => {
   })
 
   return router
-}
-
-const sendPasswordRecoverEmail = async (app, data) => {
-  let html = emailTemplates.passwordRecover(data)
-
-  var options = {
-    to: data.email,
-    subject: 'TheEye Password Recover',
-    body: html
-  }
-
-  await app.service.notifications.email.send(options, data.email)
-}
-
-const sendUserActivationEMail = (app, data) => {
-  let options = {
-    subject: 'TheEye Account Activation',
-    body: emailTemplates.activation(data)
-  }
-
-  return app.service.notifications.email.send(options, data.email)
-}
-
-
-const getActivationLink = (invitation_token, activateUrl) => {
-  let params = JSON.stringify({ invitation_token })
-  let query = Buffer.from(params).toString('base64')
-  return (activateUrl + query)
 }
