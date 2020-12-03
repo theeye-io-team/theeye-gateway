@@ -136,16 +136,16 @@ module.exports = async (app) => {
   const handleUserProfile = async (profile) => {
     const user = await app.models.users.uiUser.findOne({
       $or: [
-        { email: profile.email },
-        { username: profile.username }
+        { email: new RegExp(profile.email, 'i') },
+        { username: new RegExp(profile.username, 'i') }
       ]
     })
 
     if (!user) {
       // create new user
       const userCreatePromise = app.models.users.uiUser.create({
-        username: profile.username,
-        email: profile.email,
+        username: profile.username.toLowerCase(),
+        email: profile.email.toLowerCase(),
         name: profile.name,
         enabled: true,
         onboardingCompleted: false,
@@ -251,7 +251,7 @@ module.exports = async (app) => {
         return next(null, profile)
       })
       .catch(err => {
-        logger.error(err)
+        //logger.error(err)
         if (err.status === 404) {
           next(unauthorized())
         } else {
