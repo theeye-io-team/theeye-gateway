@@ -33,13 +33,14 @@ class Router {
     }
     api.get('/login', staticRoute)
     api.get('/logout', staticRoute)
+    api.get('/enterprise', staticRoute)
     api.get('/dashboard', staticRoute)
     api.get('/activate', staticRoute)
     api.get('/register', staticRoute)
     api.get('/finishregistration', staticRoute)
     api.get('/passwordreset', staticRoute)
-    api.get('/admin/*', staticRoute)
     api.get('/sociallogin', staticRoute)
+    api.get('/admin/*', staticRoute)
 
     const bearerMiddleware = app.service.authentication.middlewares.bearerPassport
 

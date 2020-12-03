@@ -124,10 +124,10 @@ module.exports = (app) => {
   }, async (req, res, next) => {
     try {
       if (app.config.services.registration.enabled === false) {
-        throw new ClientError('Registration is disabled')
+        throw new ClientError('Registration is not allowed', {statusCode:403})
       }
       if (app.config.services.authentication.strategies.ldapauth) {
-        throw new ClientError('Registration is disabled')
+        throw new ClientError('Registration is not allowed', {statusCode:403})
       }
       if (!req.body.name) {
         throw new ClientError('Missing param name.')

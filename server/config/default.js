@@ -1,4 +1,4 @@
-const baseUrl = 'http://127.0.0.1'
+const baseUrl = 'http://127.0.0.1:6080'
 module.exports = {
   app: {
     base_url: baseUrl,
@@ -173,7 +173,6 @@ module.exports = {
   grecaptcha: {
     enabled: false,
     v2_secret: '',
-    //v3_secret: '',
     url: 'https://www.google.com/recaptcha/api/siteverify'
   }
 }
