@@ -109,6 +109,11 @@ module.exports = (app) => {
       user_id = model.user_id
     }
 
+    if (!user_id) {
+      logger.error('no owner for this job. annonymous call')
+      return
+    }
+
     let user = await app.models.users.uiUser.findOne({ _id: user_id })
     if (!user) {
       throw new Error('User not found')
@@ -564,9 +569,14 @@ module.exports = (app) => {
     )
     return itIs
   }
+
   const isResultNotificationEvent = (event) => {
-    if (event.topic !== 'job-crud') { return false }
-    if (event.data.model.task.show_result !== true) { return false }
+    if (event.topic !== 'job-crud') {
+      return false
+    }
+    if (event.data.model.task.show_result !== true) {
+      return false
+    }
     return isCompleted(event.data.model.lifecycle)
   }
 

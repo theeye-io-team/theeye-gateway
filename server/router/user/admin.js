@@ -1,16 +1,26 @@
 const express = require('express')
 const isEmail = require('validator/lib/isEmail')
-
 const logger = require('../../logger')('router:user')
 const CredentialsConstants = require('../../constants/credentials')
+const dbFilterMiddleware = require('../db-filter-middleware')
 const { ClientError, ServerError } = require('../../errors')
 
 module.exports = (app) => {
   const router = express.Router()
 
+  router.get('/fetch', dbFilterMiddleware({}), async (req, res, next) => {
+    try {
+      const dbFilters = req.filters
+      const users = await app.models.users.uiUser.apiFetch(dbFilters)
+      res.json(users)
+    } catch (err) {
+      next(err)
+    }
+  })
+
   router.get('/', async (req, res, next) => {
     try {
-      let users = await app.models.users.uiUser.find()
+      const users = await app.models.users.uiUser.find()
       res.json(users)
     } catch (err) {
       next(err)

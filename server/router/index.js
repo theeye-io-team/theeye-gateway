@@ -61,24 +61,28 @@ class Router {
       next()
     }
 
-    api.use('/helper', bearerMiddleware, HelperRouter(app))
 
-    api.use('/api/status', StatusRouter(app))
     api.use('/api/auth', AuthRouter(app))
+    api.use('/api/status', StatusRouter(app))
     api.use('/api/auth/social', SocialAuthRouter(app))
-    api.use('/api/notification', supervisorArrivalMiddleware, NotificationRouter(app))
-    api.use('/api/inbox', bearerMiddleware, InboxRouter(app))
-    api.use('/api/session', bearerMiddleware, SessionRouter(app))
-    api.use('/api/member', bearerMiddleware, MemberRouter(app))
+    api.use('/api/registration', RegistrationRouter(app))
+
+    api.use('/helper', bearerMiddleware, HelperRouter(app))
     api.use('/api/bot', bearerMiddleware, BotRouter(app))
     api.use('/api/token', bearerMiddleware, TokenRouter(app))
+    api.use('/api/inbox', bearerMiddleware, InboxRouter(app))
+    api.use('/api/member', bearerMiddleware, MemberRouter(app))
+    api.use('/api/session', bearerMiddleware, SessionRouter(app))
     api.use('/api/message', bearerMiddleware, MessageRouter(app))
     api.use('/api/customer', bearerMiddleware, CustomerRouter(app))
-    api.use('/api/registration', RegistrationRouter(app))
-    api.use('/api/admin/member', bearerMiddleware, credentialMiddleware.root(), MemberAdminRouter(app))
     api.use('/api/admin/user', bearerMiddleware, credentialMiddleware.root(), UserAdminRouter(app))
+    api.use('/api/admin/member', bearerMiddleware, credentialMiddleware.root(), MemberAdminRouter(app))
     api.use('/api/admin/customer', bearerMiddleware, credentialMiddleware.root(), CustomerAdminRouter(app))
     api.use('/api/admin/notification', bearerMiddleware, credentialMiddleware.root(), NotificationAdminRouter(app))
+
+    api.use('/api/notification', supervisorArrivalMiddleware, NotificationRouter(app))
+    api.use('/api/internal/user', supervisorArrivalMiddleware, UserAdminRouter(app))
+    api.use('/api/internal/member', supervisorArrivalMiddleware, MemberAdminRouter(app))
 
     // compatibilityRoutes
     api.use('/apiv2', bearerMiddleware, GatewayRouter(app))
