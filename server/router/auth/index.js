@@ -19,7 +19,7 @@ module.exports = (app) => {
       let customerName = req.query.customer || null
 
       let session = await app.service.authentication.membersLogin({ user, passport, customerName })
-      res.json({ access_token: session.token })
+      res.json({ access_token: session.token, credential: session.credential })
     } catch (err) {
       next(err)
     }
@@ -35,7 +35,7 @@ module.exports = (app) => {
         let customerName = req.query.customer || null
 
         let session = await app.service.authentication.membersLogin({ user, passport, customerName })
-        res.json({ access_token: session.token })
+        res.json({ access_token: session.token, credential: session.credential })
       } catch (err) {
         next(err)
       }

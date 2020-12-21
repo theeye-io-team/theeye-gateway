@@ -72,7 +72,7 @@ module.exports = async (app) => {
       identifier: profile[ldapConfig.fields.id],
       username: profile[ldapConfig.fields.username],
       credential: getUserCredential(profile[ldapConfig.fields.groups]),
-      //credential: getUserCredential(['Test_TheEye_Managers']),
+      //credential: getUserCredential(['some_group','theeye_users','map theeye_grp','theeye_theeye','Test_TheEye_Managers','TheEye_Organization','TheEye_user']),
       enabled: true
     }
 
@@ -84,34 +84,49 @@ module.exports = async (app) => {
    * @return {String}
    */
   const getUserCredential = (groups) => {
-    let matches = []
+
+    // use default group
+    if (ldapConfig.defaultGroup) {
+      const group = CREDENTIALS_MAP[ldapConfig.defaultGroup]
+      logger.log(`using pre-configured default group "${group}"`)
+      return group
+    }
+
+    // search groups
+    const detected = []
     if (!Array.isArray(groups)) {
       groups = [ groups ]
     }
 
     for (let group of groups) {
-      if (/theeye_/i.test(group) === true) {
-        matches.push(group)
+      if (/theeye_[a-z]+/i.test(group) === true) {
+        detected.push(group)
       }
     }
 
-    if (matches.length === 0) {
-      if (!ldapConfig.defaultGroup) {
-        throw new ClientError('Domain access rejected. Not in TheEye Group', { statusCode: 403 })
-      }
-
-      return CREDENTIALS_MAP[ldapConfig.defaultGroup]
+    if (detected.length === 0) {
+      throw new ClientError('Domain access rejected. Not in TheEye Group', { statusCode: 403 })
     }
 
-    const parts = matches[0].match(/theeye_[a-z]+/i)
-    const group = CREDENTIALS_MAP[ parts[0].toLowerCase() ]
-    if (group === undefined) {
-      throw new ClientError(`Domain access rejected. Invalid TheEye Group ${matches[0]}`, { statusCode: 403 })
+    const theeyeGroups = []
+    for (let index = 0; index < detected.length; index++) {
+      const matches = detected[index].match(/theeye_[a-z]+/i)
+      if (matches !== null) {
+        let credential = matches[0].toLowerCase()
+        if (Object.prototype.hasOwnProperty.call(CREDENTIALS_MAP, credential)) {
+          theeyeGroups.push(CREDENTIALS_MAP[credential])
+        }
+      }
+    }
+
+    if (theeyeGroups.length === 0) {
+      throw new ClientError(`Domain access rejected. Invalid TheEye Groups ${theeyeGroups}`, { statusCode: 403 })
     }
     //let group = CREDENTIALS_MAP[ 'theeye_users' ]
 
-    logger.log(`user is in group ${group}`)
-    return group
+    const anyGroupMatch = theeyeGroups[0]
+    logger.log(`user is logged in as ${anyGroupMatch}`)
+    return anyGroupMatch
   }
 
   /**
@@ -142,10 +157,10 @@ module.exports = async (app) => {
       return userCreatePromise
     } else {
       // update user profile
+      //user.username = profile.username
+      //user.email = profile.email
       user.enabled = true
       user.invitation_token = null
-      user.username = profile.username
-      user.email = profile.email
       user.name = profile.name
       return user.save()
     }
