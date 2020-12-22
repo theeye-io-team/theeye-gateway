@@ -120,7 +120,7 @@ module.exports = async (app) => {
     }
 
     if (theeyeGroups.length === 0) {
-      throw new ClientError(`Domain access rejected. Invalid TheEye Groups ${theeyeGroups}`, { statusCode: 403 })
+      throw new ClientError(`Domain access rejected. Invalid TheEye Groups ${detected}`, { statusCode: 403 })
     }
     //let group = CREDENTIALS_MAP[ 'theeye_users' ]
 

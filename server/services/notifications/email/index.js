@@ -11,27 +11,31 @@ class Email {
   }
 
   async sendEvent (event, user) {
-    if (!isHandledEvent(event)) {
-      logger.log(`topic dismiss. not handled`)
-      // ignore
-      return
-    }
+    try {
+      if (!isHandledEvent(event)) {
+        logger.log(`topic dismiss. not handled`)
+        // ignore
+        return
+      }
 
-    if (!user.email) {
-      throw new Error(`${user._id} address not set`)
-    }
+      if (!user.email) {
+        throw new Error(`${user._id} address not set`)
+      }
 
-    if (!event.data.subject || !event.data.body) {
-      logger.data(event)
-      throw new Error(`missing subject and body`)
-    }
+      if (!event.data.subject || !event.data.body) {
+        logger.data(event)
+        throw new Error(`missing subject and body`)
+      }
 
-    let message = {
-      body: event.data.body,
-      subject: event.data.subject
-    }
+      let message = {
+        body: event.data.body,
+        subject: event.data.subject
+      }
 
-    return this.send(message, user.email)
+      return this.send(message, user.email)
+    } catch (err) {
+      logger.error(err)
+    }
   }
 
   send (message, address) {
@@ -43,7 +47,6 @@ class Email {
 
       this.mailer.sendMail(mail, (err, response) => {
         if (err) {
-          logger.error(err)
           reject(err)
         } else {
           logger.log(response)
