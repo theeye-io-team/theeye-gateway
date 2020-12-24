@@ -9,6 +9,7 @@ const TokenRouter = require('./token')
 const MessageRouter = require('./message')
 const RegistrationRouter = require('./registration')
 const UserAdminRouter = require('./user/admin')
+const UserInternalRouter = require('./user/internal')
 const NotificationRouter = require('./notification')
 const NotificationAdminRouter = require('./notification/admin')
 const MemberRouter = require('./member')
@@ -16,7 +17,7 @@ const MemberAdminRouter = require('./member/admin')
 const CustomerRouter = require('./customer')
 const CustomerAdminRouter = require('./customer/admin')
 const credentialMiddleware = require ('./credentialMiddleware')
-const logger = require('../logger')('router')
+const logger = require('../logger')('router::route')
 const CompatibilityRouter = require('./compatibility')
 const HelperRouter = require('./helper')
 
@@ -61,7 +62,6 @@ class Router {
       next()
     }
 
-
     api.use('/api/auth', AuthRouter(app))
     api.use('/api/status', StatusRouter(app))
     api.use('/api/auth/social', SocialAuthRouter(app))
@@ -81,8 +81,8 @@ class Router {
     api.use('/api/admin/notification', bearerMiddleware, credentialMiddleware.root(), NotificationAdminRouter(app))
 
     api.use('/api/notification', supervisorArrivalMiddleware, NotificationRouter(app))
-    api.use('/api/internal/user', supervisorArrivalMiddleware, UserAdminRouter(app))
-    api.use('/api/internal/member', supervisorArrivalMiddleware, MemberAdminRouter(app))
+    api.use('/api/internal/user', supervisorArrivalMiddleware, UserInternalRouter(app))
+    //api.use('/api/internal/member', supervisorArrivalMiddleware, MemberInternalRouter(app))
 
     // compatibilityRoutes
     api.use('/apiv2', bearerMiddleware, GatewayRouter(app))
