@@ -35,7 +35,7 @@ module.exports = function (app) {
         passport.use(new googleStrategy(strategies.google.options, this.verifyGoogle))
       }
 
-      this.middlewares = { basicPassport, bearerPassport, ldapPassport }
+      this.middlewares = { basicPassport, bearerPassport, ldapPassport, gatewayPassport }
     }
 
     /**
@@ -291,6 +291,39 @@ module.exports = function (app) {
         next()
       }
     }, {session: false})(req, res, next)
+  }
+
+  /**
+   * internal gateway passwport to communicate micro services
+   */
+  const gatewayPassport = (req, res, next) => {
+    const secret = app.config.supervisor.secret
+
+    const Unauthorized = new Error('Unauthorized')
+    Unauthorized.status = 401
+
+    if (!req.query) {
+      next( Unauthorized  )
+    } else if (req.query.secret) {
+      if (req.query.secret === secret) {
+        next()
+      } else {
+        logger.error('Invalid internal gateway request. Invalid Secret')
+        next( Unauthorized )
+      }
+    } else if (req.query.gateway_token) {
+      try {
+        const payload = jwt.verify(req.query.gateway_token, secret, {})
+        req.session = payload.context
+        next()
+      } catch (err) {
+        logger.error('Invalid internal gateway request. Invalid Gateway Token')
+        next( Unauthorized )
+      }
+    } else {
+      logger.error('Invalid internal gateway request. Not Provided Authentication')
+      next( Unauthorized )
+    }
   }
 
   const basicPassport = (req, res, next) => {

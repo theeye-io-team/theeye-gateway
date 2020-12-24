@@ -11,6 +11,7 @@ module.exports = (app) => {
     try {
       const filters = req.filters
       const values = filters.where.users
+      const customer_id = req.session.customer_id
 
       if (!Array.isArray(values)) {
         throw new ClientError('Invalid data format. Array required')
@@ -37,23 +38,32 @@ module.exports = (app) => {
         }
       }
 
-      const query = app.models.users.uiUser.find({
-        $or: [
-          { email: { $in: emails } },
-          { username: { $in: names } }
-        ]
-      })
+      const members = await app.models.member
+        .find({
+          customer_id,
+          credential: {
+            $nin: ['agent','integration']
+          }
+        })
+        .populate({
+          path: 'user',
+          select: 'username email',
+          match: {
+            _type: 'UiUser',
+            $or: [
+              { email: { $in: emails } },
+              { username: { $in: names } }
+            ]
+          }
+        })
 
-      let select
-      if (filters.include) {
-        select = filters.include
-      } else {
-        select = { username: 1, email: 1 }
+      let users = []
+      for (let idx = 0; idx < members.length; idx++)  {
+        let member = members[idx]
+        if (member.user !== null) {
+          users.push(member.user)
+        }
       }
-
-      query.select(select)
-
-      const users = await query.exec()
 
       res.json(users)
     } catch (err) {

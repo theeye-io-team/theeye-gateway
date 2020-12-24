@@ -44,6 +44,7 @@ class Router {
     api.get('/admin/*', staticRoute)
 
     const bearerMiddleware = app.service.authentication.middlewares.bearerPassport
+    const internalMiddleware = app.service.authentication.middlewares.gatewayPassport
 
     api.use((req, res, next) => {
       if (/api./.test(req.url)) {
@@ -51,16 +52,6 @@ class Router {
       }
       next()
     })
-
-    const supervisorArrivalMiddleware = (req, res, next) => {
-      const Unauthorized = new Error('Unauthorized')
-      Unauthorized.status = 401
-
-      if (!req.query) return next( Unauthorized  )
-      if (!req.query.secret) return next( Unauthorized )
-      if (req.query.secret !== app.config.supervisor.secret) return next( Unauthorized )
-      next()
-    }
 
     api.use('/api/auth', AuthRouter(app))
     api.use('/api/status', StatusRouter(app))
@@ -80,9 +71,9 @@ class Router {
     api.use('/api/admin/customer', bearerMiddleware, credentialMiddleware.root(), CustomerAdminRouter(app))
     api.use('/api/admin/notification', bearerMiddleware, credentialMiddleware.root(), NotificationAdminRouter(app))
 
-    api.use('/api/notification', supervisorArrivalMiddleware, NotificationRouter(app))
-    api.use('/api/internal/user', supervisorArrivalMiddleware, UserInternalRouter(app))
-    //api.use('/api/internal/member', supervisorArrivalMiddleware, MemberInternalRouter(app))
+    api.use('/api/notification', internalMiddleware, NotificationRouter(app))
+    api.use('/api/internal/user', internalMiddleware, UserInternalRouter(app))
+    //api.use('/api/internal/member', internalMiddleware, MemberInternalRouter(app))
 
     // compatibilityRoutes
     api.use('/apiv2', bearerMiddleware, GatewayRouter(app))
