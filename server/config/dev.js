@@ -47,7 +47,7 @@ module.exports = {
       localBypass: true,
       strategies: {
         ldapauth: {
-          //defaultGroup: 'theeye_users',
+          defaultGroup: 'theeye_users',
           defaultCustomerName: 'ldap',
           provider: 'ldap',
           // middleware incomming req. should not be changed

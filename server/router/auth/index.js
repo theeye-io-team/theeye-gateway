@@ -54,7 +54,10 @@ module.exports = (app) => {
    */
   router.post('/password/recover', async (req, res, next) => {
     try {
-      if (app.config.services.authentication.strategies.ldapauth) {
+      if (
+        app.config.services.authentication.strategies.ldapauth &&
+        ! app.config.services.authentication.localBypass
+      ) {
         throw new ClientError('ldapSet')
       }
 

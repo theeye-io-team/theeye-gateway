@@ -24,7 +24,7 @@ class Email {
 
       if (!event.data.subject || !event.data.body) {
         logger.data(event)
-        throw new Error(`missing subject and body`)
+        throw new Error(`missing subject and body in event ${event.topic}`)
       }
 
       let message = {
@@ -34,7 +34,7 @@ class Email {
 
       return this.send(message, user.email)
     } catch (err) {
-      logger.error(err)
+      logger.error(err.message)
     }
   }
 
@@ -201,7 +201,10 @@ class Email {
   getTokenLink (token, url) {
     const app = this.app
 
-    if (app.config.services.authentication.strategies.ldapauth) {
+    if (
+      app.config.services.authentication.strategies.ldapauth &&
+      !app.config.services.authentication.localBypass
+    ) {
       return app.config.app.base_url + '/login'
     }
 
