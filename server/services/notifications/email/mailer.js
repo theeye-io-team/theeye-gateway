@@ -33,9 +33,6 @@ class Mailer {
    *
    */
   sendMail (options, callback) {
-    let from = this.config.from.replace(/%customer%/g, options.customer_name)
-
-    options.from = from
     options.replyTo = this.config.reply_to
 
     if (

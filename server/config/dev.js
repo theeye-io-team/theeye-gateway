@@ -91,7 +91,7 @@ module.exports = {
     },
     notifications: {
       email: {
-        from: 'TheEye.io <support@theeye.io>',
+        from: '%customer% TheEye.io <support@theeye.io>',
         replyTo: 'Support <support@theeye.io>',
         only_support: false,
         include_support_bcc: false,

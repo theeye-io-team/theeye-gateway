@@ -246,7 +246,11 @@ module.exports = (app) => {
 
     if (!notificationTypes || notificationTypes.email) {
       for (let user of users) {
-        app.service.notifications.email.send({ subject, body }, user.email)
+        const message = { subject, body }
+        if (event.data && event.data.organization) {
+          message.organization = event.data.organization || ''
+        }
+        app.service.notifications.email.send(message, user.email)
         logger.debug('%s|%s', event.id, 'by email notified')
       }
     }

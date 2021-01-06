@@ -30,9 +30,10 @@ class Email extends AbstractNotification {
         throw new Error(`missing subject and body in event ${event.topic}`)
       }
 
-      let message = {
+      const message = {
         body: event.data.body,
-        subject: event.data.subject
+        subject: event.data.subject,
+        organization: event.data.organization
       }
 
       return this.send(message, user.email)
@@ -42,11 +43,15 @@ class Email extends AbstractNotification {
   }
 
   send (message, address) {
+    const organization = (message.organization || '')
+    const from = this.config.from.replace(/%customer%/g, organization)
+
     return new Promise((resolve, reject) => {
       const mail = {}
       mail.bcc = message.address || address
       mail.html = message.body || message.html
       mail.subject = message.subject
+      mail.from = from
 
       this.mailer.sendMail(mail, (err, response) => {
         if (err) {
