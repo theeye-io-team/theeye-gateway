@@ -38,14 +38,14 @@ module.exports = (app) => {
       // send event via pub/sub messages system
       app.service.notifications.messages.sendEvent(event)
 
-      // send original event to all clients
-      app.service.notifications.sockets.sendEvent(event)
-
       // handler for generic generated events by topic  
-      await createTopicEventNotifications(req, res)
+      createTopicEventNotifications(req, res)
+
+      // handler for all generated events by organization/topic
+      sendSocketEventByACL (event)
 
       // application specific notifications
-      await sendTaskEventNotification(req, res)
+      sendTaskEventNotification(req, res)
 
       return res.status(200).json('ok')
     } catch (err) {
@@ -77,6 +77,35 @@ module.exports = (app) => {
       })
     }
   )
+
+  const sendSocketEventByACL = async (event) => {
+    app.service.notifications.sockets.sendEvent(event, 'admin')
+
+    if (event.data && event.data.model) {
+      const model = event.data.model
+      // use model acl 
+      if (Array.isArray(model.acl) && model.acl.length > 0) {
+        const acl = model.acl
+        const promises = []
+        for (let value of acl) {
+          const userPromise = app.models.users.user.findOne({ email: value })
+          promises.push(userPromise)
+        }
+
+        Promise
+          .all(promises)
+          .then(users => {
+            for (let user of users) {
+              if (user !== null) { // is === null , the email is invalid
+                app.service.notifications.sockets.sendEvent(event, user)
+              }
+            }
+          })
+      }
+    } else {
+      logger.error('event model not present. cannot send socket event by acl , without acls.')
+    }
+  }
 
   const sendTaskEventNotification = async (req, res) => {
     const event = req.body

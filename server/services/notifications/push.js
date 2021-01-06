@@ -1,11 +1,13 @@
 const logger = require('../../logger')('service:notifications:push')
 const fs = require('fs')
 const TopicsConstants = require('../../constants/topics')
+const AbstractNotification = require('./abstract')
 
 module.exports = function (app, config) {
-  class Push {
+  class Push extends AbstractNotification {
 
     constructor () {
+      super()
     }
 
     sendEvent (event, user) {

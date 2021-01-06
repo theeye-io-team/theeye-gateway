@@ -1,10 +1,12 @@
 const logger = require('../../logger')(':services:notifications:messages')
 //const TopicConstants = require('../../constants/topics')
 const redis = require('redis')
+const AbstractNotification = require('./abstract')
 
 module.exports = function (app, config) {
-  class Messages {
+  class Messages extends AbstractNotification {
     constructor () {
+      super()
       this.redis = redis.createClient(app.config.redis)
     }
 

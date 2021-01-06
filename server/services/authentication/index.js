@@ -4,6 +4,7 @@ const passportBasic = require('passport-http').BasicStrategy
 const googleStrategy = require('passport-google-oauth').OAuth2Strategy
 const passportLdap = require('passport-ldapauth')
 const ldapauth = require('./ldapauth')
+const ACL = require('./acl')
 
 const logger = require('../../logger')(':services:authentication')
 const { ClientError } = require('../../errors')
@@ -19,6 +20,8 @@ module.exports = function (app) {
   class Authentication {
     constructor () {
       this.config = app.config.services.authentication
+
+      this.acl = new ACL()
     }
 
     async configure () {

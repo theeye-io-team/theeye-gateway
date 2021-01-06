@@ -2,9 +2,12 @@ const Mailer = require('./mailer')
 const logger = require('../../../logger')('services:notifications:email')
 const TopicsConstants = require('../../../constants/topics')
 const Templates = require('./templates')
+const AbstractNotification = require('../abstract')
 
-class Email {
+class Email extends AbstractNotification {
   constructor (app, config) {
+    super()
+
     this.app = app
     this.config = config
     this.mailer = new Mailer(config)

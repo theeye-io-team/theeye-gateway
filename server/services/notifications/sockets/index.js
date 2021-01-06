@@ -1,12 +1,17 @@
-const logger = require('../../logger')(':services:notifications:sockets')
 const socketIO = require('socket.io')
 const socketIOredis = require('socket.io-redis')
-const TopicConstants = require('../../constants/topics')
+const logger = require('../../../logger')(':services:notifications:sockets')
+const TopicConstants = require('../../../constants/topics')
+const AbstractNotification = require('../abstract')
+const Emitter = require('./emitter')
 
 module.exports = function (app, config) {
-  class Sockets {
+  class Sockets extends AbstractNotification {
     constructor () {
+      super()
+
       this.io
+      this.emitter = new Emitter()
     }
 
     start (server) {
@@ -18,13 +23,11 @@ module.exports = function (app, config) {
       })
     }
 
-    sendEvent (message, next) {
+    sendEvent (event, user) {
       try {
-        emitEvent(this.io, message.topic, message)
-        next && next()
+        this.emitter.emit(this.io, event, user)
       } catch (err) {
         logger.error(err)
-        next(err)
       }
     }
   }
@@ -73,17 +76,18 @@ module.exports = function (app, config) {
         TopicConstants.MESSAGE_CRUD,
       ]
 
-      const joinRoom = (room) => {
-        socket.join(room)
-        logger.debug('client auto-subscribed to %s', room)
+      // user session subscriptions
+      joinRoom(socket, `${customer_id}:${user_id}:${TopicConstants.NOTIFICATION_CRUD}`)
+      joinRoom(socket, `${customer_id}:${user_id}:${TopicConstants.JOB_RESULT_RENDER}`)
+      joinRoom(socket, `${session_id}:${user_id}:${TopicConstants.SESSION}`)
+
+      if (app.service.authentication.acl.hasFullaccess(session.credential)) {
+        // subscribe to all admin rooms
+        topics.forEach(topic => joinRoom(socket, `${customer_id}:admin:${topic}`))
+      } else {
+        // member with reduced access exclusive rooms 
+        topics.forEach(topic => joinRoom(socket, `${customer_id}:${user_id}:${topic}`))
       }
-
-      // session subscriptions
-      joinRoom(`${customer_id}:${user_id}:${TopicConstants.NOTIFICATION_CRUD}`)
-      joinRoom(`${customer_id}:${user_id}:${TopicConstants.JOB_RESULT_RENDER}`)
-      joinRoom(`${session_id}:${user_id}:${TopicConstants.SESSION}`)
-
-      topics.forEach(topic => joinRoom(`${customer_id}:${topic}`))
 
       next({ status: 200, body: { message: 'auto-subscription success' } })
     },
@@ -92,6 +96,7 @@ module.exports = function (app, config) {
       const session = req.session
       const customer_id = session.customer_id.toString()
       const topics = req.params.topics
+      const user_id = session.user_id.toString()
 
       if (!Array.isArray(topics) || topics.length === 0) {
         return next({ status: 400, body: { message: 'nothing to subscribe' } })
@@ -101,10 +106,12 @@ module.exports = function (app, config) {
         return next({ status: 400, body: { message: 'invalid topics' } })
       }
 
-      for (let topic of topics) {
-        let room = `${customer_id}:${topic}`
-        socket.join(room)
-        logger.debug('client subscribed to %s', room)
+      if (app.service.authentication.acl.hasFullaccess(session.credential)) {
+        // subscribe to all admin rooms
+        topics.forEach(topic => joinRoom(socket, `${customer_id}:admin:${topic}`))
+      } else {
+        // member with reduced access exclusive rooms 
+        topics.forEach(topic => joinRoom(socket, `${customer_id}:${user_id}:${topic}`))
       }
 
       next({ status: 200, body: { message: 'subscription success' } })
@@ -113,21 +120,23 @@ module.exports = function (app, config) {
       const session = req.session
       const customer_id = session.customer_id.toString()
       const socket = req.socket
+      const user_id = session.user_id.toString()
 
       let topics = req.params.topics
 
       if (!topics) { // unsubscribe all
         for (let room in socket.rooms) {
-          let msg = `client leaving room ${room}`
+          let msg = `member leaving room ${room}`
           logger.debug(msg)
           socket.leave(room)
         }
       } else {
-        for (let topic of topics) {
-          let room = `${customer_id}:${topic}`
-          let msg = `client leaving room ${room}`
-          logger.debug(msg)
-          socket.leave(room)
+        if (app.service.authentication.acl.hasFullaccess(session.credential)) {
+          // leave all admin rooms
+          topics.forEach(topic => socket.leave(`${customer_id}:admin:${topic}`))
+        } else {
+          // leave member exclusive rooms 
+          topics.forEach(topic => socket.leave(`${customer_id}:${user_id}:${topic}`))
         }
       }
 
@@ -135,11 +144,9 @@ module.exports = function (app, config) {
     },
     'get:subscriptions': (req, next) => {
       const socket = req.socket
-      let myRooms = socket.rooms[req.socket.id]
-      next({ status: 200, body: Object.keys(myRooms) })
+      next({ status: 200, body: Object.keys(socket.rooms) })
     }
   }
-
 
   const tokenVerify = (socket, next) => {
     const unauthorized = () => {
@@ -188,43 +195,9 @@ module.exports = function (app, config) {
     }
   }
 
-  const emitEvent = (io, topic, message) => {
-    const data = message.data
-    logger.debug('emit event "%s"', topic)
-
-    switch (topic) {
-      case TopicConstants.NOTIFICATION_CRUD:
-      case TopicConstants.JOB_RESULT_RENDER:
-        sendOrganizationUserEvent(io, topic, data)
-        break;
-      case TopicConstants.SESSION:
-        const room = `${data.model._id}:${data.model.user_id}:${TopicConstants.SESSION}`
-        logger.debug(`sending message to ${room}`)
-        io.sockets.in(room).emit(topic, data)
-        break;
-      default:
-        sendOrganizationEvent (io, topic, data)
-        break;
-    }
-  }
-
-  const sendOrganizationUserEvent = (io, topic, data) => {
-    const user_id = data.user_id
-    const room = `${data.organization_id}:${user_id}:${topic}`
-    logger.debug(`sending message to ${room}`)
-    io.sockets.in(room).emit(topic, data)
-  }
-
-  //const sendUserEvent = (io, topic, data) => {
-  //  const room = `${data.model.id}:${topic}`
-  //  logger.debug(`sending message to ${room}`)
-  //  io.sockets.in(room).emit(topic, data)
-  //}
-
-  const sendOrganizationEvent = (io, topic, data) => {
-    const room = `${data.organization_id}:${topic}`
-    logger.debug(`sending message to ${room}`)
-    io.sockets.in(room).emit(topic, data)
+  const joinRoom = (socket, room) => {
+    socket.join(room)
+    logger.debug('member subscribed to %s', room)
   }
 
   return new Sockets()
