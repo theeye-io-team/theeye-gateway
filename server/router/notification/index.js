@@ -42,7 +42,7 @@ module.exports = (app) => {
       createTopicEventNotifications(req, res)
 
       // handler for all generated events by organization/topic
-      sendSocketEventByACL (event)
+      sendSocketEventByACL(event)
 
       // application specific notifications
       sendTaskEventNotification(req, res)
@@ -395,7 +395,7 @@ module.exports = (app) => {
   }
 
   // Returns a user collection for a given customer
-  const getUsersToNotify = async (event, customerName, acls, credentials) => {
+  const getUsersToNotify = async (event, customerName, emails, credentials) => {
     var query = {}
 
     if (event && isApprovalOnHoldEvent(event)) {
@@ -414,8 +414,8 @@ module.exports = (app) => {
         query.$or.push({ credential: { $in: credentials } })
       }
 
-      if (Array.isArray(acls) && acls.length > 0) {
-        query.$or.push({ email: { $in: acls } })
+      if (Array.isArray(emails) && emails.length > 0) {
+        query.$or.push({ email: { $in: emails } })
       }
 
       if (customerName) {
@@ -432,14 +432,11 @@ module.exports = (app) => {
 
   // Returns a members collection for a given customer
   const getMembersToNotify = async (event, customer_id, emails, credentials) => {
-    var query = {}
+    var query = { customer_id }
 
     if (event && isApprovalOnHoldEvent(event)) {
-      query = {
-        user_id: { $in: event.data.approvers }
-      }
+      query.user_id = { $in: event.data.approvers }
     } else {
-      query = { customer_id }
       if (Array.isArray(credentials) && credentials.length > 0) {
         query.credential = { $in: credentials }
       }
@@ -459,6 +456,7 @@ module.exports = (app) => {
 
     members = members.filter(member => {
       let user = member.user
+      logger.log(`verifying member ${user.email}, ${user.username}`)
       return (user.username && user.email && user.enabled === true)
     })
     return members
