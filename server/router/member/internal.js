@@ -1,6 +1,6 @@
 const express = require('express')
 const isEmail = require('validator/lib/isEmail')
-const logger = require('../../logger')('router:user')
+const logger = require('../../logger')('router:member:internal')
 const { ClientError, ServerError } = require('../../errors')
 const dbFilterMiddleware = require('../db-filter-middleware')
 
@@ -57,15 +57,7 @@ module.exports = (app) => {
           }
         })
 
-      let users = []
-      for (let idx = 0; idx < members.length; idx++)  {
-        let member = members[idx]
-        if (member.user !== null) {
-          users.push(member.user)
-        }
-      }
-
-      res.json(users)
+      res.json( members.filter(member => member.user !== null) )
     } catch (err) {
       next (err)
     }

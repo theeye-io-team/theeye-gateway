@@ -104,6 +104,7 @@ module.exports = (app) => {
       }
     } else {
       logger.error('event model not present. cannot send socket event by acl , without acls.')
+      logger.error(event)
     }
   }
 

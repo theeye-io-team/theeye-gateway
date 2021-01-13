@@ -10,6 +10,7 @@ const MessageRouter = require('./message')
 const RegistrationRouter = require('./registration')
 const UserAdminRouter = require('./user/admin')
 const UserInternalRouter = require('./user/internal')
+const MemberInternalRouter = require('./member/internal')
 const NotificationRouter = require('./notification')
 const NotificationAdminRouter = require('./notification/admin')
 const MemberRouter = require('./member')
@@ -73,7 +74,7 @@ class Router {
 
     api.use('/api/notification', internalMiddleware, NotificationRouter(app))
     api.use('/api/internal/user', internalMiddleware, UserInternalRouter(app))
-    //api.use('/api/internal/member', internalMiddleware, MemberInternalRouter(app))
+    api.use('/api/internal/member', internalMiddleware, MemberInternalRouter(app))
 
     // compatibilityRoutes
     api.use('/apiv2', bearerMiddleware, GatewayRouter(app))
