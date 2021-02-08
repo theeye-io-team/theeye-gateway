@@ -89,7 +89,8 @@ module.exports = function (app, config) {
     },
     'post:subscribe': (req, next) => {
       const socket = req.socket
-      const customer_id = req.session.customer_id.toString()
+      const session = req.session
+      const customer_id = session.customer_id.toString()
       const topics = req.params.topics
 
       if (!Array.isArray(topics) || topics.length === 0) {
@@ -109,7 +110,8 @@ module.exports = function (app, config) {
       next({ status: 200, body: { message: 'subscription success' } })
     },
     'post:unsubscribe': (req, next) => {
-      const customer_id = req.session.customer_id.toString()
+      const session = req.session
+      const customer_id = session.customer_id.toString()
       const socket = req.socket
 
       let topics = req.params.topics
