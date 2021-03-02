@@ -186,16 +186,15 @@ module.exports = (app) => {
     const notificationTypes = notifyTask.notificationTypes
     const args = (notifyJob.task_arguments_values || [])
 
-    let subject = (args[0] || notifyTask.subject)
-    let body = (args[1] || notifyTask.body)
-    let recipients = (parseRecipients(args[2]) || notifyTask.recipients)
-    let organization = event.data.organization
-    let organization_id = event.data.organization_id
+    const subject = (args[0] || notifyTask.subject)
+    const body = (args[1] || notifyTask.body)
+    const recipients = (parseRecipients(args[2]) || notifyTask.recipients)
+    const organization = event.data.organization
+    const organization_id = event.data.organization_id
 
     logger.debug('%s|%s', event.id, 'sending custom notifications')
 
     let users = await getUsersToNotify(null, null, recipients, [])
-
     if (users.length === 0) {
       logger.debug('%s|%s', event.id, 'dismissed. no system users to notify')
       return 
@@ -259,23 +258,28 @@ module.exports = (app) => {
     logger.debug('%s|%s', event.id, 'custome notifications sent')
   }
 
-  const parseRecipients = (emails) => {
+  const parseRecipients = (values) => {
     let recipients = null
-    if (!emails) { return recipients }
-    if (typeof emails === 'string') {
-      emails = emails.toLowerCase()
-      try {
-        let values = JSON.parse(emails)
-        if (Array.isArray(values) && values.length > 0) {
-          recipients = values
+
+    if (!values) { return recipients }
+
+    try {
+      if (typeof values === 'string') {
+        let parsed = values.toLowerCase()
+        // email or username, single or array
+        parsed = JSON.parse(values)
+
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          recipients = parsed
         } else {
-          throw new Error('invalid recipients format')
+          recipients = [ parsed ]
         }
-      } catch (e) {
-        logger.error(e)
-        recipients = [emails]
       }
+    } catch (e) {
+      logger.error(e)
+      recipients = [ values ]
     }
+
     return recipients
   }
 
@@ -396,14 +400,24 @@ module.exports = (app) => {
   }
 
   // Returns a user collection for a given customer
-  const getUsersToNotify = async (event, customerName, emails, credentials) => {
-    var query = {}
+  const getUsersToNotify = async (event, customerName, ids = [], credentials = []) => {
+    let query = {}
 
     if (event && isApprovalOnHoldEvent(event)) {
       query = {
         id: { $in: event.data.approvers }
       }
     } else {
+      /**
+       * ABORT !
+       */
+      if (
+        (!Array.isArray(ids) || ids.length === 0) &&
+        (!Array.isArray(credentials) || credentials.length === 0)
+      ) {
+        return []
+      }
+
       query = {
         username: { $ne: null },
         email: { $ne: null },
@@ -412,11 +426,22 @@ module.exports = (app) => {
       }
 
       if (Array.isArray(credentials) && credentials.length > 0) {
-        query.$or.push({ credential: { $in: credentials } })
+        query.$or.push({
+          credential: { $in: credentials }
+        })
       }
 
-      if (Array.isArray(emails) && emails.length > 0) {
-        query.$or.push({ email: { $in: emails } })
+      if (Array.isArray(ids) && ids.length > 0) {
+        // casi insensitive search
+        const ciIds = ids.map(id => new RegExp(id, 'i'))
+
+        query.$or.push({
+          email: { $in: ciIds }
+        })
+
+        query.$or.push({
+          username: { $in: ciIds }
+        })
       }
 
       if (customerName) {
@@ -432,7 +457,7 @@ module.exports = (app) => {
   }
 
   // Returns a members collection for a given customer
-  const getMembersToNotify = async (event, customer_id, emails, credentials) => {
+  const getMembersToNotify = async (event, customer_id, ids, credentials) => {
     var query = { customer_id }
 
     if (event && isApprovalOnHoldEvent(event)) {
@@ -460,6 +485,7 @@ module.exports = (app) => {
       logger.log(`verifying member ${user.email}, ${user.username}`)
       return (user.username && user.email && user.enabled === true)
     })
+
     return members
   }
 
