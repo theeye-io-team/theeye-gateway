@@ -2,6 +2,7 @@ const path = require('path')
 const StatusRouter = require('./status')
 const AuthRouter = require('./auth')
 const SocialAuthRouter = require('./auth/social')
+const EnterpriseAuthRouter = require('./auth/enterprise')
 const SessionRouter = require('./session')
 const InboxRouter = require('./inbox')
 const BotRouter = require('./bot')
@@ -29,21 +30,6 @@ class Router {
     this.app = app
     let api = app.api
 
-    // static api route
-    const staticRoute = (req, res) => {
-      res.sendFile(path.join(__dirname, '../../client/dist/index.html'))
-    }
-    api.get('/login', staticRoute)
-    api.get('/logout', staticRoute)
-    api.get('/enterprise', staticRoute)
-    api.get('/dashboard', staticRoute)
-    api.get('/activate', staticRoute)
-    api.get('/register', staticRoute)
-    api.get('/finishregistration', staticRoute)
-    api.get('/passwordreset', staticRoute)
-    api.get('/sociallogin', staticRoute)
-    api.get('/admin/*', staticRoute)
-
     const bearerMiddleware = app.service.authentication.middlewares.bearerPassport
     const internalMiddleware = app.service.authentication.middlewares.gatewayPassport
 
@@ -55,8 +41,9 @@ class Router {
     })
 
     api.use('/api/auth', AuthRouter(app))
-    api.use('/api/status', StatusRouter(app))
+    api.use('/api/auth/enterprise', internalMiddleware, EnterpriseAuthRouter(app))
     api.use('/api/auth/social', SocialAuthRouter(app))
+    api.use('/api/status', StatusRouter(app))
     api.use('/api/registration', RegistrationRouter(app))
 
     api.use('/helper', bearerMiddleware, HelperRouter(app))
@@ -80,6 +67,24 @@ class Router {
     api.use('/apiv2', bearerMiddleware, GatewayRouter(app))
     api.use('/apiv3', bearerMiddleware, GatewayRouter(app))
     api.use('/', CompatibilityRouter(app))
+
+    // static api route
+    const staticRoute = (req, res) => {
+      res.sendFile(path.join(__dirname, '../../client/dist/index.html'))
+    }
+    api.get('/*', staticRoute)
+    api.get('/admin/*', staticRoute)
+    //api.get('/login', staticRoute)
+    //api.get('/tokenlogin', staticRoute)
+    //api.get('/logout', staticRoute)
+    //api.get('/enterprise', staticRoute)
+    //api.get('/dashboard', staticRoute)
+    //api.get('/activate', staticRoute)
+    //api.get('/register', staticRoute)
+    //api.get('/finishregistration', staticRoute)
+    //api.get('/passwordreset', staticRoute)
+    //api.get('/sociallogin', staticRoute)
+    //api.get('/admin/*', staticRoute)
 
   }
 }

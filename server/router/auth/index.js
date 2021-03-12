@@ -1,5 +1,4 @@
 const Router = require('express').Router
-const passport = require('passport')
 const logger = require('../../logger')('router:auth')
 
 const { ClientError, ServerError } = require('../../errors')
@@ -26,8 +25,7 @@ module.exports = (app) => {
     }
   })
 
-  router.post(
-    '/login/local',
+  router.post('/login/local',
     app.service.authentication.middlewares.basicPassport,
     async (req, res, next) => {
       try {
@@ -42,10 +40,6 @@ module.exports = (app) => {
       }
     }
   )
-
-  router.post('/login/enterprise', (req, res, next) => {
-
-  })
 
   /**
    *

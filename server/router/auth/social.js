@@ -1,7 +1,7 @@
 const Router = require('express').Router
-const passport = require('passport')
+const Passport = require('passport')
 const ObjectId = require('mongoose').Types.ObjectId
-const {OAuth2Client} = require('google-auth-library');
+const { OAuth2Client } = require('google-auth-library')
 const logger = require('../../logger')('router:auth')
 const { ClientError, ServerError } = require('../../errors')
 
@@ -14,7 +14,7 @@ module.exports = (app) => {
       let strategy = app.config.services.authentication.strategies[provider]
       let options = strategy.options
 
-      passport.authenticate(provider, options)(req, res, next)
+      Passport.authenticate(provider, options)(req, res, next)
     } catch (err) {
       logger.error('%o', err)
       return res.sendStatus(400)
@@ -81,7 +81,7 @@ module.exports = (app) => {
         let session = await app.service.authentication.membersLogin({ user, passport, customerName })
         res.json({ access_token: session.token })
       } catch (err) {
-        console.log(err)
+        logger.error('%o', err)
         next(err)
       }
     }
@@ -89,11 +89,9 @@ module.exports = (app) => {
 
   router.get('/:provider/callback', (req, res, next) => {
     let provider = req.params.provider
-    passport.authenticate(provider, { failureRedirect: '/login' }, async (err, data) => {
+    Passport.authenticate(provider, { failureRedirect: '/login' }, async (err, data) => {
       try {
-        if (err) {
-          throw err
-        }
+        if (err) { throw err }
 
         let user = data.user
         let passport = data.passport
@@ -109,7 +107,7 @@ module.exports = (app) => {
               reason: 'you are not a member',
               statusCode: 403
             })
-        }
+          }
 
         let member = memberOf[0]
         const session = await app.service.authentication.createSession({ member, protocol: passport.protocol })
@@ -123,13 +121,12 @@ module.exports = (app) => {
           return res.redirect('/sociallogin?' + queryString)
         }
       }
-    }) (req, res, next)
+    })(req, res, next)
   })
 
   const bearerMiddleware = app.service.authentication.middlewares.bearerPassport
 
-  router.delete(
-    '/:provider/disconnect/:id',
+  router.delete( '/:provider/disconnect/:id',
     bearerMiddleware,
     async (req, res, next) => {
       try {

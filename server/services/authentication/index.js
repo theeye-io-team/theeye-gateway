@@ -306,7 +306,7 @@ module.exports = function (app) {
     Unauthorized.status = 401
 
     if (!req.query) {
-      next( Unauthorized  )
+      next( Unauthorized )
     } else if (req.query.secret) {
       if (req.query.secret === secret) {
         next()
