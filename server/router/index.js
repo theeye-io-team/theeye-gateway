@@ -85,7 +85,6 @@ class Router {
     //api.get('/passwordreset', staticRoute)
     //api.get('/sociallogin', staticRoute)
     //api.get('/admin/*', staticRoute)
-
   }
 }
 
