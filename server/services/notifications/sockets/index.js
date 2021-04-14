@@ -52,8 +52,15 @@ module.exports = function (app, config) {
 
   const SocketEvents = {
     'disconnect': (req, next) => {
-      logger.log('user disconnected')
+      logger.log('client disconnected')
       const socket = req.socket
+
+      for (let room in socket.rooms) {
+        let msg = `member leaving room ${room}`
+        logger.debug(msg)
+        socket.leave(room)
+      }
+
       next({ status: 200 })
     },
     'post:autosubscribe': (req, next) => {

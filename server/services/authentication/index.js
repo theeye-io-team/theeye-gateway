@@ -367,12 +367,16 @@ module.exports = function (app) {
 
     const loginError = (err) => {
       logger.error(err)
-
-      if (err.status >= 400) {
-        res.status(err.status)
-        res.json(err.message)
+      if ( /connect ECONNREFUSED/.test(err.message) ) {
+        res.status(503)
+        res.json({ message: 'Cannot connect the Domain Controller authentication service' })
       } else {
-        next(err)
+        if (err.status >= 400) {
+          res.status(err.status)
+          res.json(err.message)
+        } else {
+          next(err)
+        }
       }
 
       return
