@@ -35,17 +35,16 @@ module.exports = (app) => {
       logger.debug('%s|event arrived. %s', event.id, event.topic)
       logger.data('%o', event)
 
-      // send event via pub/sub messages system
-      app.service.notifications.messages.sendEvent(event)
-
-      // handler for generic generated events by topic  
-      createTopicEventNotifications(req, res)
-
-      // handler for all generated events by organization/topic
-      sendSocketEventByACL(event)
-
-      // application specific notifications
-      sendTaskEventNotification(req, res)
+      const tasks = await Promise.all([
+        // send event via pub/sub messages system
+        app.service.notifications.messages.sendEvent(event),
+        // handler for generic generated events by topic  
+        createTopicEventNotifications(req, res),
+        // handler for all generated events by organization/topic
+        sendSocketEventByACL(event),
+        // application specific notifications
+        sendTaskEventNotification(req, res)
+      ])
 
       return res.status(200).json('ok')
     } catch (err) {
