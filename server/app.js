@@ -1,4 +1,5 @@
 const express = require('express')
+const compression = require('compression')
 const path = require('path')
 const http = require('http')
 const https = require('https')
@@ -51,6 +52,8 @@ class App extends EventEmitter {
 
     let api = this.api = express()
     //const server = process.env.NODE_ENV === 'development' ? http.Server(api) : https.Server(api)
+
+    api.use(compression())
 
     api.use(express.json())
     api.use(express.urlencoded({ extended: true }))
