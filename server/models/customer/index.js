@@ -10,6 +10,7 @@ module.exports = function (db) {
       required: true,
       dropDups: true
     },
+    display_name: { type: String },
     description: { type: String, default: '' },
     config: {
       type: Object,

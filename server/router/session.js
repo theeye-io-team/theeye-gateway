@@ -25,7 +25,7 @@ module.exports = (app) => {
       }
 
       for (let member of members) {
-        await member.populate('customer', { id: 1, name: 1 }).execPopulate()
+        await member.populate('customer', { id: 1, name: 1, display_name: 1 }).execPopulate()
         customers.push(member.customer)
       }
 
@@ -54,6 +54,7 @@ module.exports = (app) => {
       profile.current_customer = {
         id: member.customer.id,
         name: member.customer.name,
+        display_name: (member.customer.display_name || member.customer.name),
         config: member.customer.config
       }
       profile.notifications = member.notifications
