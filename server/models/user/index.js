@@ -12,6 +12,7 @@ function BaseSchema () {
   const schema = new mongoose.Schema({
     username: { type: String, unique: true, required: true },
     email: { type: String, unique: true, required: true },
+    extra_emails: [{ type: String }],
     name: { type: 'string' },
     enabled: { type: 'boolean', default: false },
     credential: { type: 'string' }, // global property for internal use. will replace session credential when set

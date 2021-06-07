@@ -99,7 +99,7 @@ module.exports = {
         replyTo: 'Support <support@theeye.io>',
         only_support: false,
         include_support_bcc: false,
-        support: [],
+        support: [ 'facugon@theeye.io' ],
         invitation: 'contact@theeye.io',
         transport: {
           type: 'sendmail'

@@ -25,14 +25,15 @@ class Mailer {
 
   /**
    *
-   * @param {Object} options
-   * @property {String} options.to
-   * @property {String} options.bcc
-   * @property {String} options.subject
-   * @property {String} options.body
+   * @param {Object} inputs
+   * @property {String} inputs.to
+   * @property {String} inputs.bcc
+   * @property {String} inputs.subject
+   * @property {String} inputs.body
    *
    */
-  sendMail (options, callback) {
+  sendMail (inputs, callback) {
+    const options = Object.assign({}, inputs)
     options.replyTo = this.config.reply_to
 
     if (
@@ -45,11 +46,19 @@ class Mailer {
     }
 
     if (options.to) {
-      options.to = options.to.toLowerCase()
+      if (Array.isArray(options.to)) {
+        options.to = options.to.join(',').toLowerCase()
+      } else {
+        options.to = options.to.toLowerCase()
+      }
     }
 
     if (options.bcc) {
-      options.bcc = options.bcc.toLowerCase()
+      if (Array.isArray(options.bcc)) {
+        options.bcc = options.bcc.join(',').toLowerCase()
+      } else {
+        options.bcc = options.bcc.toLowerCase()
+      }
     }
 
     logger.debug(options)

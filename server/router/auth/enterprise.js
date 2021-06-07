@@ -47,6 +47,42 @@ module.exports = (app) => {
         user.notifications = null
         user.onboardingCompleted = true
         await user.save()
+      } else {
+        try {
+          // verify is the same username && email
+          if (profile.username !== user.username) {
+            throw new ClientError('User profile conflict. Username/Email does not match', { statusCode: 403 })
+          } else if (profile.email !== user.email) {
+            // same username, different email.
+            // we should check if the emails are associated to the same user.
+            if ( !user.extra_emails.includes(profile.email.toLowerCase()) ) {
+              throw new ClientError('User profile conflict. Email is already assigned', { statusCode: 403 })
+            }
+          }
+        } catch (err) {
+          await app.service.notifications.email.send({
+            subject: 'Enterprise Login Error',
+            html: `
+              <p>
+                <div>Error: ${err.message}</div>
+                <div>User trying to login.</div>
+                <ul>
+                  <li>Email: ${profile.email}</li>
+                  <li>Username: ${profile.username}</li>
+                </ul>
+                <div>Existent user already registered.</div>
+                <ul>
+                  <li>Email: ${user.email}</li>
+                  <li>Username: ${user.username}</li>
+                </ul>
+              </p>
+            `,
+            organization: 'Internal',
+            address: app.config.services.notifications.email.support
+          })
+
+          throw err
+        }
       }
 
       // search user provider passport.

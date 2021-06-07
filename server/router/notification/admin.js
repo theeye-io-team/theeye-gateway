@@ -20,7 +20,7 @@ module.exports = (app) => {
 
       logger.log('sending email test notification to %s', req.body.email)
       const subject = req.body.subject || 'TheEye Test'
-      const content = req.body.content || 'Subject'
+      const content = req.body.content || 'Message Content'
       if (!app.service.notifications[type]) {
         throw new ClientError(`type ${type} unsupported`)
       }
@@ -34,7 +34,14 @@ module.exports = (app) => {
         throw new ClientError('Can only send email notifications')
       }
 
-      const response = await app.service.notifications[type].send({ subject, content }, user.email)
+      const response = await app.service
+        .notifications[type]
+        .send({
+          subject,
+          body: content,
+          address: user.email
+        })
+
       res.status(200).json(response)
 
     } catch (err) {

@@ -55,6 +55,8 @@ class Email extends AbstractNotification {
 
       this.mailer.sendMail(mail, (err, response) => {
         if (err) {
+          logger.error(err)
+          logger.error(response)
           reject(err)
         } else {
           logger.log(response)
