@@ -56,13 +56,21 @@ module.exports = (app) => {
         }
 
         // verifico user
-        let user = await app.models.users.uiUser.findOne({ email: email })
+        const user = await app.models.users.uiUser.findOne({
+          email: new RegExp(email, 'i')
+        })
+
         if (!user) {
           throw new ClientError('User email not found.', { statusCode: 404 })
         }
 
         // verifico passport
-        let passport = await app.models.passport.findOne({ user: user._id, protocol: options.protocol, provider: provider })
+        let passport = await app.models.passport.findOne({
+          user: user._id,
+          protocol: options.protocol,
+          provider: provider
+        })
+
         if (!passport) {
           let passportData = {
             protocol: options.protocol,
@@ -95,9 +103,8 @@ module.exports = (app) => {
 
         let user = data.user
         let passport = data.passport
-        let query = { user_id: user._id }
 
-        let memberOf = await app.models.member.find(query)
+        let memberOf = await app.models.member.find({ user_id: user._id })
 
         if (memberOf.length === 0) {
           return res

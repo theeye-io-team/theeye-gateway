@@ -9,10 +9,10 @@ const { ClientError, ServerError } = require('../../errors')
 module.exports = (app) => {
   const router = express.Router()
 
-  router.get( '/', async (req, res, next) => {
+  router.get('/', async (req, res, next) => {
     try {
       let query = {}
-      let ninCredentials = [CredentialsConstants.AGENT, CredentialsConstants.INTEGRATION]
+      let ninCredentials = [ CredentialsConstants.AGENT, CredentialsConstants.INTEGRATION ]
 
       query.credential = { $nin: ninCredentials }
       req.db_query = query
@@ -22,7 +22,7 @@ module.exports = (app) => {
     }
   }, common(app).fetch)
 
-  router.delete( '/:id', async (req, res, next) => {
+  router.delete('/:id', async (req, res, next) => {
     try {
       const id = req.params.id
       const member = await app.models.member.findById(id)
@@ -36,7 +36,7 @@ module.exports = (app) => {
     }
   })
 
-  router.patch( '/:id', async (req, res, next) => {
+  router.patch('/:id', async (req, res, next) => {
     try {
       if (!req.body.credential) {
         throw new ClientError('Missing credential')
@@ -55,7 +55,7 @@ module.exports = (app) => {
     }
   })
 
-  router.post( '/', async (req, res, next) => {
+  router.post('/', async (req, res, next) => {
     try {
       const body = req.body
 
@@ -88,8 +88,8 @@ module.exports = (app) => {
 
       req.context = {
         customer_id: body.customer_id,
-        email: body.user.email,
-        name: body.user.name,
+        email: body.user.email.toLowerCase(),
+        name: body.user.name, // partial/full name
         credential: body.credential
       }
 

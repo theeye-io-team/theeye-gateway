@@ -1,5 +1,6 @@
 const Router = require('express').Router
 const logger = require('../../logger')('router:auth')
+const EscapedRegExp = require('../../escaped-regexp')
 
 const { ClientError, ServerError } = require('../../errors')
 
@@ -60,7 +61,10 @@ module.exports = (app) => {
         throw new ClientError('Email Required')
       }
 
-      const user = await app.models.users.uiUser.findOne({ email: email })
+      const user = await app.models.users.uiUser.findOne({
+        email: new EscapedRegExp(email,'i')
+      })
+
       if (!user) {
         throw new ClientError('User not found', { statusCode: 404 })
       }
@@ -89,12 +93,11 @@ module.exports = (app) => {
   router.get('/password/recoververify', (req, res, next) => {
     try {
       if (!req.query.token) {
-        throw new ClientError("Missing param token.")
+        throw new ClientError("Missing parameter token.")
       }
 
-      let decoded = app.service.authentication.verify(req.query.token)
-
-      var resetToken = app.service.authentication.issue({email: decoded.email, expiresIn: "5m" })
+      const decoded = app.service.authentication.verify(req.query.token)
+      const resetToken = app.service.authentication.issue({ email: decoded.email, expiresIn: "5m" })
       return res.json({ resetToken })
     } catch (err) {
       next(err)
@@ -104,42 +107,48 @@ module.exports = (app) => {
   router.put('/password/reset', async (req, res, next) => {
     try {
       if (!req.body.token) {
-        return res.status(400).json({ message: "Missing param token." })
+        throw new ClientError("Missing parameter token.")
       }
       if (!req.body.password) {
-        return res.status(400).json({ message: "Missing param password." })
+        throw new ClientError("Missing parameter password.")
       }
       if (!req.body.confirmation) {
-        return res.status(400).json({ message: "Missing param confirmation." })
+        throw new ClientError("Missing parameter confirmation.")
       }
-
       if (req.body.password != req.body.confirmation) {
-        return res.status(400).json({ message: "Passwords dont match." })
+        throw new ClientError("Passwords does not match.")
       }
 
       let decoded = app.service.authentication.verify(req.body.token)
-      let email = decoded.email
+      const email = decoded.email
 
-      let user = await app.models.users.uiUser.findOne({ email: email })
-      if (!user) {
-        return res.status(404).json({ message: "User not found." })
+      if (!email) {
+        throw new ClientError('Invalid Request. ERR_TOKEN')
       }
 
-      let passport = await app.models.passport.findOne({ protocol: 'local', user_id: user.id })
+      const user = await app.models.users.uiUser.findOne({
+        email: new EscapedRegExp(email,'i')
+      })
+
+      if (!user) {
+        throw new ClientError('Invalid Request. ERR_USER')
+      }
+
+      const passport = await app.models.passport.findOne({ protocol: 'local', user_id: user.id })
       if (!passport) {
-        return res.status(404).json({ message: "User passport not found." })
+        throw new ClientError('Invalid Request. ERR_PASSPORT')
       }
       passport.password = await passport.hashPassword(req.body.password)
       await passport.save()
 
       res.json({})
     } catch (err) {
-      if (err.status) { res.status(err.status).json( { message: err.message }) }
-      else res.status(500).json('Internal Server Error')
+      next(err)
     }
   })
 
-  router.post('/password/change', async (req, res, next) => {
+  const bearerMiddleware = app.service.authentication.middlewares.bearerPassport
+  router.post('/password/change', bearerMiddleware, async (req, res, next) => {
     try {
       if (!req.body.password) {
         return res.status(400).json({ message: "Missing param password." })
@@ -150,17 +159,18 @@ module.exports = (app) => {
       if (!req.body.confirmPassword) {
         return res.status(400).json({ message: "Missing param confirm password." })
       }
-      if (!req.body.id) {
-        return res.status(400).json({ message: "Missing param user id." })
-      }
+      //if (!req.body.id) {
+      //  return res.status(400).json({ message: "Missing param id." })
+      //}
       if (req.body.newPassword != req.body.confirmPassword) {
         return res.status(400).json({ message: "New passwords dont match." })
       }
 
-      let user = await app.models.users.uiUser.findById(req.body.id)
-      if (!user) {
-        return res.status(404).json({ message: "User not found." })
-      }
+      //let user = await app.models.users.uiUser.findById(req.body.id)
+      //if (!user) {
+      //  return res.status(404).json({ message: "User not found." })
+      //}
+      const user = req.user
 
       let passport = await app.models.passport.findOne({ protocol: 'local', user_id: user.id })
       if (!passport) {
@@ -174,8 +184,7 @@ module.exports = (app) => {
 
       res.json({})
     } catch (err) {
-      if (err.status) { res.status(err.status).json( { message: err.message }) }
-      else res.status(500).json('Internal Server Error')
+      next(err)
     }
   })
 

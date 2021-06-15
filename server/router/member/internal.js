@@ -1,8 +1,10 @@
 const express = require('express')
 const isEmail = require('validator/lib/isEmail')
+const isMongoId = require('validator/lib/isMongoId')
 const logger = require('../../logger')('router:member:internal')
 const { ClientError, ServerError } = require('../../errors')
 const dbFilterMiddleware = require('../db-filter-middleware')
+const EscapedRegExp = require('../../escaped-regexp')
 
 module.exports = (app) => {
   const router = express.Router()
@@ -10,29 +12,36 @@ module.exports = (app) => {
   router.get('/resolve', dbFilterMiddleware({}), async (req, res, next) => {
     try {
       const filters = req.filters
-      const values = filters.where.users
+      const users = filters.where.users
       const customer_id = req.session.customer_id
 
-      if (!Array.isArray(values)) {
+      if (!Array.isArray(users)) {
         throw new ClientError('Invalid data format. Array required')
       }
 
-      if (values.length === 0) {
+      if (users.length === 0) {
         throw new ClientError('Invalid approvers. Need at least one')
       }
 
       const emails = []
       const names = []
+      const ids = []
 
-      for (let index = 0; index < values.length; index++) {
-        let value = values[index]
-        if (typeof value !== 'string') {
-          throw new ClientError(`Invalid value ${value}. Must be string`)
+      for (let index = 0; index < users.length; index++) {
+        let user = users[index]
+        if (typeof user !== 'string') {
+          throw new ClientError(`Invalid user format ${user}. Must be string`)
         }
 
-        const regex =  new RegExp(value,'i') 
-        if (isEmail(value)) {
+        if (!user) {
+          throw new ClientError(`Empty string`)
+        }
+
+        const regex = new EscapedRegExp(user,'i') // case insensitive
+        if (isEmail(user)) {
           emails.push(regex)
+        } else if(isMongoId(user)) {
+          ids.push(user)
         } else {
           names.push(regex)
         }
@@ -51,6 +60,7 @@ module.exports = (app) => {
           match: {
             _type: 'UiUser',
             $or: [
+              { _id: { $in: ids } },
               { email: { $in: emails } },
               { username: { $in: names } }
             ]

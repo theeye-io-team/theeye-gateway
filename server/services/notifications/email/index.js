@@ -59,7 +59,6 @@ class Email extends AbstractNotification {
           logger.error(response)
           reject(err)
         } else {
-          logger.log(response)
           resolve(response)
         }
       })

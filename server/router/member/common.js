@@ -1,4 +1,5 @@
 const logger = require('../../logger')('router:member:common')
+const EscapedRegExp = require('../../escaped-regexp')
 
 module.exports = function (app) {
   const handlers = {
@@ -7,7 +8,7 @@ module.exports = function (app) {
         let dbQuery = req.db_query
         let members = await app.models.member.find(dbQuery).exec()
 
-        for (var member of members) {
+        for (let member of members) {
           await member.populate({
             path: 'user',
             select: 'id name username email enabled'
@@ -31,7 +32,10 @@ module.exports = function (app) {
           throw err
         }
 
-        const user = await app.models.users.uiUser.findOne({ email: context.email })
+        const user = await app.models.users.uiUser.findOne({
+          email: new EscapedRegExp(context.email,'i')
+        })
+
         let member
         if (!user) {
           member = await inviteNewUser(app, customer, context)

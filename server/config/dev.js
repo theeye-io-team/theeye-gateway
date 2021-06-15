@@ -103,10 +103,10 @@ module.exports = {
           options: {
             port: 6025,
             secure: false,
-            tls: {
-              // do not fail on invalid certs
-              rejectUnauthorized: false
-            },
+            //tls: {
+            //  // do not fail on invalid certs
+            //  rejectUnauthorized: false
+            //},
             ignoreTLS: true
           }
         },
@@ -178,8 +178,8 @@ module.exports = {
   // *
   // */
   grecaptcha: {
-    enabled: false,
-    v2_secret: '',
+    enabled: true,
+    v2_secret: '6LeisB4bAAAAAMSzj978tUcGW5tm5Ppfk4TrIwRV',
     //v3_secret: '',
     url: 'https://www.google.com/recaptcha/api/siteverify'
   }

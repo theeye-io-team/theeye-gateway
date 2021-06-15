@@ -15,12 +15,11 @@ module.exports = {
       useUnifiedTopology: true
     }
   },
-  ///**
-  // *
-  // * redis options to pass directly to node redis client
-  // * https://www.npmjs.com/package/redis
-  // *
-  // */
+  //
+  // redis options to pass directly to node redis client
+  //
+  // https://www.npmjs.com/package/redis
+  //
   redis: {
     host: '127.0.0.1',
     port: 6379

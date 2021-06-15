@@ -5,6 +5,7 @@ const logger = require('../../logger')('router:notifications')
 const CredentialsConstants = require('../../constants/credentials')
 const TopicsConstants = require('../../constants/topics')
 const { ClientError, ServerError } = require('../../errors')
+const EscapedRegExp = require('../../escaped-regexp')
 
 module.exports = (app) => {
   const router = express.Router()
@@ -432,7 +433,7 @@ module.exports = (app) => {
 
       if (Array.isArray(ids) && ids.length > 0) {
         // casi insensitive search
-        const ciIds = ids.map(id => new RegExp(id, 'i'))
+        const ciIds = ids.map(id => new EscapedRegExp(id, 'i'))
 
         query.$or.push({
           email: { $in: ciIds }
@@ -648,7 +649,7 @@ module.exports = (app) => {
         app.service.notifications.email
           .sendEvent(event, user)
           .then(response => {
-            logger.debug(`${event.id}|mail service respose: ${response}`)
+            logger.debug(`${event.id}|mail service response: %j`, response)
             logger.debug(`${event.id}|${user.email} notified`)
           })
           .catch(err => {
