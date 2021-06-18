@@ -15,13 +15,12 @@ Error.prototype.toJSON = function () {
 }
 
 const App = require('./app')
-const config = require('./config')
+const config = require('./config')()
 
 const app = module.exports = new App()
 
 const boot = async (app) => {
   await app.configure(config)
-
   console.log('app ready')
 
   // start the server if `$ node server.js`
