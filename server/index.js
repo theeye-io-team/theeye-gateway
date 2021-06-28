@@ -15,7 +15,7 @@ Error.prototype.toJSON = function () {
 }
 
 const App = require('./app')
-const config = require('./config')()
+const config = require('./config')
 
 const app = module.exports = new App()
 

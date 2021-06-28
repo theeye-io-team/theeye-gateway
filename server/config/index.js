@@ -3,7 +3,6 @@ const path = require('path')
 const logger = require('../logger')('config')
 const Encryption = require('../lib/encryption')
 
-
 const loadConfig = () => {
   const env = process.env.NODE_ENV || 'default'
 
@@ -19,6 +18,7 @@ const loadConfig = () => {
   } else {
     try {
 
+      logger.error(`loading ${env} configuration`)
       return require(`./${env}`)
 
     } catch (err) {

@@ -19,7 +19,13 @@ const AWS = require('aws-sdk')
 class App extends EventEmitter {
 
   async configure (config) {
-    this.config = config
+    if (typeof config === 'function') {
+      logger.log('loading configuration file from module')
+      this.config = config()
+    } else {
+      logger.log('loading configuration from static file')
+      this.config = config
+    }
 
     this.models = new Models(this)
     await this.models.configure()
@@ -31,7 +37,7 @@ class App extends EventEmitter {
     await this.service.authentication.configure()
 
     this.service.notifications = new Notifications(this)
-    this.service.sns = new AWS.SNS(new AWS.Config(config.services.aws))
+    this.service.sns = new AWS.SNS(new AWS.Config(this.config.services.aws))
 
     // routes require models
     this.setupApi()

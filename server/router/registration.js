@@ -315,7 +315,6 @@ module.exports = (app) => {
   })
 
   const verifyUserActivationData = async ({ invitation_token, email, username }) => {
-
     // search user to activate
     const users = await app.models.users.uiUser.find({
       invitation_token,

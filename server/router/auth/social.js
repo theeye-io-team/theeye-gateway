@@ -1,8 +1,9 @@
 const Router = require('express').Router
 const Passport = require('passport')
 const ObjectId = require('mongoose').Types.ObjectId
-const { OAuth2Client } = require('google-auth-library')
 const logger = require('../../logger')('router:auth')
+const EscapedRegExp = require('../../escaped-regexp')
+const { OAuth2Client } = require('google-auth-library')
 const { ClientError, ServerError } = require('../../errors')
 
 module.exports = (app) => {
@@ -57,7 +58,7 @@ module.exports = (app) => {
 
         // verifico user
         const user = await app.models.users.uiUser.findOne({
-          email: new RegExp(email, 'i')
+          email: new EscapedRegExp(email,'i')
         })
 
         if (!user) {
