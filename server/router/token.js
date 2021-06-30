@@ -37,7 +37,7 @@ module.exports = (app) => {
       for (const member of members) {
         await member.populate({
           path: 'user',
-          select: 'id username'
+          select: 'id username name'
         }).execPopulate()
 
         let session = await app.models.session.findOne({
@@ -49,6 +49,7 @@ module.exports = (app) => {
           integrationMembers.push({
             id: member.id,
             username: member.user.username,
+            name: member.user.name,
             token: session.token
           })
         }
@@ -80,6 +81,7 @@ module.exports = (app) => {
       const token = {
         id: member.id,
         username: user.username,
+        name: user.name,
         token: tokenSession.token
       }
 
@@ -129,40 +131,38 @@ const randomToken = () => {
 }
 
 const createIntegrationToken = async (app, customer, data) => {
-  let cliendId = randomToken()
-  let clientSecret = randomToken()
-  let username = data.username.replace(/[^a-zA-Z0-9\.\_]/ig,'_')
+  const clientId = randomToken()
+  const clientSecret = randomToken()
 
-  let userData = {
-    username: username,
-    email: `${customer.name}-${username}-integration@theeye.io`,
-    name: username,
+  const username = (`${customer.name}-${clientId}-integration`).toLowerCase()
+  const email = `${username}@theeye.io`
+
+  const user = await app.models.users.botUser.create({
+    username,
+    email,
+    name: data.name || username,
     enabled: true,
+    onboardingCompleted: true ,
     invitation_token: null,
     devices: null,
     notifications: null ,
-    onboardingCompleted: true ,
     credential: null
-  }
+  })
 
-  let user = await app.models.users.botUser.create(userData)
-
-  let passportData = {
+  const passport = await app.models.passport.create({
     protocol: 'local',
     provider: 'theeye',
     password: clientSecret,
-    identifier: cliendId,
+    identifier: clientId,
     tokens: {
       access_token: null,
       refresh_token: clientSecret
     },
     user: user._id,
     user_id: user._id
-  }
+  })
 
-  let passport = await app.models.passport.create(passportData)
-
-  let memberData = {
+  const member = await app.models.member.create({
     user: user._id,
     user_id: user._id,
     customer: customer._id,
@@ -170,9 +170,7 @@ const createIntegrationToken = async (app, customer, data) => {
     customer_name: customer.name,
     credential: CredentialsConstants.INTEGRATION,
     enabled: true
-  }
-
-  let member = await app.models.member.create(memberData)
+  })
 
   return { member, passport, user }
 }

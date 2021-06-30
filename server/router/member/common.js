@@ -51,28 +51,27 @@ module.exports = function (app) {
   }
 
   const inviteNewUser = async (app, customer, context) => {
-    // si el usuario no existe, creo un nuevo
-    const userData = {
-      username: context.email,
-      name: context.name,
-      email: context.email,
-      enabled: false,
-      invitation_token: app.service.authentication.issue({ email: context.email })
-    }
+    const email = context.email.toLowerCase()
 
-    const user = await app.models.users.uiUser.create(userData)
+    // si el usuario no existe, creo un nuevo
+    const user = await app.models.users.uiUser.create({
+      email,
+      username: email,
+      name: context.name,
+      enabled: false,
+      invitation_token: app.service.authentication.issue({ email })
+    })
 
     // creo el member para el nuevo user
-    const memberData = {
+    const member = await app.models.member.create({
       user: user._id,
       user_id: user.id,
       customer: customer._id,
       customer_id: customer._id,
       customer_name: customer.name,
       credential: context.credential
-    }
+    })
 
-    const member = await app.models.member.create(memberData)
     member.user = user
 
     await app.service

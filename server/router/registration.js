@@ -19,8 +19,8 @@ module.exports = (app) => {
       }
 
       const invitation_token = req.query.invitation_token
-      let decoded = app.service.authentication.verify(invitation_token)
-      let email = decoded.email
+      const decoded = app.service.authentication.verify(invitation_token)
+      const email = decoded.email
 
       if (!email) {
         let err = new Error('Invalid invitation_token')
@@ -28,13 +28,11 @@ module.exports = (app) => {
         throw err
       }
 
-      let fields = 'username email invitation_token'
-
-      let user = await app.models.users.uiUser.findOne({
+      const user = await app.models.users.uiUser.findOne({
         invitation_token: invitation_token,
         email: new EscapedRegExp(email, 'i'),
         enabled: false
-      }, fields)
+      }, 'username email invitation_token')
 
       if (!user) {
         let err = new Error('User Not Found')
@@ -75,14 +73,13 @@ module.exports = (app) => {
       await user.save()
 
       // create local passport
-      const passportData = {
+      const passport = await app.models.passport.create({
         protocol: 'local',
         provider: 'theeye',
         password: body.password,
         user: user._id,
         user_id: user._id
-      }
-      const passport = await app.models.passport.create(passportData)
+      })
 
       let session = await app.service.authentication.membersLogin({ user, passport })
       res.json({ access_token: session.token })
@@ -165,27 +162,7 @@ module.exports = (app) => {
         }
       }
 
-      const lcEmail = req.body.email.toLowerCase()
-
-
-      const invitation_token = app.service.authentication
-        .issue({ email: lcEmail }, { expiresIn: (30 * 24 * 60 * 60) }) // 30 days
-
-      const userData = {
-        email: lcEmail,
-        username: lcEmail,
-        name: req.body.name,
-        enabled: false,
-        invitation_token
-      }
-
-      user = await app.models.users.uiUser.create(userData)
-      if (!user) { throw new ServerError() }
-
-      await app.service
-        .notifications
-        .email
-        .sendRegistrationMessage({ user })
+      await notifyUserRegistration(app, req.body)
 
       return res.status(200).json({ message: 'success' })
     } catch (err) {
@@ -236,14 +213,14 @@ module.exports = (app) => {
       if (!validCustomerName(req.body.customername)) return res.status(400).json({message: 'incorrect username format'})
 
       const invitation_token = req.body.invitation_token
-      let decoded = app.service.authentication.verify(invitation_token)
+      const decoded = app.service.authentication.verify(invitation_token)
       if (!decoded.email || (decoded.email !== req.body.email)) {
         let err = new Error('Invalid invitation_token')
         err.status = 400
         throw err
       }
 
-      let body = req.body
+      const body = req.body
 
       // check if username is taken
       const prevUser = await app.models.users.uiUser.findOne({
@@ -283,28 +260,24 @@ module.exports = (app) => {
       await createCustomerAgent(app, customer)
 
       // create member
-      let memberData = {
+      const member = await app.models.member.create({
         user: user._id,
         user_id: user.id,
         customer: customer._id,
         customer_id: customer._id,
         customer_name: customer.name,
         credential: CredentialsConstants.OWNER
-      }
-
-      let member = await app.models.member.create(memberData)
+      })
       member.user = user
 
       // create passport
-      let passportData = {
+      const passport = await app.models.passport.create({
         protocol: 'local',
         provider: 'theeye',
         password: body.password,
         user: user._id,
         user_id: user._id
-      }
-
-      let passport = await app.models.passport.create(passportData)
+      })
 
       // create session
       const session = await app.service.authentication.createSession({ member, protocol: passport.protocol })
@@ -368,25 +341,52 @@ const randomToken = () => {
   return crypto.randomBytes(20).toString('hex')
 }
 
+const notifyUserRegistration = async (app, { email, name }) => {
+  const lcEmail = email.toLowerCase()
+
+  const invitation_token = app.service.authentication
+    .issue({ email: lcEmail }, { expiresIn: (30 * 24 * 60 * 60) }) // 30 days
+
+  const user = await app.models.users.uiUser.create({
+    email: lcEmail,
+    username: lcEmail,
+    name,
+    enabled: false,
+    invitation_token
+  })
+
+  if (!user) {
+    throw new ServerError()
+  }
+
+  await app.service
+    .notifications
+    .email
+    .sendRegistrationMessage({ user })
+
+  return
+}
+
 const createCustomerAgent = async (app, customer) => {
   let cliendId = randomToken()
   let clientSecret = randomToken()
 
-  const userData = {
+  const botEmail = customer.name + '-agent@theeye.io'
+  const botName = customer.name + '-agent'
+
+  const agentUser = await app.models.users.botUser.create({
     username: cliendId,
-    email: customer.name + '-agent@theeye.io',
-    name: customer.name + '-agent',
+    email: botEmail.toLowerCase(),
+    name: botName.toLowerCase(),
     enabled: true,
     invitation_token: null,
     devices: null,
     notifications: null ,
     onboardingCompleted: true ,
     credential: null
-  }
+  })
 
-  let agentUser = await app.models.users.botUser.create(userData)
-
-  let passportData = {
+  await app.models.passport.create({
     protocol: 'local',
     provider: 'theeye',
     password: clientSecret,
@@ -397,11 +397,9 @@ const createCustomerAgent = async (app, customer) => {
     },
     user: agentUser._id,
     user_id: agentUser._id
-  }
+  })
 
-  await app.models.passport.create(passportData)
-
-  let memberData = {
+  await app.models.member.create({
     user: agentUser._id,
     user_id: agentUser._id,
     customer: customer._id,
@@ -409,9 +407,7 @@ const createCustomerAgent = async (app, customer) => {
     customer_name: customer.name,
     credential: CredentialsConstants.AGENT,
     enabled: true
-  }
-
-  await app.models.member.create(memberData)
+  })
 
   return
 }

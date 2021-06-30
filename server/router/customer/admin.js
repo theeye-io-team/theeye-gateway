@@ -84,25 +84,25 @@ module.exports = (app) => {
 
 // @TODO move to IAM service
 const createCustomerAgent = async (app, customer) => {
-  let cliendId = randomToken()
-  let clientSecret = randomToken()
+  const cliendId = randomToken()
+  const clientSecret = randomToken()
 
-  let userData = {
+  const email = (customer.name + '-agent@theeye.io').toLowerCase()
+  const name = (customer.name + '-agent').toLowerCase()
+
+  const agentUser = await app.models.users.botUser.create({
     username: cliendId,
-    //username: user.username || user.email,
-    email: customer.name + '-agent@theeye.io',
-    name: customer.name + '-agent',
+    email,
+    name,
     enabled: true,
     invitation_token: null,
     devices: null,
     notifications: null ,
     onboardingCompleted: true ,
     credential: null
-  }
+  })
 
-  let agentUser = await app.models.users.botUser.create(userData)
-
-  let passportData = {
+  const passport = await app.models.passport.create({
     protocol: 'local',
     provider: 'theeye',
     password: clientSecret,
@@ -113,11 +113,9 @@ const createCustomerAgent = async (app, customer) => {
     },
     user: agentUser._id,
     user_id: agentUser._id
-  }
+  })
 
-  let passport = await app.models.passport.create(passportData)
-
-  let memberData = {
+  const member = await app.models.member.create({
     user: agentUser._id,
     user_id: agentUser._id,
     customer: customer._id,
@@ -125,9 +123,7 @@ const createCustomerAgent = async (app, customer) => {
     customer_name: customer.name,
     credential: CredentialsConstants.AGENT,
     enabled: true
-  }
-
-  let member = await app.models.member.create(memberData)
+  })
 
   return agentUser
 }
