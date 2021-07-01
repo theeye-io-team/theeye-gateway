@@ -72,7 +72,6 @@ module.exports = async (app) => {
       identifier: profile[ldapConfig.fields.id],
       username: profile[ldapConfig.fields.username],
       credential: getUserCredential(profile[ldapConfig.fields.groups]),
-      //credential: getUserCredential(['some_group','theeye_users','map theeye_grp','theeye_theeye','Test_TheEye_Managers','TheEye_Organization','TheEye_user']),
       enabled: true
     }
 
@@ -122,7 +121,6 @@ module.exports = async (app) => {
     if (theeyeGroups.length === 0) {
       throw new ClientError(`Domain access rejected. Invalid TheEye Groups ${detected}`, { statusCode: 403 })
     }
-    //let group = CREDENTIALS_MAP[ 'theeye_users' ]
 
     const anyGroupMatch = theeyeGroups[0]
     logger.log(`user is logged in as ${anyGroupMatch}`)
@@ -195,15 +193,15 @@ module.exports = async (app) => {
         customer_name: customer.name,
         credential: profile.credential
       })
+
       return memberCreatePromise
     }
 
-    if (members.length === 1) {
-      const member = members[0] 
-      member.credential = profile.credential
-      await member.save()
-    }
-
+    //if (members.length === 1) {
+    //  const member = members[0] 
+    //  member.credential = profile.credential
+    //  await member.save()
+    //}
     return members
   }
 
