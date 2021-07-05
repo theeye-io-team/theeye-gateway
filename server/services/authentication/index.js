@@ -7,7 +7,8 @@ const ldapauth = require('./ldapauth')
 const ACL = require('./acl')
 
 const logger = require('../../logger')(':services:authentication')
-const { ClientError } = require('../../errors')
+const { ClientError, ServerError } = require('../../errors')
+const EscapedRegExp = require('../../escaped-regexp')
 
 /**
  * jwToken
@@ -82,7 +83,7 @@ module.exports = function (app) {
         let email = profile._json.email
 
         let user = await app.models.users.uiUser.findOne({
-          email: new RegExp(email, 'i'),
+          email: new EscapedRegExp(email, 'i'),
           enabled: true
         })
 
@@ -119,21 +120,26 @@ module.exports = function (app) {
     async verifyUserPassword (username, password, next) {
       try {
         logger.log('new connection [basic]')
-        let user = await app.models.users
-          .user.findOne({
+        const users = await app.models.users
+          .user.find({
             $or: [
-              { email: new RegExp(username, 'i') },
-              { username: new RegExp(username, 'i') }
+              { email: new EscapedRegExp(username, 'i') },
+              { username: new EscapedRegExp(username, 'i') }
             ]
           })
 
-        if (!user) {
+        if (users.length > 1) {
+          throw new ServerError('Internal Server Error')
+        }
+
+        if (users.length === 0) {
           // username does not exists
           throw new ClientError('Unauthorized',{ code: 'UsernameNotFound', statusCode: 401 })
         }
 
+        const user = users[0]
         // basic authentication requires a local passport
-        let passport = await app.models.passport.findOne({ user: user._id, protocol: 'local' })
+        const passport = await app.models.passport.findOne({ user: user._id, protocol: 'local' })
 
         if (!passport) {
           // user is not authorized to authenticate with username / password
