@@ -1,4 +1,4 @@
-FROM node:10
+FROM node:14
 MAINTAINER Facundo Gonzalez <facugon@theeye.io>
 ENV destDir /src/theeye/gateway
 # app directory
