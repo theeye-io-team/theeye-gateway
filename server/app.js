@@ -1,4 +1,5 @@
 const express = require('express')
+
 const compression = require('compression')
 const path = require('path')
 const http = require('http')
@@ -13,6 +14,7 @@ const Notifications = require('./services/notifications')
 const EventEmitter = require('events')
 
 const ErrorHandler = require('./errors')
+const useSwagger = require('./swagger')
 
 const AWS = require('aws-sdk')
 
@@ -46,7 +48,7 @@ class App extends EventEmitter {
   }
 
   start () {
-    const port = this.config.app.port
+    const port = (process.env.PORT || this.config.app.port)
     const server = this.server = this.api.listen(port, () => {
       logger.log(`API ready at port ${port}`)
     })
@@ -110,6 +112,8 @@ class App extends EventEmitter {
         next()
       }
     })
+
+    useSwagger(this)
 
     api.use(express.static(path.join(__dirname, '../client/dist')))
     new Router(this)

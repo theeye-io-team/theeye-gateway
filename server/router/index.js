@@ -28,7 +28,7 @@ const GatewayRouter = require('./gateway')
 class Router {
   constructor (app) {
     this.app = app
-    let api = app.api
+    const api = app.api
 
     const bearerMiddleware = app.service.authentication.middlewares.bearerPassport
     const internalMiddleware = app.service.authentication.middlewares.gatewayPassport
@@ -46,7 +46,6 @@ class Router {
     api.use('/api/status', StatusRouter(app))
     api.use('/api/registration', RegistrationRouter(app))
 
-    api.use('/helper', bearerMiddleware, HelperRouter(app))
     api.use('/api/bot', bearerMiddleware, BotRouter(app))
     api.use('/api/token', bearerMiddleware, TokenRouter(app))
     api.use('/api/inbox', bearerMiddleware, InboxRouter(app))
@@ -59,6 +58,7 @@ class Router {
     api.use('/api/admin/customer', bearerMiddleware, credentialMiddleware.root(), CustomerAdminRouter(app))
     api.use('/api/admin/notification', bearerMiddleware, credentialMiddleware.root(), NotificationAdminRouter(app))
 
+    api.use('/helper', bearerMiddleware, HelperRouter(app))
     api.use('/api/notification', internalMiddleware, NotificationRouter(app))
     api.use('/api/internal/user', internalMiddleware, UserInternalRouter(app))
     api.use('/api/internal/member', internalMiddleware, MemberInternalRouter(app))
@@ -74,17 +74,6 @@ class Router {
     }
     api.get('/*', staticRoute)
     api.get('/admin/*', staticRoute)
-    //api.get('/login', staticRoute)
-    //api.get('/tokenlogin', staticRoute)
-    //api.get('/logout', staticRoute)
-    //api.get('/enterprise', staticRoute)
-    //api.get('/dashboard', staticRoute)
-    //api.get('/activate', staticRoute)
-    //api.get('/register', staticRoute)
-    //api.get('/finishregistration', staticRoute)
-    //api.get('/passwordreset', staticRoute)
-    //api.get('/sociallogin', staticRoute)
-    //api.get('/admin/*', staticRoute)
   }
 }
 
