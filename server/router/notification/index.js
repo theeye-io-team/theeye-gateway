@@ -119,60 +119,60 @@ module.exports = (app) => {
 
     if (isTaskNotificationEvent(event)) {
       await createTaskCustomNotification(req, res)
-    } else if (isResultNotificationEvent(event)){
-      await createTaskResultNotification(req, res)
+    //} else if (isResultNotificationEvent(event)){
+    //  await createTaskResultNotification(req, res)
     }
 
     return
   }
 
-  const createTaskResultNotification = async (req, res) => {
-    const event = req.body
-    const organization = event.data.organization
-    const organization_id = event.data.organization_id
-    const model = event.data.model
+  //const createTaskResultNotification = async (req, res) => {
+  //  const event = req.body
+  //  const organization = event.data.organization
+  //  const organization_id = event.data.organization_id
+  //  const model = event.data.model
 
-    let user_id
-    if (model.workflow_job) {
-      user_id = model.workflow_job.user_id
-    } else {
-      user_id = model.user_id
-    }
+  //  let user_id
+  //  if (model.workflow_job) {
+  //    user_id = model.workflow_job.user_id
+  //  } else {
+  //    user_id = model.user_id
+  //  }
 
-    if (!user_id) {
-      logger.error('no owner for this job. annonymous call')
-      return
-    }
+  //  if (!user_id) {
+  //    logger.error('no owner for this job. annonymous call')
+  //    return
+  //  }
 
-    let user = await app.models.users.uiUser.findOne({ _id: user_id })
-    if (!user) {
-      throw new Error('User not found')
-    }
+  //  let user = await app.models.users.uiUser.findOne({ _id: user_id })
+  //  if (!user) {
+  //    throw new Error('User not found')
+  //  }
 
-    return new Promise((resolve, reject) => {
-      // falta filtrar notifications
-      app.service.notifications.sockets.sendEvent({
-        id: event.id,
-        topic: TopicsConstants.JOB_RESULT_RENDER,
-        data: {
-          model: model,
-          model_type: 'Job',
-          user_id: user.id,
-          organization,
-          organization_id
-        }
-      }, err => {
-        if (err) {
-          logger.error('%s|%s', event.id, 'socket error')
-          logger.error(err)
-          reject(err)
-        } else {
-          logger.debug('%s|%s', event.id, 'by socket notified')
-          resolve()
-        }
-      })
-    })
-  }
+  //  return new Promise((resolve, reject) => {
+  //    // falta filtrar notifications
+  //    app.service.notifications.sockets.sendEvent({
+  //      id: event.id,
+  //      topic: TopicsConstants.JOB_RESULT_RENDER,
+  //      data: {
+  //        model: model,
+  //        model_type: 'Job',
+  //        user_id: user.id,
+  //        organization,
+  //        organization_id
+  //      }
+  //    }, err => {
+  //      if (err) {
+  //        logger.error('%s|%s', event.id, 'socket error')
+  //        logger.error(err)
+  //        reject(err)
+  //      } else {
+  //        logger.debug('%s|%s', event.id, 'by socket notified')
+  //        resolve()
+  //      }
+  //    })
+  //  })
+  //}
 
   /**
    *
