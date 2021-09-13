@@ -2,6 +2,7 @@ const express = require('express')
 const mongoose = require('mongoose')
 const format = require('util').format
 const logger = require('../logger')('router:bot')
+const ensureCredentialMiddleware = require ('./credentialMiddleware')
 const { ClientError, ServerError } = require('../errors')
 const CredentialsConstants = require('../constants/credentials')
 const PassportConstants = require('../constants/passport')
@@ -84,7 +85,7 @@ module.exports = (app) => {
     }
   })
 
-  router.post('/launcher', async (req, res, next) => {
+  router.post('/launcher', ensureCredentialMiddleware.root(), async (req, res, next) => {
     try {
       const bot_launcher = app.config.integration.bot_launcher
       const session = req.session
