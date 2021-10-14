@@ -103,8 +103,8 @@ module.exports = (app) => {
           })
       }
     } else {
-      logger.error('event model not present. cannot send socket event by acl , without acls.')
-      logger.error(event)
+      logger.log('event model not present.')
+      logger.log(event)
     }
   }
 
@@ -276,7 +276,8 @@ module.exports = (app) => {
         }
       }
     } catch (e) {
-      logger.error(e)
+      logger.error(e.message)
+      logger.error(value)
       recipients = [ values ]
     }
 
