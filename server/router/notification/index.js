@@ -275,9 +275,9 @@ module.exports = (app) => {
           recipients = [ parsed ]
         }
       }
-    } catch (e) {
-      logger.error(e.message)
-      logger.error(value)
+    } catch (jsonErr) {
+      logger.log(jsonErr.message)
+      logger.log(values)
       recipients = [ values ]
     }
 
