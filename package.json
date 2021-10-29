@@ -1,12 +1,13 @@
 {
   "name": "TheEye-APIGateway",
-  "version": "1.6.1",
+  "version": "1.7.0",
   "description": "",
   "main": "index.js",
   "scripts": {
     "start": "node ./server",
     "build": "docker build . --tag 'theeye-gateway:1.0.0'"
   },
+  "license":"AGPL-3.0",
   "author": "",
   "dependencies": {
     "aws-sdk": "~2.648.0",
