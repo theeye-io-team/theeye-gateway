@@ -36,7 +36,7 @@ module.exports = (app) => {
       logger.debug('%s|event arrived. %s', event.id, event.topic)
       logger.data('%o', event)
 
-      const tasks = await Promise.all([
+      await Promise.all([
         // send event via pub/sub messages system
         app.service.notifications.messages.sendEvent(event),
         // handler for generic generated events by topic  
@@ -44,7 +44,7 @@ module.exports = (app) => {
         // handler for all generated events by organization/topic
         sendSocketEventByACL(event),
         // application specific notifications
-        sendTaskEventNotification(req, res)
+        //sendTaskEventNotification(req, res)
       ])
 
       return res.status(200).json('ok')
@@ -78,6 +78,20 @@ module.exports = (app) => {
     }
   )
 
+  router.post('/task', async (req, res, next) => {
+    try {
+      await createTaskCustomNotification(req, res)
+      return res.status(200).json('ok')
+    } catch (err) {
+      if (err.status) {
+        res.status(err.status).json( { message: err.message })
+      } else {
+        logger.error(err)
+        res.status(500).json('Internal Server Error')
+      }
+    }
+  })
+
   const sendSocketEventByACL = async (event) => {
     app.service.notifications.sockets.sendEvent(event, 'admin')
 
@@ -108,72 +122,6 @@ module.exports = (app) => {
     }
   }
 
-  const sendTaskEventNotification = async (req, res) => {
-    const event = req.body
-
-    // can't send task event notifications without a task ...
-    if ( ! (event.data.model && event.data.model.task) ) {
-      logger.debug('%s|not a task notification', event.id)
-      return
-    }
-
-    if (isTaskNotificationEvent(event)) {
-      await createTaskCustomNotification(req, res)
-    //} else if (isResultNotificationEvent(event)){
-    //  await createTaskResultNotification(req, res)
-    }
-
-    return
-  }
-
-  //const createTaskResultNotification = async (req, res) => {
-  //  const event = req.body
-  //  const organization = event.data.organization
-  //  const organization_id = event.data.organization_id
-  //  const model = event.data.model
-
-  //  let user_id
-  //  if (model.workflow_job) {
-  //    user_id = model.workflow_job.user_id
-  //  } else {
-  //    user_id = model.user_id
-  //  }
-
-  //  if (!user_id) {
-  //    logger.error('no owner for this job. annonymous call')
-  //    return
-  //  }
-
-  //  let user = await app.models.users.uiUser.findOne({ _id: user_id })
-  //  if (!user) {
-  //    throw new Error('User not found')
-  //  }
-
-  //  return new Promise((resolve, reject) => {
-  //    // falta filtrar notifications
-  //    app.service.notifications.sockets.sendEvent({
-  //      id: event.id,
-  //      topic: TopicsConstants.JOB_RESULT_RENDER,
-  //      data: {
-  //        model: model,
-  //        model_type: 'Job',
-  //        user_id: user.id,
-  //        organization,
-  //        organization_id
-  //      }
-  //    }, err => {
-  //      if (err) {
-  //        logger.error('%s|%s', event.id, 'socket error')
-  //        logger.error(err)
-  //        reject(err)
-  //      } else {
-  //        logger.debug('%s|%s', event.id, 'by socket notified')
-  //        resolve()
-  //      }
-  //    })
-  //  })
-  //}
-
   /**
    *
    * custom notifications can be sent to any user registered in the eye
@@ -181,14 +129,20 @@ module.exports = (app) => {
    */
   const createTaskCustomNotification = async (req, res) => {
     const event = req.body
-    const notifyJob = event.data.model
-    const notifyTask = notifyJob.task
-    const notificationTypes = notifyTask.notificationTypes
-    const args = (notifyJob.task_arguments_values || [])
+    if (!event) {
+      throw new ClientError('Invalid Event. Request body required')
+    }
 
-    const subject = (args[0] || notifyTask.subject)
-    const body = (args[1] || notifyTask.body)
-    const recipients = (parseRecipients(args[2]) || notifyTask.recipients)
+    //const notifyJob = event.data.model
+    //const notifyTask = notifyJob.task
+    //const notificationTypes = notifyTask.notificationTypes
+    //const args = (notifyJob.task_arguments_values || [])
+    //const subject = (args[0] || notifyTask.subject)
+    //const body = (args[1] || notifyTask.body)
+    //const recipients = (parseRecipients(args[2]) || notifyTask.recipients)
+
+    const { subject, message, recipients, notificationTypes } = event.data
+
     const organization = event.data.organization
     const organization_id = event.data.organization_id
 
@@ -200,9 +154,8 @@ module.exports = (app) => {
       return 
     }
 
-    event.data.notification = { subject, body, recipients }
+    event.data.notification = { subject, body: message, recipients }
 
-    //createNotifications(event, users, event.data.organization, (err, notifications) => {})
     if (!notificationTypes || notificationTypes.desktop) {
       createNotifications({
         topic: TopicsConstants.NOTIFICATION_TASK,
@@ -246,42 +199,16 @@ module.exports = (app) => {
 
     if (!notificationTypes || notificationTypes.email) {
       for (let user of users) {
-        const message = { subject, body }
+        const payload = { subject, body: message }
         if (event.data && event.data.organization) {
-          message.organization = event.data.organization || ''
+          payload.organization = event.data.organization || ''
         }
-        app.service.notifications.email.send(message, user.email)
+        app.service.notifications.email.send(payload, user.email)
         logger.debug('%s|%s', event.id, 'by email notified')
       }
     }
 
     logger.debug('%s|%s', event.id, 'custome notifications sent')
-  }
-
-  const parseRecipients = (values) => {
-    let recipients = null
-
-    if (!values) { return recipients }
-
-    try {
-      if (typeof values === 'string') {
-        let parsed = values.toLowerCase()
-        // email or username, single or array
-        parsed = JSON.parse(values)
-
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          recipients = parsed
-        } else {
-          recipients = [ parsed ]
-        }
-      }
-    } catch (jsonErr) {
-      logger.log(jsonErr.message)
-      logger.log(values)
-      recipients = [ values ]
-    }
-
-    return recipients
   }
 
   /*
@@ -302,15 +229,16 @@ module.exports = (app) => {
       return
     }
 
-    let model = event.data.model
-    let acls = (model.task ? model.task.acl : model.acl) || []
-    let credentials = [
+    const model = event.data.model
+    //let acls = (model.task ? model.task.acl : model.acl) || []
+    const acls = (model.acl||[])
+    const credentials = [
       CredentialsConstants.ROOT,
       CredentialsConstants.ADMIN,
       CredentialsConstants.OWNER
     ]
-    let organization = event.data.organization
-    let organization_id = event.data.organization_id
+    const organization = event.data.organization
+    const organization_id = event.data.organization_id
 
     let members = await getMembersToNotify(event, organization_id, acls, credentials)
 
@@ -405,8 +333,9 @@ module.exports = (app) => {
     let query = {}
 
     if (event && isApprovalOnHoldEvent(event)) {
+      const approvers = event.data.model?.approvers
       query = {
-        id: { $in: event.data.approvers }
+        id: { $in: approvers }
       }
     } else {
       /**
@@ -462,7 +391,8 @@ module.exports = (app) => {
     var query = { customer_id }
 
     if (event && isApprovalOnHoldEvent(event)) {
-      query.user_id = { $in: event.data.approvers }
+      const approvers = event.data.model?.approvers
+      query.user_id = { $in: approvers }
     } else {
       if (Array.isArray(credentials) && credentials.length > 0) {
         query.credential = { $in: credentials }
@@ -621,23 +551,15 @@ module.exports = (app) => {
     return completed
   }
 
-  const isTaskNotificationEvent = (event) => {
-    let itIs = (
-      event.data.model_type === 'NotificationJob' &&
-      event.data.operation === 'create'
-    )
-    return itIs
-  }
-
-  const isResultNotificationEvent = (event) => {
-    if (event.topic !== 'job-crud') {
-      return false
-    }
-    if (event.data.model.task.show_result !== true) {
-      return false
-    }
-    return isCompleted(event.data.model.lifecycle)
-  }
+  //const isResultNotificationEvent = (event) => {
+  //  if (event.topic !== 'job-crud') {
+  //    return false
+  //  }
+  //  if (event.data.model.task.show_result !== true) {
+  //    return false
+  //  }
+  //  return isCompleted(event.data.model.lifecycle)
+  //}
 
   const sendMembersEmailEvent = (event, members) => {
     for (let member of members) {
