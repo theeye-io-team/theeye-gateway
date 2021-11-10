@@ -47,7 +47,7 @@ module.exports = (app) => {
         botAgent.client_id,
         botAgent.client_secret,
         botAgent.customer_name,
-        app.config.supervisor.url
+        app.config.supervisor.public_url
       )
 
       botAgent.windowsCurl = format(
@@ -56,7 +56,7 @@ module.exports = (app) => {
         botAgent.client_id,
         botAgent.client_secret,
         botAgent.customer_name,
-        app.config.supervisor.url
+        app.config.supervisor.public_url
       )
 
       botAgent.dockerCurl = format(
@@ -65,7 +65,7 @@ module.exports = (app) => {
         botAgent.client_id,
         botAgent.client_secret,
         botAgent.customer_name,
-        app.config.supervisor.url,
+        app.config.supervisor.public_url,
         botAgent.customer_name
       )
 
@@ -76,7 +76,7 @@ module.exports = (app) => {
         botAgent.client_id,
         botAgent.client_secret,
         botAgent.customer_name,
-        app.config.supervisor.url
+        app.config.supervisor.public_url
       )
 
       res.status(200).json(botAgent)
