@@ -47,7 +47,7 @@
           "defaultCustomerName": "ldap",
           "provider": "ldap",
           "server": {
-            "url": "ldap://127.0.0.1:389",
+            "url": "ldap://127.0.0.1:10389",
             "bindDN": "cn=admin,dc=planetexpress,dc=com",
             "bindCredentials": "GoodNewsEveryone",
             "searchBase": "ou=people,dc=planetexpress,dc=com",
