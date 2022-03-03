@@ -3,6 +3,7 @@ const apiFetch = require('../api-fetch')
 
 module.exports = function (db) {
   const schema = new mongoose.Schema({
+    disabled: { type: Boolean },
     name: {
       type: String,
       index: true,
@@ -12,6 +13,8 @@ module.exports = function (db) {
     },
     display_name: { type: String },
     description: { type: String, default: '' },
+    owner_id: { type: mongoose.Schema.Types.ObjectId },
+    owner: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
     config: {
       type: Object,
       default: () => {
