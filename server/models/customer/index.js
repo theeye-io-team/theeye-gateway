@@ -27,7 +27,8 @@ module.exports = function (db) {
             authtoken: '',
             address: '',
             protocol: ''
-          }
+          },
+          enterprise_login: null
         }
       }
     },
