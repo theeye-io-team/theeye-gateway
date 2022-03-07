@@ -2,7 +2,7 @@
 
 #NODE_ENV=comefa DEBUG=*eye* npx nodemon --ignore ./client ${1} server/
 if [ -z "${DEBUG}" ]; then
-  export DEBUG="*eye*"
+  export DEBUG="*eye*err*"
 fi
 
 if [ -z "${NODE_ENV}" ]; then
