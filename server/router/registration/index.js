@@ -1,13 +1,12 @@
 const express = require('express')
-const logger = require('../logger')('router:registration')
 const isEmail = require('validator/lib/isEmail')
 const got = require('got')
 const crypto = require('crypto')
-const CredentialsConstants = require('../constants/credentials')
 const FormData = require('form-data')
-const EscapedRegExp = require('../escaped-regexp')
-
-const { ClientError, ServerError } = require('../errors')
+const logger = require('../../logger')('router:registration')
+const CredentialsConstants = require('../../constants/credentials')
+const EscapedRegExp = require('../../escaped-regexp')
+const { ClientError, ServerError } = require('../../errors')
 
 module.exports = (app) => {
   const router = express.Router()

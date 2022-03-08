@@ -1,10 +1,8 @@
 const express = require('express')
-const logger = require('../../logger')('router:customer')
-const crypto = require('crypto')
-const CredentialsConstants = require('../../constants/credentials')
-const isEmail = require('validator/lib/isEmail')
 const dbFilterMiddleware = require('../db-filter-middleware')
 const { ClientError, ServerError } = require('../../errors')
+const { validateCustomerName } = require('./data-validate')
+const createAgentUser = require('./create-agent')
 
 module.exports = (app) => {
   const router = express.Router()
@@ -22,20 +20,11 @@ module.exports = (app) => {
   router.post('/', async (req, res, next) => {
     try {
       const data = req.body
-      let customer
-      let name = data.name.toLowerCase()
+      const name = data.name.toLowerCase()
+      validateCustomerName(app, name)
 
-      if (!isValidCustomerName(name)) {
-        throw new ClientError('Invalid customer name format')
-      }
-
-      customer = await app.models.customer.findOne({ name })
-      if (customer !== null) {
-        throw new ClientError(`customer already exists with name ${name}.`)
-      }
-
-      customer = await app.models.customer.create(data)
-      await createCustomerAgent(app, customer)
+      const customer = await app.models.customer.create(data)
+      await createAgentUser(app, customer)
 
       res.json(customer)
     } catch (err) {
@@ -82,52 +71,3 @@ module.exports = (app) => {
   return router
 }
 
-// @TODO move to IAM service
-const createCustomerAgent = async (app, customer) => {
-  const cliendId = randomToken()
-  const clientSecret = randomToken()
-
-  const email = (customer.name + '-agent@theeye.io').toLowerCase()
-  const name = (customer.name + '-agent').toLowerCase()
-
-  const agentUser = await app.models.users.botUser.create({
-    username: cliendId,
-    email,
-    name,
-    enabled: true,
-    invitation_token: null,
-    devices: null,
-    notifications: null ,
-    onboardingCompleted: true ,
-    credential: null
-  })
-
-  const passport = await app.models.passport.create({
-    protocol: 'local',
-    provider: 'theeye',
-    password: clientSecret,
-    identifier: cliendId,
-    tokens: {
-      access_token: null,
-      refresh_token: clientSecret
-    },
-    user: agentUser._id,
-    user_id: agentUser._id
-  })
-
-  const member = await app.models.member.create({
-    user: agentUser._id,
-    user_id: agentUser._id,
-    customer: customer._id,
-    customer_id:  customer._id,
-    customer_name: customer.name,
-    credential: CredentialsConstants.AGENT,
-    enabled: true
-  })
-
-  return agentUser
-}
-
-const randomToken = () => crypto.randomBytes(20).toString('hex')
-
-const isValidCustomerName = (name) => isEmail(`${name}@theeye.io`)
