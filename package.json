@@ -7,10 +7,10 @@
     "start": "node ./server",
     "build": "docker build . --tag 'theeye-gateway:1.0.0'"
   },
-  "license":"AGPL-3.0",
+  "license": "AGPL-3.0",
   "author": "",
   "dependencies": {
-    "aws-sdk": "~2.648.0",
+    "aws-sdk": "~2.1088.0",
     "bcrypt": "~4.0.1",
     "compression": "~1.7.4",
     "express": "~4.17.1",
@@ -21,7 +21,7 @@
     "jsonwebtoken": "~8.5.1",
     "moment": "~2.24.0",
     "mongoose": "~5.12.3",
-    "nodemailer": "~6.4.6",
+    "nodemailer": "~6.7.2",
     "nodemailer-sendmail-transport": "~1.0.2",
     "nodemailer-ses-transport": "~1.5.1",
     "nodemailer-smtp-transport": "~2.7.4",
@@ -33,8 +33,8 @@
     "passport-ldapauth": "^2.1.4",
     "redis": "~3.0.2",
     "socket.io": "~2.3.0",
-    "socket.io-redis": "~5.2.0",
-    "swagger-ui-express": "~4.1.6",
-    "validator": "^13.0.0"
+    "socket.io-redis": "~5.4.0",
+    "swagger-ui-express": "~4.3.0",
+    "validator": "~13.7.0"
   }
 }
