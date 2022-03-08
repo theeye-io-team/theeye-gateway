@@ -7,7 +7,7 @@
     "start": "node ./server",
     "build": "docker build . --tag 'theeye-gateway:1.0.0'"
   },
-  "license":"AGPL-3.0",
+  "license": "AGPL-3.0",
   "author": "",
   "dependencies": {
     "aws-sdk": "~2.648.0",
@@ -35,6 +35,6 @@
     "socket.io": "~2.3.0",
     "socket.io-redis": "~5.2.0",
     "swagger-ui-express": "~4.1.6",
-    "validator": "^13.0.0"
+    "validator": "~13.7.0"
   }
 }

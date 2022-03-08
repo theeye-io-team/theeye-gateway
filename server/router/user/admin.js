@@ -1,9 +1,7 @@
 const express = require('express')
-const isEmail = require('validator/lib/isEmail')
-const logger = require('../../logger')('router:user')
-const CredentialsConstants = require('../../constants/credentials')
 const dbFilterMiddleware = require('../db-filter-middleware')
 const { ClientError, ServerError } = require('../../errors')
+const { validateUserData, isUsernameAvailable } = require('./data-validate')
 
 module.exports = (app) => {
   const router = express.Router()
@@ -31,27 +29,11 @@ module.exports = (app) => {
     try {
       const body = req.body
       validateUserData(body)
-
-      const { email, username } = body
-      let user = await app.models.users.user.findOne({
-        $or: [
-          { email: new RegExp(email, 'i') },
-          { username: new RegExp(username, 'i') }
-        ]
-      })
-
-      if (user) {
-        if (user.username.toLowerCase() === username.toLowerCase()) {
-          throw new ClientError('Username is in use. Choose another one')
-        }
-        if (user.email.toLowerCase() === email.toLowerCase()) {
-          throw new ClientError('Email is in user. Choose another one')
-        }
-      }
+      await isUsernameAvailable(app, body)
 
       const data = {
-        username: username.toLowerCase(),
-        email: email.toLowerCase(),
+        username: body.username.toLowerCase(),
+        email: body.email.toLowerCase(),
         name: body.name,
         enabled: body.enabled,
         password: body.password
@@ -69,36 +51,17 @@ module.exports = (app) => {
       const body = req.body
       const id = req.params.id
 
-      validateUserData(body)
-
       const user = await app.models.users.uiUser.findById(id)
       if (!user) {
         throw new ClientError('User not found', { statusCode: 404 })
       }
 
-      const { email, username } = body
-
-      // search users sharing username/email
-      const usedKey = await app.models.users.user.findOne({
-        _id: { $ne: user._id },
-        $or: [
-          { email: new RegExp(email, 'i') },
-          { username: new RegExp(username, 'i') }
-        ]
-      })
-
-      if (usedKey) {
-        if (usedKey.username.toLowerCase() === username.toLowerCase()) {
-          throw new ClientError('Username in use. Choose another one')
-        }
-        if (usedKey.email.toLowerCase() === email.toLowerCase()) {
-          throw new ClientError('Email in user. Choose another one')
-        }
-      }
+      validateUserData(body)
+      await isUsernameAvailable(app, body, user)
 
       user.set({
-        username: username.toLowerCase(),
-        email: email.toLowerCase(),
+        username: body.username.toLowerCase(),
+        email: body.email.toLowerCase(),
         name: body.name,
         enabled: body.enabled
       })
@@ -206,37 +169,4 @@ module.exports = (app) => {
   }
 
   return router
-}
-
-const validateUserData = (data) => {
-  if (typeof data.enabled !== 'boolean') {
-    throw new ClientError('enabled is required')
-  }
-  if (!data.username) {
-    throw new ClientError('username is required')
-  }
-  if (!validateUsername(data.username)) {
-    throw new ClientError('username is invalid')
-  }
-  if (!data.name) {
-    throw new ClientError('name is required')
-  }
-  if (!data.email) {
-    throw new ClientError('email is required')
-  }
-  if (!isEmail(data.email)) {
-    throw new ClientError('email is invalid')
-  }
-  if (data.password) {
-    if (data.password !== data.confirmPassword) {
-      throw new ClientError('Passwords doesn\'t match')
-    }
-    if (data.password.length < 8) {
-      throw new ClientError('Passwords should be at least 8 characters long')
-    }
-  }
-}
-
-const validateUsername = (username) => {
-  return (isEmail(username) || isEmail(username + '@theeye.io'))
 }

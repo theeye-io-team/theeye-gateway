@@ -15,9 +15,20 @@ module.exports = function (db) {
       default: () => {
         return {
           mute: false,
-          push: true,
-          email: true,
-          desktop: true
+          push: false,
+          email: false,
+          desktop: false,
+          notificationFilters : [ // turn off notifications by default
+            {
+              topic : "job-crud"
+            },
+            {
+              topic : "webhook-triggered"
+            },
+            {
+              topic : "monitor-state"
+            }
+          ]
         }
       }
     }
