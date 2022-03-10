@@ -1,6 +1,6 @@
 const express = require('express')
 const { ClientError, ServerError } = require('../../errors')
-const { validateUserData, isUsernameAvailable } = require('../user/data-validate')
+const { validateUserData, validUsername, isUsernameAvailable } = require('../user/data-validate')
 const { validateCustomerName } = require('../customer/data-validate')
 const createAgentUser = require('../customer/create-agent')
 
@@ -18,20 +18,56 @@ module.exports = (app) => {
 
       await isUsernameAvailable(app, body.user)
 
-      await validateCustomerName(app, body.customer.name)
-
-      const result = await registerUser(body)
+      const result = await register(body)
       res.json(result)
     } catch (err) {
       next(err)
     }
   })
 
+  const register = async (data) => {
+    const customer = await registerCustomer(data.customer)
+
+    const user = await registerUser(data.user)
+
+    const member = await app.models.member.create({
+      user: user._id,
+      user_id: user.id,
+      customer: customer._id,
+      customer_id: customer._id,
+      customer_name: customer.name,
+      credential: 'owner'
+    })
+
+    customer.owner = user
+    customer.owner_id = user._id
+    await customer.save()
+
+    return { user, customer, member }
+  }
+
+  const registerCustomer = async (data) => {
+    const name = data.name
+    let customer = await app.models.customer.findOne({ name })
+    if (!customer) {
+      if (!validUsername(data.name.toLowerCase())) {
+        throw new ClientError('The organization name can contains 6 to 20 letters (a-z), numbers (0-9), period (.), underscore (_) and hyphen (-)')
+      }
+
+      customer = await app.models.customer.create({ name: data.name })
+      await createAgentUser(app, customer)
+    } else {
+      throw new ClientError('The organization name is in use. Choose another')
+    }
+
+    return customer
+  }
+
   const registerUser = async (data) => {
     const user = await app.models.users.uiUser.create({
-      username: data.user.username.toLowerCase(),
-      email: data.user.email.toLowerCase(),
-      name: data.user.name,
+      username: data.username.toLowerCase(),
+      email: data.email.toLowerCase(),
+      name: data.name,
       enabled: true,
       credential: null,
       invitation_token: null,
@@ -41,26 +77,14 @@ module.exports = (app) => {
     })
 
     await app.models.passport.create({
-      password: data.user.password,
+      password: data.password,
       protocol: 'local',
       provider: 'theeye',
       user: user._id,
       user_id: user._id
     })
 
-    const customer = await app.models.customer.create({ name: data.customer.name })
-    await createAgentUser(app, customer)
-
-    const member = await app.models.member.create({
-      user: user._id,
-      user_id: user.id,
-      customer: customer._id,
-      customer_id: customer._id,
-      customer_name: customer.name,
-      credential: (data.member?.credential || 'user')
-    })
-
-    return { user, customer, member }
+    return user
   }
 
   return router

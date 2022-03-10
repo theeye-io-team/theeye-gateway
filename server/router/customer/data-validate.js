@@ -10,7 +10,7 @@ const validateCustomerName = async (app, name) => {
 
   customer = await app.models.customer.findOne({ name: new EscapedRegExp(name, 'i') })
   if (customer !== null) {
-    throw new ClientError(`customer already exists with name ${name}.`)
+    throw new ClientError(`customer already taken with name ${customer.name}, ${customer._id.toString()}.`)
   }
 }
 

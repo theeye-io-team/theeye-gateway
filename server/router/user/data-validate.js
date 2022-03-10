@@ -36,6 +36,10 @@ const validateUserData = (data) => {
 
 const theeyeUsername = /^(?=.{6,20}$)(?![_.-])(?!.*[_.-]{2})[a-zA-Z0-9._-]+(?<![_.-])$/
 const validUsername = (username) => {
+  if (!username) {
+    return false
+  }
+
   if (isEmail(username)) {
     const userPart = username.split('@')[0]
     return theeyeUsername.test(userPart)
@@ -44,7 +48,7 @@ const validUsername = (username) => {
   return theeyeUsername.test(username)
 }
 
-const isUsernameAvailable = async (app, data, currentUser = null) => {
+const isUserKeyAvailable = async (app, data, currentUser = null) => {
   const { email, username } = data
   let user = await app.models.users.user.findOne({
     $or: [
@@ -65,4 +69,35 @@ const isUsernameAvailable = async (app, data, currentUser = null) => {
   }
 }
 
-module.exports = { validateUserData, validUsername, isUsernameAvailable }
+// check if username is taken
+const usernameAvailable = async (app, username, currentUser = null) => {
+  const query = {
+    username: new EscapedRegExp(username, 'i')
+  }
+
+  if (currentUser?._id) {
+    query.user_id = { $ne: currentUser._id }
+  }
+
+  const users = await app.models.users.uiUser.find(query)
+  if (Array.isArray(users) && users.length > 0) {
+    throw new ClientError('Username is in use. Choose another')
+  }
+
+  //if (Array.isArray(users) && users.length > 0) {
+  //  if (users.length > 1) {
+  //    throw new ClientError('Username is in use.')
+  //  }
+  //  if (users.length === 1) {
+  //    if () {
+  //      if (currentUser._id.toString() !== users[0]._id.toString()) {
+  //        throw new ClientError('Username is in use.')
+  //      }
+  //    } else {
+  //      throw new ClientError('Username is in use.')
+  //    }
+  //  }
+  //}
+}
+
+module.exports = { validateUserData, validUsername, isUserKeyAvailable, usernameAvailable }

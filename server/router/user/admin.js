@@ -1,7 +1,7 @@
 const express = require('express')
 const dbFilterMiddleware = require('../db-filter-middleware')
 const { ClientError, ServerError } = require('../../errors')
-const { validateUserData, isUsernameAvailable } = require('./data-validate')
+const { validateUserData, isUserKeyAvailable } = require('./data-validate')
 
 module.exports = (app) => {
   const router = express.Router()
@@ -29,7 +29,7 @@ module.exports = (app) => {
     try {
       const body = req.body
       validateUserData(body)
-      await isUsernameAvailable(app, body)
+      await isUserKeyAvailable(app, body)
 
       const data = {
         username: body.username.toLowerCase(),
@@ -57,7 +57,7 @@ module.exports = (app) => {
       }
 
       validateUserData(body)
-      await isUsernameAvailable(app, body, user)
+      await isUserKeyAvailable(app, body, user)
 
       user.set({
         username: body.username.toLowerCase(),
