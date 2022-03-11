@@ -18,7 +18,7 @@ const create = async (app, customer) => {
     invitation_token: null,
     devices: null,
     notifications: null ,
-    credential: null
+    credential: CredentialsConstants.AGENT
   })
 
   const passport = await app.models.passport.create({
