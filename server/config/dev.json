@@ -165,7 +165,7 @@
     }
   },
   "grecaptcha": {
-    "enabled": true,
+    "enabled": false,
     "v2_secret": "6LeisB4bAAAAAMSzj978tUcGW5tm5Ppfk4TrIwRV",
     "url": "https://www.google.com/recaptcha/api/siteverify"
   }

@@ -47,18 +47,11 @@ module.exports = (app) => {
   }
 
   const registerCustomer = async (data) => {
-    const name = data.name
-    let customer = await app.models.customer.findOne({ name })
-    if (!customer) {
-      if (!validUsername(data.name.toLowerCase())) {
-        throw new ClientError('The organization name can contains 6 to 20 letters (a-z), numbers (0-9), period (.), underscore (_) and hyphen (-)')
-      }
+    const name = data.name.toLowerCase()
+    await validateCustomerName(app, name)
 
-      customer = await app.models.customer.create({ name: data.name })
-      await createAgentUser(app, customer)
-    } else {
-      throw new ClientError('The organization name is in use. Choose another')
-    }
+    customer = await app.models.customer.create({ name: data.name })
+    await createAgentUser(app, customer)
 
     return customer
   }

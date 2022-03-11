@@ -181,7 +181,7 @@ module.exports = (app) => {
         throw new ClientError('Password is required')
       }
 
-      validateCustomerName(body.customername)
+      validateCustomerName(app, body.customername)
 
       const user = await verifyUserActivationData(body)
 

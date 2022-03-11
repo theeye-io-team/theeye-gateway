@@ -3,14 +3,14 @@ const CredentialsConstants = require('../../constants/credentials')
 
 // @TODO move to IAM service
 const create = async (app, customer) => {
-  const cliendId = randomToken()
+  const clientId = randomToken()
   const clientSecret = randomToken()
 
-  const email = (customer.name + '-agent@theeye.io').toLowerCase()
-  const name = (customer.name + '-agent').toLowerCase()
+  const email = `${customer.name}+${clientId}@theeye.io`.toLowerCase()
+  const name = `agent ${clientId}`
 
   const agentUser = await app.models.users.botUser.create({
-    username: cliendId,
+    username: clientId,
     email,
     name,
     enabled: true,
@@ -25,7 +25,7 @@ const create = async (app, customer) => {
     protocol: 'local',
     provider: 'theeye',
     password: clientSecret,
-    identifier: cliendId,
+    identifier: clientId,
     tokens: {
       access_token: null,
       refresh_token: clientSecret
