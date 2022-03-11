@@ -1,6 +1,6 @@
 const express = require('express')
 const { ClientError, ServerError } = require('../../errors')
-const { validateUserData, validUsername, isUsernameAvailable } = require('../user/data-validate')
+const { validateUserData, isUsernameAvailable } = require('../user/data-validate')
 const { validateCustomerName } = require('../customer/data-validate')
 const createAgentUser = require('../customer/create-agent')
 
