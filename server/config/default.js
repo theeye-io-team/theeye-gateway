@@ -47,7 +47,7 @@ module.exports = {
     },
     authentication: {
       secret: '692fc164a0c06a9fd02575cf17688c9e',
-      expires: 3 * (60 * 60), // in seconds
+      expires: 24 * (60 * 60), // in seconds
       localBypass: false,
       strategies: {
         // ldapauth: {

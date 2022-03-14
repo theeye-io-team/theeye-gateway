@@ -8,13 +8,19 @@ const CredentialsConstants = require('../../constants/credentials')
 const EscapedRegExp = require('../../escaped-regexp')
 const { ClientError, ServerError } = require('../../errors')
 
+const { validUsername, usernameAvailable, isUserKeyAvailable } = require('../user/data-validate')
+const { validateCustomerName } = require('../customer/data-validate')
+const createCustomerAgentUser = require('../customer/create-agent')
+
+const INVALID_USERNAME_MESSAGE = 'The username is not valid. It can contains 6 to 20 letters (a-z), numbers (0-9), period (.), underscore (_) and hyphen (-). It must starts and ends with an alphanumeric symbol'
+
 module.exports = (app) => {
   const router = express.Router()
 
-  router.get( '/verifyinvitationtoken', async (req, res, next) => {
+  router.get('/verifyinvitationtoken', async (req, res, next) => {
     try {
       if (!req.query.invitation_token) {
-        return res.status(400).json({message: 'invitation_token is required'})
+        throw new ClientError('Invitation_token is required')
       }
 
       const invitation_token = req.query.invitation_token
@@ -22,9 +28,7 @@ module.exports = (app) => {
       const email = decoded.email
 
       if (!email) {
-        let err = new Error('Invalid invitation_token')
-        err.status = 400
-        throw err
+        throw new ClientError('Invalid invitation_token')
       }
 
       const user = await app.models.users.uiUser.findOne({
@@ -34,53 +38,37 @@ module.exports = (app) => {
       }, 'username email invitation_token')
 
       if (!user) {
-        let err = new Error('User Not Found')
-        err.status = 404
-        throw err
+        throw new ClientError('User Not Found')
       }
 
       res.json(user)
     } catch (err) {
-      if (err.status) { res.status(err.status).json( { message: err.message }) }
-      else res.status(500).json('Internal Server Error')
+      next(err)
     }
   })
 
   router.post('/activate', async (req, res, next) => {
     try {
-      if (!req.body.invitation_token) return res.status(400).json({message: 'invitation_token is required'})
-      if (!req.body.password) return res.status(400).json({message: 'password is required'})
-      if (!req.body.email) return res.status(400).json({message: 'email is required'})
-      if (!req.body.username) return res.status(400).json({message: 'username is required'})
-      if (!validUsername(req.body.username)) return res.status(400).json({message: 'incorrect username format'})
+      const body = req.body
 
-      const invitation_token = req.body.invitation_token
-      let decoded = app.service.authentication.verify(invitation_token)
-      if (!decoded.email || (decoded.email !== req.body.email)) {
-        throw new ClientError('Invalid invitation_token')
+      if (!body.invitation_token) {
+        throw new ClientError('Invitation token is required')
+      }
+      if (!isEmail(body.email)) {
+        return res.status(400).json({message: 'email is required'})
+      }
+      if (!validUsername(body.username)) {
+        throw new ClientError(INVALID_USERNAME_MESSAGE)
+      }
+      if (!body.password) {
+        throw new ClientError('Password is required')
       }
 
-      let body = req.body
-      let user = await verifyUserActivationData(body)
+      const user = await verifyUserActivationData(body)
 
-      // activate user
-      user.set({
-        enabled: true,
-        username: body.username.toLowerCase(),
-        invitation_token: ''
-      })
-      await user.save()
+      const passport = await activateUser(user, body)
 
-      // create local passport
-      const passport = await app.models.passport.create({
-        protocol: 'local',
-        provider: 'theeye',
-        password: body.password,
-        user: user._id,
-        user_id: user._id
-      })
-
-      let session = await app.service.authentication.membersLogin({ user, passport })
+      const session = await app.service.authentication.membersLogin({ user, passport })
       res.json({ access_token: session.token })
     } catch (err) {
       next(err)
@@ -109,8 +97,8 @@ module.exports = (app) => {
         form.append('secret', secret)
         form.append('response', req.body.grecaptcha)
 
-        let response = await got.post(url, { body: form })
-        let json = JSON.parse(response.body)
+        const response = await got.post(url, { body: form })
+        const json = JSON.parse(response.body)
 
         if (json.success !== true) {
           throw new ClientError('Invalid payload. Verification error')
@@ -123,6 +111,7 @@ module.exports = (app) => {
     }
   }, async (req, res, next) => {
     try {
+      const body = req.body
       if (app.config.services.registration.enabled === false) {
         throw new ClientError('Registration is not allowed', {statusCode:403})
       }
@@ -132,36 +121,21 @@ module.exports = (app) => {
       ) {
         throw new ClientError('Registration is not allowed', {statusCode:403})
       }
-      if (!req.body.name) {
+      if (!body.name) {
         throw new ClientError('Missing param name.')
       }
-      if (!req.body.username) {
-        throw new ClientError('Missing param username.')
-      }
-      if (!req.body.email) {
-        throw new ClientError('Missing param email.')
-      }
-      if (!isEmail(req.body.email)) {
+      if (!isEmail(body.email)) {
         throw new ClientError('Invalid email.')
       }
-
-      let user = await app.models.users.uiUser.findOne({
-        $or: [
-          { email: new EscapedRegExp(req.body.email, 'i') },
-          { username: new EscapedRegExp(req.body.username, 'i') }
-        ]
-      })
-
-      if (user) {
-        if (user.username.toLowerCase() === req.body.username.toLowerCase()) {
-          throw new ClientError('Username in use', { code: 'usernameTaken'})
-        }
-        if (user.email.toLowerCase() === req.body.email.toLowerCase()) {
-          throw new ClientError('Email in use', { code: 'emailTaken'})
+      if (!body.username || body.email !== body.username) {
+        if (!validUsername(body.username)) {
+          throw new ClientError(INVALID_USERNAME_MESSAGE)
         }
       }
 
-      await notifyUserRegistration(app, req.body)
+      await isUserKeyAvailable(app, body)
+
+      await notifyUserRegistration(app, body)
 
       return res.status(200).json({ message: 'success' })
     } catch (err) {
@@ -174,26 +148,20 @@ module.exports = (app) => {
       const username = req.query.username
       const token = req.query.token
 
-      if (!token) {
-        throw new ClientError('Token required.')
-      }
-      if (!username) {
-        throw new ClientError('Username required.')
+      if (!token || typeof token !== 'string') {
+        throw new ClientError('Invalid request.')
       }
 
       const user = await app.models.users.uiUser.findOne({ invitation_token: token })
       if (!user) {
-        throw new ClientError('Invalid token.', { statusCode: 404 })
+        throw new ClientError('Invalid request.')
       }
 
-      const usedUsername = await app.models.users.uiUser.find({
-        _id: { $ne: user._id },
-        username: new EscapedRegExp(username, 'i')
-      })
-
-      if (Array.isArray(usedUsername) && usedUsername.length > 0) {
-        throw new ClientError('Username already in use.', { statusCode: 409 })
+      if (!username || !validUsername(username)) {
+        throw new ClientError(INVALID_USERNAME_MESSAGE)
       }
+
+      await usernameAvailable(app, username, user)
 
       res.json({})
     } catch (err) {
@@ -201,62 +169,34 @@ module.exports = (app) => {
     }
   })
 
-  router.post( '/finish', async (req, res, next) => {
+  router.post('/finish', async (req, res, next) => {
     try {
-      if (!req.body.invitation_token) return res.status(400).json({message: 'invitation_token is required'})
-      if (!req.body.password) return res.status(400).json({message: 'password is required'})
-      if (!req.body.email) return res.status(400).json({message: 'email is required'})
-      if (!req.body.username) return res.status(400).json({message: 'username is required'})
-      if (!req.body.customername) return res.status(400).json({message: 'customername is required'})
-      if (!validUsername(req.body.username)) return res.status(400).json({message: 'incorrect username format'})
-      if (!validCustomerName(req.body.customername)) return res.status(400).json({message: 'incorrect username format'})
-
-      const invitation_token = req.body.invitation_token
-      const decoded = app.service.authentication.verify(invitation_token)
-      if (!decoded.email || (decoded.email !== req.body.email)) {
-        let err = new Error('Invalid invitation_token')
-        err.status = 400
-        throw err
-      }
-
       const body = req.body
 
-      // check if username is taken
-      const prevUser = await app.models.users.uiUser.findOne({
-        username: new EscapedRegExp(body.username, 'i')
-      })
-
-      if (prevUser) { throw new ClientError('usernameTaken') }
-
-      // activate user
-      const user = await app.models.users.uiUser.findOne({
-        invitation_token: body.invitation_token,
-        email: new EscapedRegExp(body.email, 'i'),
-        enabled: false
-      })
-
-      if (!user) {
-        throw new ClientError('User Not Found', { statusCode: 404 })
+      if (!body.invitation_token) {
+        throw new ClientError('Invitation token is required')
+      }
+      if (!isEmail(body.email)) {
+        return res.status(400).json({message: 'email is required'})
+      }
+      if (!validUsername(body.username)) {
+        throw new ClientError(INVALID_USERNAME_MESSAGE)
+      }
+      if (!body.password) {
+        throw new ClientError('Password is required')
       }
 
-      user.set({
-        enabled: true,
-        username: body.username.toLowerCase(),
-        invitation_token: ''
-      })
-      await user.save()
+      validateCustomerName(app, body.customername)
 
-      // create customer
-      const customer = await app.models.customer.create({
-        name: body.customername.toLowerCase()
-      })
+      const user = await verifyUserActivationData(body)
 
-      if (!customer) {
-        throw new ServerError()
-      }
+      const passport = await activateUser(user, body)
 
-      // create agent customer
-      await createCustomerAgent(app, customer)
+      const customer = await activateCustomer(body.customername)
+
+      customer.owner = user._id
+      customer.owner_id = user._id
+      await customer.save()
 
       // create member
       const member = await app.models.member.create({
@@ -267,16 +207,8 @@ module.exports = (app) => {
         customer_name: customer.name,
         credential: CredentialsConstants.OWNER
       })
-      member.user = user
 
-      // create passport
-      const passport = await app.models.passport.create({
-        protocol: 'local',
-        provider: 'theeye',
-        password: body.password,
-        user: user._id,
-        user_id: user._id
-      })
+      member.user = user
 
       // create session
       const session = await app.service.authentication.createSession({ member, protocol: passport.protocol })
@@ -287,6 +219,11 @@ module.exports = (app) => {
   })
 
   const verifyUserActivationData = async ({ invitation_token, email, username }) => {
+    const decoded = app.service.authentication.verify(invitation_token)
+    if (!decoded.email || (decoded.email !== email)) {
+      throw new ClientError('The provided information is invalid')
+    }
+
     // search user to activate
     const users = await app.models.users.uiUser.find({
       invitation_token,
@@ -304,41 +241,56 @@ module.exports = (app) => {
 
     const user = users[0]
 
-    // check if username is taken
-    const prevUsers = await app.models.users.uiUser.find({
-      username: new EscapedRegExp(username, 'i')
-    })
-
-    if (Array.isArray(prevUsers) && prevUsers.length > 0) {
-      if (prevUsers.length > 1) {
-        throw new ClientError('usernameTaken')
-      }
-
-      if (prevUsers.length === 1) {
-        if (user._id.toString() !== prevUsers[0]._id.toString()) {
-          throw new ClientError('usernameTaken')
-        }
-      }
-    }
+    await usernameAvailable(app, username, user)
 
     return user
+  }
+
+  const activateUser = async (user, data) => {
+    const { username, email, password, invitation_token } = data
+
+    user.set({
+      enabled: true,
+      username: username.toLowerCase(),
+      invitation_token: ''
+    })
+    await user.save()
+
+    // create passport
+    const passport = await app.models.passport.create({
+      protocol: 'local',
+      provider: 'theeye',
+      password,
+      user: user._id,
+      user_id: user._id
+    })
+
+    return passport
+  }
+
+  const activateCustomer = async (name) => {
+    // create customer
+    const customer = await app.models.customer.create({
+      name: name.toLowerCase()
+    })
+
+    // create agent customer
+    await createCustomerAgentUser(app, customer)
+
+    return customer
   }
 
   return router
 }
 
-const validUsername = (username) => {
-  return (isEmail(username) || isEmail(username + '@theeye.io'))
-}
+//const validUsername = (username) => {
+//  return (isEmail(username) || isEmail(username + '@theeye.io'))
+//}
 
-const validCustomerName = (name) => {
-   let re = /^[a-zA-Z0-9._]+$/
-   return re.test(name)
-}
-
-const randomToken = () => {
-  return crypto.randomBytes(20).toString('hex')
-}
+//const validCustomerName = (name) => {
+//   let re = /^[a-zA-Z0-9._]+$/
+//   return re.test(name)
+//}
 
 const notifyUserRegistration = async (app, { email, name }) => {
   const lcEmail = email.toLowerCase()
@@ -366,47 +318,52 @@ const notifyUserRegistration = async (app, { email, name }) => {
   return
 }
 
-const createCustomerAgent = async (app, customer) => {
-  let cliendId = randomToken()
-  let clientSecret = randomToken()
+//const createCustomerAgent = async (app, customer) => {
+//  let cliendId = randomToken()
+//  let clientSecret = randomToken()
+//
+//  const botEmail = customer.name + '-agent@theeye.io'
+//  const botName = customer.name + '-agent'
+//
+//  const agentUser = await app.models.users.botUser.create({
+//    username: cliendId,
+//    email: botEmail.toLowerCase(),
+//    name: botName.toLowerCase(),
+//    enabled: true,
+//    invitation_token: null,
+//    devices: null,
+//    notifications: null ,
+//    onboardingCompleted: true ,
+//    credential: null
+//  })
+//
+//  await app.models.passport.create({
+//    protocol: 'local',
+//    provider: 'theeye',
+//    password: clientSecret,
+//    identifier: cliendId,
+//    tokens: {
+//      access_token: null,
+//      refresh_token: clientSecret
+//    },
+//    user: agentUser._id,
+//    user_id: agentUser._id
+//  })
+//
+//  await app.models.member.create({
+//    user: agentUser._id,
+//    user_id: agentUser._id,
+//    customer: customer._id,
+//    customer_id:  customer._id,
+//    customer_name: customer.name,
+//    credential: CredentialsConstants.AGENT,
+//    enabled: true
+//  })
+//
+//  return
+//}
+//
+//const randomToken = () => {
+//  return crypto.randomBytes(20).toString('hex')
+//}
 
-  const botEmail = customer.name + '-agent@theeye.io'
-  const botName = customer.name + '-agent'
-
-  const agentUser = await app.models.users.botUser.create({
-    username: cliendId,
-    email: botEmail.toLowerCase(),
-    name: botName.toLowerCase(),
-    enabled: true,
-    invitation_token: null,
-    devices: null,
-    notifications: null ,
-    onboardingCompleted: true ,
-    credential: null
-  })
-
-  await app.models.passport.create({
-    protocol: 'local',
-    provider: 'theeye',
-    password: clientSecret,
-    identifier: cliendId,
-    tokens: {
-      access_token: null,
-      refresh_token: clientSecret
-    },
-    user: agentUser._id,
-    user_id: agentUser._id
-  })
-
-  await app.models.member.create({
-    user: agentUser._id,
-    user_id: agentUser._id,
-    customer: customer._id,
-    customer_id:  customer._id,
-    customer_name: customer.name,
-    credential: CredentialsConstants.AGENT,
-    enabled: true
-  })
-
-  return
-}

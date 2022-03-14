@@ -18,7 +18,7 @@ const validateUserData = (data) => {
   }
   if (!validUsername(data.username)) {
     if (data.username !== data.email) { // the user will have to verify the email
-      throw new ClientError('The username can contains 6 to 20 letters (a-z), numbers (0-9), period (.), underscore (_) and hyphen (-)')
+      throw new ClientError('The username is not valid. It can contains 6 to 20 letters (a-z), numbers (0-9), period (.), underscore (_) and hyphen (-). It must starts and ends with an alphanumeric symbol')
     }
   }
   if (!data.name) {
@@ -36,6 +36,10 @@ const validateUserData = (data) => {
 
 const theeyeUsername = /^(?=.{6,20}$)(?![_.-])(?!.*[_.-]{2})[a-zA-Z0-9._-]+(?<![_.-])$/
 const validUsername = (username) => {
+  if (!username) {
+    return false
+  }
+
   if (isEmail(username)) {
     const userPart = username.split('@')[0]
     return theeyeUsername.test(userPart)
@@ -44,25 +48,66 @@ const validUsername = (username) => {
   return theeyeUsername.test(username)
 }
 
-const isUsernameAvailable = async (app, data, currentUser = null) => {
+const isUserKeyAvailable = async (app, data, currentUser = null) => {
   const { email, username } = data
-  let user = await app.models.users.user.findOne({
-    $or: [
-      { email: new EscapedRegExp(email, 'i') },
-      { username: new EscapedRegExp(username, 'i') }
+  const query = {
+    $and: [
+      {
+        $or: [
+          { email: new EscapedRegExp(email, 'i') },
+          { username: new EscapedRegExp(username, 'i') }
+        ]
+      }
     ]
-  })
+  }
 
-  if (user) {
-    if (!currentUser || currentUser._id.toString() !== user._id.toString()) {
-      if (user.username.toLowerCase() === username.toLowerCase()) {
-        throw new ClientError('Username is in use. Choose another one')
-      }
-      if (user.email.toLowerCase() === email.toLowerCase()) {
-        throw new ClientError('Email is in use. Choose another one')
-      }
+  if (currentUser?._id) {
+    query['$and'].push({
+      _id: { $ne: currentUser._id }
+    })
+  }
+
+  const users = await app.models.users.user.find(query)
+  if (users?.length > 0) {
+    const user = users[0]
+    if (user.email.toLowerCase() === email.toLowerCase()) {
+      throw new ClientError('Email is in use. Choose another one')
+    }
+    if (user.username.toLowerCase() === username.toLowerCase()) {
+      throw new ClientError('Username is in use. Choose another one')
     }
   }
 }
 
-module.exports = { validateUserData, validUsername, isUsernameAvailable }
+// check if username is taken
+const usernameAvailable = async (app, username, currentUser = null) => {
+  const query = {
+    username: new EscapedRegExp(username, 'i')
+  }
+
+  if (currentUser?._id) {
+    query._id = { $ne: currentUser._id }
+  }
+
+  const users = await app.models.users.user.find(query)
+  if (Array.isArray(users) && users.length > 0) {
+    throw new ClientError('Username is in use. Choose another')
+  }
+
+  //if (Array.isArray(users) && users.length > 0) {
+  //  if (users.length > 1) {
+  //    throw new ClientError('Username is in use.')
+  //  }
+  //  if (users.length === 1) {
+  //    if () {
+  //      if (currentUser._id.toString() !== users[0]._id.toString()) {
+  //        throw new ClientError('Username is in use.')
+  //      }
+  //    } else {
+  //      throw new ClientError('Username is in use.')
+  //    }
+  //  }
+  //}
+}
+
+module.exports = { validateUserData, validUsername, isUserKeyAvailable, usernameAvailable }
