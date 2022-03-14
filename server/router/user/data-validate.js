@@ -18,7 +18,7 @@ const validateUserData = (data) => {
   }
   if (!validUsername(data.username)) {
     if (data.username !== data.email) { // the user will have to verify the email
-      throw new ClientError('The username can contains 6 to 20 letters (a-z), numbers (0-9), period (.), underscore (_) and hyphen (-)')
+      throw new ClientError('The username is not valid. It can contains 6 to 20 letters (a-z), numbers (0-9), period (.), underscore (_) and hyphen (-). It must starts and ends with an alphanumeric symbol')
     }
   }
   if (!data.name) {
@@ -50,21 +50,31 @@ const validUsername = (username) => {
 
 const isUserKeyAvailable = async (app, data, currentUser = null) => {
   const { email, username } = data
-  let user = await app.models.users.user.findOne({
-    $or: [
-      { email: new EscapedRegExp(email, 'i') },
-      { username: new EscapedRegExp(username, 'i') }
+  const query = {
+    $and: [
+      {
+        $or: [
+          { email: new EscapedRegExp(email, 'i') },
+          { username: new EscapedRegExp(username, 'i') }
+        ]
+      }
     ]
-  })
+  }
 
-  if (user) {
-    if (!currentUser || currentUser._id.toString() !== user._id.toString()) {
-      if (user.email.toLowerCase() === email.toLowerCase()) {
-        throw new ClientError('Email is in use. Choose another one')
-      }
-      if (user.username.toLowerCase() === username.toLowerCase()) {
-        throw new ClientError('Username is in use. Choose another one')
-      }
+  if (currentUser?._id) {
+    query['$and'].push({
+      _id: { $ne: currentUser._id }
+    })
+  }
+
+  const users = await app.models.users.user.find(query)
+  if (users?.length > 0) {
+    const user = users[0]
+    if (user.email.toLowerCase() === email.toLowerCase()) {
+      throw new ClientError('Email is in use. Choose another one')
+    }
+    if (user.username.toLowerCase() === username.toLowerCase()) {
+      throw new ClientError('Username is in use. Choose another one')
     }
   }
 }
@@ -76,10 +86,10 @@ const usernameAvailable = async (app, username, currentUser = null) => {
   }
 
   if (currentUser?._id) {
-    query.user_id = { $ne: currentUser._id }
+    query._id = { $ne: currentUser._id }
   }
 
-  const users = await app.models.users.uiUser.find(query)
+  const users = await app.models.users.user.find(query)
   if (Array.isArray(users) && users.length > 0) {
     throw new ClientError('Username is in use. Choose another')
   }
