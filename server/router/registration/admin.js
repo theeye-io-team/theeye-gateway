@@ -1,6 +1,6 @@
 const express = require('express')
 const { ClientError, ServerError } = require('../../errors')
-const { validateUserData, isUsernameAvailable } = require('../user/data-validate')
+const { validateUserData, isUserKeyAvailable } = require('../user/data-validate')
 const { validateCustomerName } = require('../customer/data-validate')
 const createAgentUser = require('../customer/create-agent')
 
@@ -16,7 +16,7 @@ module.exports = (app) => {
         })
       )
 
-      await isUsernameAvailable(app, body.user)
+      await isUserKeyAvailable(app, body.user)
 
       const result = await register(body)
       res.json(result)
