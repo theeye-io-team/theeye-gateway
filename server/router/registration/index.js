@@ -109,6 +109,7 @@ module.exports = (app) => {
     }
   }, async (req, res, next) => {
     try {
+      const body = req.body
       if (app.config.services.registration.enabled === false) {
         throw new ClientError('Registration is not allowed', {statusCode:403})
       }
@@ -118,19 +119,21 @@ module.exports = (app) => {
       ) {
         throw new ClientError('Registration is not allowed', {statusCode:403})
       }
-      if (!req.body.name) {
+      if (!body.name) {
         throw new ClientError('Missing param name.')
       }
-      if (!req.body.username) {
-        throw new ClientError('Missing param username.')
-      }
-      if (!isEmail(req.body.email)) {
+      if (!isEmail(body.email)) {
         throw new ClientError('Invalid email.')
       }
+      if (!body.username || body.email !== body.username) {
+        if (!validUsername(body.username)) {
+          throw new ClientError('Invalid Username. The username name can contains 6 to 20 letters (a-z), numbers (0-9), period (.), underscore (_) and hyphen (-)')
+        }
+      }
 
-      await isUserKeyAvailable(app, req.body)
+      await isUserKeyAvailable(app, body)
 
-      await notifyUserRegistration(app, req.body)
+      await notifyUserRegistration(app, body)
 
       return res.status(200).json({ message: 'success' })
     } catch (err) {
@@ -188,6 +191,10 @@ module.exports = (app) => {
       const passport = await activateUser(user, body)
 
       const customer = await activateCustomer(body.customername)
+
+      customer.owner = user._id
+      customer.owner_id = user._id
+      await customer.save()
 
       // create member
       const member = await app.models.member.create({

@@ -59,11 +59,11 @@ const isUserKeyAvailable = async (app, data, currentUser = null) => {
 
   if (user) {
     if (!currentUser || currentUser._id.toString() !== user._id.toString()) {
-      if (user.username.toLowerCase() === username.toLowerCase()) {
-        throw new ClientError('Username is in use. Choose another one')
-      }
       if (user.email.toLowerCase() === email.toLowerCase()) {
         throw new ClientError('Email is in use. Choose another one')
+      }
+      if (user.username.toLowerCase() === username.toLowerCase()) {
+        throw new ClientError('Username is in use. Choose another one')
       }
     }
   }
