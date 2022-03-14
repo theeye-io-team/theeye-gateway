@@ -12,6 +12,8 @@ const { validUsername, usernameAvailable, isUserKeyAvailable } = require('../use
 const { validateCustomerName } = require('../customer/data-validate')
 const createCustomerAgentUser = require('../customer/create-agent')
 
+const INVALID_USERNAME_MESSAGE = 'The username is not valid. It can contains 6 to 20 letters (a-z), numbers (0-9), period (.), underscore (_) and hyphen (-). It must starts and ends with an alphanumeric symbol'
+
 module.exports = (app) => {
   const router = express.Router()
 
@@ -56,7 +58,7 @@ module.exports = (app) => {
         return res.status(400).json({message: 'email is required'})
       }
       if (!validUsername(body.username)) {
-        throw new ClientError('Invalid Username. The username name can contains 6 to 20 letters (a-z), numbers (0-9), period (.), underscore (_) and hyphen (-)')
+        throw new ClientError(INVALID_USERNAME_MESSAGE)
       }
       if (!body.password) {
         throw new ClientError('Password is required')
@@ -127,7 +129,7 @@ module.exports = (app) => {
       }
       if (!body.username || body.email !== body.username) {
         if (!validUsername(body.username)) {
-          throw new ClientError('Invalid Username. The username name can contains 6 to 20 letters (a-z), numbers (0-9), period (.), underscore (_) and hyphen (-)')
+          throw new ClientError(INVALID_USERNAME_MESSAGE)
         }
       }
 
@@ -146,17 +148,17 @@ module.exports = (app) => {
       const username = req.query.username
       const token = req.query.token
 
-      if (!token) {
-        throw new ClientError('Token required.')
-      }
-
-      if (!validUsername(username)) {
-        throw new ClientError('Invalid Username. The username name can contains 6 to 20 letters (a-z), numbers (0-9), period (.), underscore (_) and hyphen (-)')
+      if (!token || typeof token !== 'string') {
+        throw new ClientError('Invalid request.')
       }
 
       const user = await app.models.users.uiUser.findOne({ invitation_token: token })
       if (!user) {
-        throw new ClientError('Invalid token.', { statusCode: 404 })
+        throw new ClientError('Invalid request.')
+      }
+
+      if (!username || !validUsername(username)) {
+        throw new ClientError(INVALID_USERNAME_MESSAGE)
       }
 
       await usernameAvailable(app, username, user)
@@ -178,7 +180,7 @@ module.exports = (app) => {
         return res.status(400).json({message: 'email is required'})
       }
       if (!validUsername(body.username)) {
-        throw new ClientError('Invalid Username. The username name can contains 6 to 20 letters (a-z), numbers (0-9), period (.), underscore (_) and hyphen (-)')
+        throw new ClientError(INVALID_USERNAME_MESSAGE)
       }
       if (!body.password) {
         throw new ClientError('Password is required')
