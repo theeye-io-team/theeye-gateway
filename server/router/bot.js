@@ -11,7 +11,7 @@ const got = require('got')
 module.exports = (app) => {
   const router = express.Router()
 
-  router.get('/credentials', async (req, res, next) => {
+  router.get('/installer', async (req, res, next) => {
     try {
       const session = req.session
 
@@ -38,8 +38,6 @@ module.exports = (app) => {
         client_id: agentPassport.identifier,
         client_secret: agentPassport.tokens.refresh_token
       }
-
-      botAgent.customer_name = agentMember.customer_name
 
       botAgent.curl = format(
         `curl -s "%s" | bash -s\\\n    "%s"\\\n    "%s"\\\n    "%s"\\\n    "%s"`,
@@ -89,6 +87,44 @@ module.exports = (app) => {
       botAgent.localLinux = `THEEYE_CLIENT_HOSTNAME="${botAgent.customer_name}" DEBUG="*eye*" NODE_ENV="${botAgent.customer_name}" node . `
 
       res.status(200).json(botAgent)
+    } catch (err) {
+      next(err)
+    }
+  })
+
+  router.get('/credentials', async (req, res, next) => {
+    try {
+      const session = req.session
+
+      const agentMember = await app.models.member.findOne({
+        credential: CredentialsConstants.AGENT,
+        customer_id: session.customer_id
+      })
+
+      if (!agentMember || !agentMember.user_id) {
+        throw new ServerError('Credentials Not Available.')
+      }
+
+      const agentPassport = await app.models.passport.findOne({
+        protocol: PassportConstants.PROTOCOL_LOCAL,
+        user_id: agentMember.user_id
+      })
+
+      if (!agentPassport || (!agentMember && !agentMember.user_id)) {
+        throw new ServerError('Credentials Not Available.')
+      }
+
+      const botAgent = {
+        supervisor: {
+          api_url: app.config.supervisor.url,
+          client_id: agentPassport.identifier,
+          client_secret: agentPassport.tokens.refresh_token,
+          client_customer: agentMember.customer_name,
+          client_hostname: agentMember.customer_name,
+        }
+      }
+
+      res.json(botAgent)
     } catch (err) {
       next(err)
     }
