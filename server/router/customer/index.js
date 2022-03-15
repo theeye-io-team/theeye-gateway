@@ -6,8 +6,7 @@ const credentialMiddleware = require ('../credentialMiddleware')
 module.exports = (app) => {
   const router = express.Router()
 
-  router.put(
-    '/config',
+  router.put('/config',
     credentialMiddleware.check([CredentialsConstants.ROOT, CredentialsConstants.OWNER, CredentialsConstants.ADMIN]),
     async (req, res, next) => {
       try {
