@@ -60,6 +60,9 @@ module.exports = function (app, config) {
         params.TargetArn = device.endpoint_arn
         logger.debug('Sending notification to target arn: ' + params.TargetArn)
 
+        if (!app.service.sns) {
+          return logger.log('Push service not configured')
+        }
         app.service.sns.publish(params, (error, data) => {
           if (error) {
             logger.error('%o', error)

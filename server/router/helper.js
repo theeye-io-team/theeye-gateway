@@ -7,9 +7,9 @@ module.exports = (app) => {
 
   /**
    * Get example
-   * GET /script/example/:extension
+   * GET /boilerplate/:extension
    */
-  router.get('/script/example/:extension', async (req, res, next) => {
+  router.get('/boilerplate/:extension', async (req, res, next) => {
     try {
       let extension = req.params.extension
 
@@ -17,8 +17,8 @@ module.exports = (app) => {
         throw new ClientError('Extension required')
       }
 
-      const scriptsPath = 'https://raw.githubusercontent.com/theeye-io/theeye-docs/master/scripts/examples/'
-      const url = scriptsPath + 'example.' + extension
+      const baseUrl = app.config.boilerplates.repo
+      const url = `${baseUrl}/${extension}/source.${extension}`
 
       let response = await got(url, {})
       res.status(response.statusCode).send(response.body)
