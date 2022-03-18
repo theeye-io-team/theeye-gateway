@@ -49,7 +49,7 @@ module.exports = (app) => {
       )
 
       botAgent.windowsCurl = format(
-        'powershell -command "&{`\n&"Invoke-WebRequest" -uri "%s"`\n    -outFile agent-installer.ps1`\n}" &&`\n  powershell.exe -ExecutionPolicy ByPass`\n    -File agent-installer.ps1`\n      "%s"`\n      "%s"`\n      "%s"`\n      "%s"',
+        'powershell -command "&{&"Invoke-WebRequest" -uri "%s" -outFile agent-installer.ps1}" && powershell.exe -ExecutionPolicy ByPass -File agent-installer.ps1 "%s" "%s" "%s" "%s"',
         app.config.agent.installer.windows.url,
         botAgent.client_id,
         botAgent.client_secret,
