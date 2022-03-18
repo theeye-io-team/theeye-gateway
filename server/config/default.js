@@ -31,6 +31,9 @@ module.exports = {
       url: 'http://127.0.0.1:60080/job/secret/d1ef702640e8a6bdaf56e452af4425727fc3750a15d26645d2ed0a4ad1f4bf9f?customer=demo&task=5eea8228aa74880dfcba2e25'
     }
   },
+  boilerplates: {
+    repo: 'https://raw.githubusercontent.com/theeye-io-team/theeye-boilerplates/main/'
+  },
   services: {
 		aws: {
 			username: '',

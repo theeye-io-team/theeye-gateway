@@ -39,7 +39,9 @@ class App extends EventEmitter {
     await this.service.authentication.configure()
 
     this.service.notifications = new Notifications(this)
-    this.service.sns = new AWS.SNS(new AWS.Config(this.config.services.aws))
+    if (this.config.services?.aws) {
+      this.service.sns = new AWS.SNS(new AWS.Config(this.config.services.aws))
+    }
 
     // routes require models
     this.setupApi()
