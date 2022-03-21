@@ -24,12 +24,6 @@ module.exports = function (db) {
           elasticsearch: {
             enabled: false,
             url: ''
-          },
-          ngrok: {
-            enabled: false,
-            authtoken: '',
-            address: '',
-            protocol: ''
           }
         }
       }

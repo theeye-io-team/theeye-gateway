@@ -49,16 +49,12 @@ module.exports = (app) => {
 
       const members = await app.models.member
         .find({
-          customer_id,
-          credential: {
-            $nin: ['agent','integration']
-          }
+          customer_id
         })
         .populate({
           path: 'user',
           select: 'username email',
           match: {
-            _type: 'UiUser',
             $or: [
               { _id: { $in: ids } },
               { email: { $in: emails } },
