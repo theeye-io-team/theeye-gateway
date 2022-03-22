@@ -51,7 +51,6 @@ module.exports = function (app) {
     async createExistentUserMember (req, res, next) {
       try {
         const context = req.context
-        const data = {}
 
         const customer = await app.models.customer.findById(context.customer_id)
         if (!customer) {
