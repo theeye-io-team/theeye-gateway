@@ -116,10 +116,10 @@ module.exports = {
             enabled: true
           },
           customerInvitation: {
-            enabled: true
+            enabled: false
           },
           invitation: {
-            enabled: true
+            enabled: false
           },
           passwordRecover: {
             enabled: true
