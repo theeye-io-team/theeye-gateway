@@ -2,6 +2,7 @@ const express = require('express')
 const logger = require('../../logger')('router:member:admin')
 const CredentialsConstants = require('../../constants/credentials')
 const isEmail = require('validator/lib/isEmail')
+const isMongoId = require('validator/lib/isMongoId')
 const common = require('./common')
 
 const { ClientError, ServerError } = require('../../errors')
@@ -123,6 +124,12 @@ module.exports = (app) => {
 
       if (!body.customer_id) {
         let err = Error('Missing param customer.')
+        err.status = 400
+        throw err
+      }
+
+      if (!isMongoId(body.customer_id)) {
+        let err = Error('Invalid customer id.')
         err.status = 400
         throw err
       }
