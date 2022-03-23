@@ -47,6 +47,57 @@ module.exports = function (app) {
       } catch (err) {
         next(err)
       }
+    },
+    async createExistentUserMember (req, res, next) {
+      try {
+        const context = req.context
+
+        const customer = await app.models.customer.findById(context.customer_id)
+        if (!customer) {
+          const err = Error('Customer not found.')
+          err.status = 400
+          throw err
+        }
+
+        const user = await app.models.users.uiUser.findOne({
+          email: new EscapedRegExp(context.email,'i')
+        })
+
+        if (!user) {
+          const err = Error('User not found.')
+          err.status = 400
+          throw err
+        }
+
+        let member = await app.models.member.findOne({
+          user_id: user._id,
+          customer_id: customer._id
+        })
+
+        if (member) {
+          // member exists and user is activated. nothing to do
+          const err = new Error('Member already activated')
+          err.code = 'AlreadyActiveMember'
+          err.status = 400
+          throw err
+        }
+
+        const data = {
+          user: user._id,
+          user_id: user._id,
+          customer: customer._id,
+          customer_id: customer._id,
+          customer_name: customer.name,
+          credential: context.credential
+        }
+
+        member = await app.models.member.create(data)
+        member.user = user
+
+        return res.status(200).json(member)
+      } catch (err) {
+        next(err)
+      }
     }
   }
 

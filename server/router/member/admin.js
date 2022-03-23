@@ -2,6 +2,7 @@ const express = require('express')
 const logger = require('../../logger')('router:member:admin')
 const CredentialsConstants = require('../../constants/credentials')
 const isEmail = require('validator/lib/isEmail')
+const isMongoId = require('validator/lib/isMongoId')
 const common = require('./common')
 
 const { ClientError, ServerError } = require('../../errors')
@@ -98,6 +99,52 @@ module.exports = (app) => {
       next(err)
     }
   }, common(app).create)
+
+  router.post('/existentuser', async (req, res, next) => {
+    try {
+      const body = req.body
+
+      if (!body.email) {
+        let err = Error('Missing param email.')
+        err.status = 400
+        throw err
+      }
+
+      if (!isEmail(body.email)) {
+        let err = Error('Invalid Email.')
+        err.status = 400
+        throw err
+      }
+
+      if (!body.credential) {
+        let err = Error('Missing param credential.')
+        err.status = 400
+        throw err
+      }
+
+      if (!body.customer_id) {
+        let err = Error('Missing param customer.')
+        err.status = 400
+        throw err
+      }
+
+      if (!isMongoId(body.customer_id)) {
+        let err = Error('Invalid customer id.')
+        err.status = 400
+        throw err
+      }
+
+      req.context = {
+        customer_id: body.customer_id,
+        email: body.email.toLowerCase(),
+        credential: body.credential
+      }
+
+      next()
+    } catch (err) {
+      next(err)
+    }
+  }, common(app).createExistentUserMember)
 
   return router
 }
