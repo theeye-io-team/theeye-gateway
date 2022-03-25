@@ -1,6 +1,7 @@
 const path = require('path')
 const StatusRouter = require('./status')
 const AuthRouter = require('./auth')
+const AuthAdminRouter = require('./auth/admin')
 const SocialAuthRouter = require('./auth/social')
 const EnterpriseAuthRouter = require('./auth/enterprise')
 const SessionRouter = require('./session')
@@ -54,6 +55,9 @@ class Router {
     api.use('/api/session', bearerMiddleware, SessionRouter(app))
     api.use('/api/message', bearerMiddleware, MessageRouter(app))
     api.use('/api/customer', bearerMiddleware, CustomerRouter(app))
+
+    // admin routes
+    api.use('/api/admin/auth', bearerMiddleware, credentialMiddleware.root(), UserAdminRouter(app))
     api.use('/api/admin/user', bearerMiddleware, credentialMiddleware.root(), UserAdminRouter(app))
     api.use('/api/admin/member', bearerMiddleware, credentialMiddleware.root(), MemberAdminRouter(app))
     api.use('/api/admin/customer', bearerMiddleware, credentialMiddleware.root(), CustomerAdminRouter(app))

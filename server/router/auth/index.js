@@ -1,5 +1,6 @@
 const Router = require('express').Router
 const logger = require('../../logger')('router:auth')
+const isEmail = require('validator/lib/isEmail')
 const EscapedRegExp = require('../../escaped-regexp')
 
 const { ClientError, ServerError } = require('../../errors')
@@ -53,11 +54,11 @@ module.exports = (app) => {
         app.config.services.authentication.strategies.ldapauth &&
         ! app.config.services.authentication.localBypass
       ) {
-        throw new ClientError('ldapSet')
+        throw new ClientError('local password authentication is disabled. domain access enabled')
       }
 
       const email = req.body.email
-      if (!email) {
+      if (!isEmail(email)) {
         throw new ClientError('Email Required')
       }
 
@@ -66,7 +67,8 @@ module.exports = (app) => {
       })
 
       if (!user) {
-        throw new ClientError('User not found', { statusCode: 404 })
+        return res.send('ok')
+        //throw new ClientError('User not found', { statusCode: 404 })
       }
 
       // @TODO verify local passport exists and is valid
@@ -74,7 +76,7 @@ module.exports = (app) => {
         await app.service
           .notifications
           .email
-          .sendPasswordRecoverMessage({ user })
+          .sendPasswordRecoveryMessage({ user })
       } else {
         user.invitation_token = app.service.authentication.issue({ email: user.email })
         await app.service
@@ -97,7 +99,11 @@ module.exports = (app) => {
       }
 
       const decoded = app.service.authentication.verify(req.query.token)
-      const resetToken = app.service.authentication.issue({ email: decoded.email, expiresIn: "5m" })
+      if (decoded.origin !== 'recovery_email') {
+        throw new ClientError('Recovery Token is no longer valid')
+      }
+
+      const resetToken = app.service.authentication.issue({ email: decoded.email, origin: "recovery_verify", expiresIn: "5m" })
       return res.json({ resetToken })
     } catch (err) {
       next(err)
@@ -120,6 +126,10 @@ module.exports = (app) => {
       }
 
       let decoded = app.service.authentication.verify(req.body.token)
+      if (decoded.origin !== 'recovery_verify') {
+        throw new ClientError('Recovery Token is no longer valid')
+      }
+
       const email = decoded.email
 
       if (!email) {

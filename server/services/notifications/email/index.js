@@ -177,7 +177,7 @@ class Email extends AbstractNotification {
    * @return {Promise}
    *
    */
-  sendPasswordRecoverMessage (input) {
+  sendPasswordRecoveryMessage (input) {
     const app = this.app
     if (this.config.message.passwordRecover.enabled === false) {
       return
@@ -186,7 +186,7 @@ class Email extends AbstractNotification {
     const { user } = input
     const token = app.service
       .authentication
-      .issue({ email: user.email, expiresIn: "12h" })
+      .issue({ email: user.email, origin: 'recovery_email', expiresIn: "1h" })
 
     if (!app.config.services.registration.passwordResetUrl) {
       throw new Error('missing configuration registration.passwordResetUrl')

@@ -1,8 +1,8 @@
 const express = require('express')
-const logger = require('../../logger')('router:member:admin')
-const CredentialsConstants = require('../../constants/credentials')
 const isEmail = require('validator/lib/isEmail')
 const isMongoId = require('validator/lib/isMongoId')
+const logger = require('../../logger')('router:member:admin')
+const CredentialsConstants = require('../../constants/credentials')
 const common = require('./common')
 
 const { ClientError, ServerError } = require('../../errors')
