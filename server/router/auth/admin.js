@@ -61,7 +61,15 @@ module.exports = (app) => {
         throw new ClientError("Missing parameter password.")
       }
 
-      const decoded = app.service.authentication.verify(req.body.token)
+      let decoded
+      try {
+        decoded = app.service.authentication.verify(req.body.token)
+      } catch (err) {
+        if (typeof err === 'TokenExpiredError' || err.message === 'jwt expired')  {
+          throw new ClientError('Token expired')
+        }
+      }
+
       if (!decoded.email) {
         throw new ClientError('Recovery Token is not valid')
       }
@@ -71,11 +79,11 @@ module.exports = (app) => {
       })
 
       if (!user) {
-        throw new ClientError('Recovery Token is not valid. User not found')
+        throw new ClientError('Recovery Token is not valid')
       }
 
       if (decoded.origin !== req.user._id.toString() || decoded.target !== user._id.toString()) {
-        throw new ClientError('Recovery Token is not valid. Invalid operation')
+        throw new ClientError('Recovery Token is not valid')
       }
 
       const passport = await app.models.passport.findOne({ protocol: 'local', user_id: user.id })
