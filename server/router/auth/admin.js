@@ -37,9 +37,13 @@ module.exports = (app) => {
         .authentication
         .issue({
           email: user.email,
-          origin: req.user._id, // a root user
+          origin: req.user._id.toString(), // a root user
+          target: user._id.toString(),
           expiresIn: "10m"
         })
+
+      user.security_token = token
+      await user.save()
 
       res.json({ token })
     } catch (err) {
@@ -58,16 +62,20 @@ module.exports = (app) => {
       }
 
       const decoded = app.service.authentication.verify(req.body.token)
-      if (decoded.origin !== req.user._id || !decoded.email) {
-        throw new ClientError('Recovery Token is no longer valid')
+      if (!decoded.email) {
+        throw new ClientError('Recovery Token is not valid')
       }
-
       const user = await app.models.users.uiUser.findOne({
-        email: new EscapedRegExp(email,'i')
+        email: new EscapedRegExp(decoded.email,'i'),
+        security_token: req.body.token
       })
 
       if (!user) {
-        throw new ClientError('Invalid Request. ERR_USER', { statusCode: 400 })
+        throw new ClientError('Recovery Token is not valid. User not found')
+      }
+
+      if (decoded.origin !== req.user._id.toString() || decoded.target !== user._id.toString()) {
+        throw new ClientError('Recovery Token is not valid. Invalid operation')
       }
 
       const passport = await app.models.passport.findOne({ protocol: 'local', user_id: user.id })
@@ -78,7 +86,10 @@ module.exports = (app) => {
       passport.password = await passport.hashPassword(req.body.password)
       await passport.save()
 
-      res.json({})
+      user.security_token = null
+      await user.save()
+
+      res.json('ok')
     } catch (err) {
       next(err)
     }
