@@ -33,7 +33,7 @@ module.exports = (app) => {
           throw new ClientError(`Invalid user format ${user}. Must be string`)
         }
 
-        if (!user) {
+        if (!user || typeof user !== 'string') {
           throw new ClientError(`Empty string`)
         }
 

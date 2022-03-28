@@ -58,7 +58,7 @@ module.exports = (app) => {
       }
 
       const email = req.body.email
-      if (!email || !isEmail(email)) {
+      if (!email || typeof email !== 'string' || !isEmail(email)) {
         throw new ClientError('Email Required')
       }
 

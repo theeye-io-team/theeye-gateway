@@ -54,7 +54,7 @@ module.exports = (app) => {
       if (!body.invitation_token) {
         throw new ClientError('Invitation token is required')
       }
-      if (!body.email || !isEmail(body.email)) {
+      if (!body.email || typeof body.email !== 'string' || !isEmail(body.email)) {
         return res.status(400).json({message: 'email is required'})
       }
       if (!validUsername(body.username)) {
@@ -124,7 +124,7 @@ module.exports = (app) => {
       if (!body.name) {
         throw new ClientError('Missing param name.')
       }
-      if (!body.email || !isEmail(body.email)) {
+      if (!body.email || typeof body.email !== 'string' || !isEmail(body.email)) {
         throw new ClientError('Invalid email.')
       }
       if (!body.username || body.email !== body.username) {
@@ -176,7 +176,7 @@ module.exports = (app) => {
       if (!body.invitation_token) {
         throw new ClientError('Invitation token is required')
       }
-      if (!body.email || !isEmail(body.email)) {
+      if (!body.email || typeof body.email !== 'string' || !isEmail(body.email)) {
         return res.status(400).json({message: 'email is required'})
       }
       if (!validUsername(body.username)) {

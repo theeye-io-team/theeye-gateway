@@ -71,7 +71,7 @@ module.exports = (app) => {
         throw err
       }
 
-      if (!body.user.email) {
+      if (!body.user.email || typeof body.user.email !== 'string') {
         let err = Error('Missing param email.')
         err.status = 400
         throw err
@@ -104,7 +104,7 @@ module.exports = (app) => {
     try {
       const body = req.body
 
-      if (!body.email) {
+      if (!body.email || typeof body.email !== 'string') {
         let err = Error('Missing param email.')
         err.status = 400
         throw err

@@ -108,7 +108,7 @@ module.exports = (app) => {
           throw err
         }
 
-        if (!body.user.email) {
+        if (!body.user.email || typeof body.user.email !== 'string') {
           let err = Error('Missing param email.')
           err.status = 400
           throw err

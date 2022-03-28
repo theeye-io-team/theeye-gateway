@@ -7,7 +7,7 @@ const validateUserData = (data) => {
   if (typeof data.enabled !== 'boolean') {
     throw new ClientError('enabled is required')
   }
-  if (!data.email) {
+  if (!data.email || typeof data.email !== 'string') {
     throw new ClientError('email is required')
   }
   if (!isEmail(data.email)) {
@@ -36,7 +36,7 @@ const validateUserData = (data) => {
 
 const theeyeUsername = /^(?=.{6,20}$)(?![_.-])(?!.*[_.-]{2})[a-zA-Z0-9._-]+(?<![_.-])$/
 const validUsername = (username) => {
-  if (!username) {
+  if (!username || typeof username !== 'string') {
     return false
   }
 
