@@ -57,7 +57,7 @@ class Router {
     api.use('/api/customer', bearerMiddleware, CustomerRouter(app))
 
     // admin routes
-    api.use('/api/admin/auth', bearerMiddleware, credentialMiddleware.root(), UserAdminRouter(app))
+    api.use('/api/admin/auth', bearerMiddleware, credentialMiddleware.root(), AuthAdminRouter(app))
     api.use('/api/admin/user', bearerMiddleware, credentialMiddleware.root(), UserAdminRouter(app))
     api.use('/api/admin/member', bearerMiddleware, credentialMiddleware.root(), MemberAdminRouter(app))
     api.use('/api/admin/customer', bearerMiddleware, credentialMiddleware.root(), CustomerAdminRouter(app))
