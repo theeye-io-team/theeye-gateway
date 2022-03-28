@@ -1,3 +1,4 @@
+const EscapedRegExp = require('../../escaped-regexp')
 const express = require('express')
 const isEmail = require('validator/lib/isEmail')
 const logger = require('../../logger')('router:auth:admin')
