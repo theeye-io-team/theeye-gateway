@@ -4,10 +4,12 @@ const isEmail = require('validator/lib/isEmail')
 const logger = require('../../logger')('router:auth:admin')
 const { ClientError, ServerError } = require('../../errors')
 
+const TOKEN_REASON = 'password recovery'
+
 module.exports = (app) => {
   const router = express.Router()
 
-  router.post('/password/recover', async (req, res, next) => {
+  router.post('/password/recovery', async (req, res, next) => {
     try {
       if (
         app.config.services.authentication.strategies.ldapauth &&
@@ -39,6 +41,7 @@ module.exports = (app) => {
           email: user.email,
           origin: req.user._id.toString(), // a root user
           target: user._id.toString(),
+          reason: TOKEN_REASON,
           expiresIn: "10m"
         })
 
@@ -51,7 +54,7 @@ module.exports = (app) => {
     }
   })
 
-  router.put('/password/reset', async (req, res, next) => {
+  router.post('/password/recovery/confirmation', async (req, res, next) => {
     try {
       if (!req.body.token) {
         throw new ClientError("Missing parameter token.")
@@ -82,8 +85,12 @@ module.exports = (app) => {
         throw new ClientError('Recovery Token is not valid')
       }
 
-      if (decoded.origin !== req.user._id.toString() || decoded.target !== user._id.toString()) {
+      if (decoded.reason !== TOKEN_REASON || decoded.target !== user._id.toString()) {
         throw new ClientError('Recovery Token is not valid')
+      }
+
+      if (decoded.origin !== req.user._id.toString()) {
+        throw new ClientError('The session is not allowed to perform this action', { statusCode: 403 })
       }
 
       const passport = await app.models.passport.findOne({ protocol: 'local', user_id: user.id })
