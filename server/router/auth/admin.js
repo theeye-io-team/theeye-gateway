@@ -16,7 +16,7 @@ module.exports = (app) => {
       }
 
       const email = req.body.email
-      if (!isEmail(email)) {
+      if (!email || !isEmail(email)) {
         throw new ClientError('Email Required')
       }
 
@@ -82,4 +82,6 @@ module.exports = (app) => {
       next(err)
     }
   })
+
+  return router
 }
