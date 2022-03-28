@@ -4,6 +4,8 @@ const isEmail = require('validator/lib/isEmail')
 const EscapedRegExp = require('../../escaped-regexp')
 
 const { ClientError, ServerError } = require('../../errors')
+const TOKEN_REASON_EMAIL = 'recovery_email'
+const TOKEN_REASON_CONFIRMATION = 'recovery_verify'
 
 module.exports = (app) => {
   const router = Router()
@@ -78,7 +80,11 @@ module.exports = (app) => {
           .email
           .sendPasswordRecoveryMessage({ user })
       } else {
-        user.invitation_token = app.service.authentication.issue({ email: user.email })
+        user.security_token = app.service.authentication.issue({
+          email: user.email,
+          reason: TOKEN_REASON_EMAIL
+        })
+
         await app.service
           .notifications
           .email
@@ -94,16 +100,21 @@ module.exports = (app) => {
 
   router.get('/password/recoververify', (req, res, next) => {
     try {
-      if (!req.query.token) {
+      const token = req.query.token
+      if (!token) {
         throw new ClientError("Missing parameter token.")
       }
 
-      const decoded = app.service.authentication.verify(req.query.token)
-      if (decoded.origin !== 'recovery_email') {
-        throw new ClientError('Recovery Token is no longer valid')
+      const decoded = app.service.authentication.verify(token)
+      if (decoded.reason !== TOKEN_REASON_EMAIL) {
+        throw new ClientError('Recovery Token is not valid')
       }
 
-      const resetToken = app.service.authentication.issue({ email: decoded.email, origin: "recovery_verify", expiresIn: "5m" })
+      const resetToken = app.service.authentication.issue({
+        email: decoded.email,
+        reason: TOKEN_REASON_CONFIRMATION,
+        expiresIn: "5m"
+      })
       return res.json({ resetToken })
     } catch (err) {
       next(err)
@@ -125,13 +136,12 @@ module.exports = (app) => {
         throw new ClientError("Passwords does not match.")
       }
 
-      let decoded = app.service.authentication.verify(req.body.token)
-      if (decoded.origin !== 'recovery_verify') {
-        throw new ClientError('Recovery Token is no longer valid')
+      const decoded = app.service.authentication.verify(req.body.token)
+      if (decoded.reason !== TOKEN_REASON_CONFIRMATION) {
+        throw new ClientError('Recovery Token is not valid')
       }
 
       const email = decoded.email
-
       if (!email) {
         throw new ClientError('Invalid Request. ERR_TOKEN')
       }

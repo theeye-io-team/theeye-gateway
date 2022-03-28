@@ -64,14 +64,7 @@ module.exports = (app) => {
         throw new ClientError("Missing parameter password.")
       }
 
-      let decoded
-      try {
-        decoded = app.service.authentication.verify(req.body.token)
-      } catch (err) {
-        if (typeof err === 'TokenExpiredError' || err.message === 'jwt expired')  {
-          throw new ClientError('Token expired')
-        }
-      }
+      const decoded = app.service.authentication.verify(req.body.token)
 
       if (!decoded.email) {
         throw new ClientError('Recovery Token is not valid')

@@ -170,20 +170,7 @@ module.exports = (app) => {
         throw new ClientError('Invalid Token')
       }
 
-      let decoded
-      try {
-        decoded = app.service.authentication.verify(token)
-      } catch (err) {
-        if (err.message === 'jwt expired')  {
-          throw new ClientError('Token expired')
-        } else if (err.message === 'jwt must be provided') {
-          throw new ClientError('Invalid Token')
-        } else if (err.message === 'jwt signature is required') {
-          throw new ClientError('Invalid Token Signature')
-        } else {
-          throw err
-        }
-      }
+      const decoded = app.service.authentication.verify(token)
 
       if (!decoded.email) {
         throw new ClientError('Recovery Token is not valid')

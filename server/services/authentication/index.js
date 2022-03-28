@@ -66,11 +66,24 @@ module.exports = function (app) {
      *
      */
     verify (token) {
-      let decoded = jwt.verify(
-        token,
-        this.config.secret,
-        {}
-      )
+      let decoded
+      try {
+        decoded = jwt.verify(
+          token,
+          this.config.secret,
+          {}
+        )
+      } catch (err) {
+        if (err.message === 'jwt expired')  {
+          throw new ClientError('Token expired')
+        } else if (err.message === 'jwt must be provided') {
+          throw new ClientError('Invalid Token')
+        } else if (err.message === 'jwt signature is required') {
+          throw new ClientError('Invalid Token Signature')
+        } else {
+          throw new ClientError(err.message)
+        }
+      }
 
       return decoded
     }
@@ -138,12 +151,28 @@ module.exports = function (app) {
         }
 
         const user = users[0]
+        //if (user.enabled === false) {
+        //  app.service.notifications.eventNotifySupport({
+        //    subject: 'DISABLED USER LOGIN FORBIDDEN.',
+        //    body: `
+        //      <div>
+        //        User is disabled. Blocked login attempt.<br/>
+        //        <p>id: ${user._id}</p>
+        //        <p>username: ${user.username}</p>
+        //        <p>email: ${user.email}</p>
+        //      </div>
+        //    `
+        //  })
+
+        //  throw new ClientError('Forbidden', { code: 'UsernameLocked', statusCode: 403 })
+        //}
+
         // basic authentication requires a local passport
         const passport = await app.models.passport.findOne({ user: user._id, protocol: 'local' })
 
         if (!passport) {
           // user is not authorized to authenticate with username / password
-          throw new ClientError('Unauthorized',{ code: 'LocalPassportNotFound', statusCode: 401 })
+          throw new ClientError('Unauthorized', { code: 'LocalPassportNotFound', statusCode: 401 })
         }
 
         // verify provided password
@@ -174,15 +203,50 @@ module.exports = function (app) {
 
       try {
         //let decoded = app.service.authentication.verify(token)
-        let session = await app.models.session.findOne({ token })
+        const session = await app.models.session.findOne({ token })
         if (!session) {
+          //let decoded
+          //try {
+          //  decoded = this.verify(token)
+          //} catch (err) {
+          //  logger.error(err)
+          //}
+
+          //app.service.notifications.eventNotifySupport({
+          //  subject: 'INVALID SESSION FORBIDDEN.',
+          //  body: `
+          //    <div>
+          //      Bearer session not found.<br/>
+          //      <p>Token: ${token}</p>
+          //      <p>Decoded: ${JSON.stringify(decoded)}</p>
+          //    </div>
+          //  `
+          //})
+
           throw new Error('invalid or outdated token')
         }
 
-        let user = await app.models.users.user.findOne({ _id: session.user_id })
+        const user = await app.models.users.user.findOne({ _id: session.user_id })
         if (!user) {
           throw new Error('user no longer available')
         }
+
+        //if (user.enabled === false) {
+        //  app.service.notifications.eventNotifySupport({
+        //    subject: 'DISABLED BEARER SESSION FORBIDDEN.',
+        //    body: `
+        //      <div>
+        //        User is disabled. Bearer session was blocked.<br/>
+        //        <p>Token: ${token}</p>
+        //        <p>id: ${user._id}</p>
+        //        <p>username: ${user.username}</p>
+        //        <p>email: ${user.email}</p>
+        //      </div>
+        //    `
+        //  })
+
+        //  throw new ClientError('Forbidden', { code: 'UsernameLocked', statusCode: 403 })
+        //}
 
         logger.log('client %s/%s connected [bearer]', user.username, user.email)
         next(null, user, session)
