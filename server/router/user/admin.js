@@ -220,9 +220,7 @@ module.exports = (app) => {
       }
 
       user.email_verified = false
-      user.enabled = false
       user.security_token = null
-      user.credential = null
       await user.save()
 
       res.send('ok')
