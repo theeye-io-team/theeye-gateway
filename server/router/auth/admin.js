@@ -41,7 +41,8 @@ module.exports = (app) => {
           email: user.email,
           origin: req.user._id.toString(), // a root user
           target: user._id.toString(),
-          reason: TOKEN_REASON,
+          reason: TOKEN_REASON
+        }, {
           expiresIn: "10m"
         })
 
