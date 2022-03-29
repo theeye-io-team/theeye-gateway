@@ -75,14 +75,24 @@ module.exports = (app) => {
 
       // @TODO verify local passport exists and is valid
       if (user.enabled) {
+        const token = user.security_token = app.service.authentication
+          .issue({
+            email: user.email,
+            reason: TOKEN_REASON_EMAIL
+          }, {
+            expiresIn: "10m"
+          })
+
+        user.security_token = token
+        await user.save()
+
         await app.service
           .notifications
           .email
-          .sendPasswordRecoveryMessage({ user })
+          .sendPasswordRecoveryToken({ user, token })
       } else {
-        user.security_token = app.service.authentication.issue({
-          email: user.email,
-          reason: TOKEN_REASON_EMAIL
+        user.invitation_token = app.service.authentication.issue({
+          email: user.email
         })
 
         await app.service
@@ -98,7 +108,7 @@ module.exports = (app) => {
     }
   })
 
-  router.get('/password/recoververify', (req, res, next) => {
+  router.get('/password/recoververify', async (req, res, next) => {
     try {
       const token = req.query.token
       if (!token) {
@@ -110,11 +120,25 @@ module.exports = (app) => {
         throw new ClientError('Recovery Token is not valid')
       }
 
+      const user = await app.models.users.uiUser.findOne({
+        email: new EscapedRegExp(decoded.email,'i'),
+        security_token: token
+      })
+
+      if (!user) {
+        throw new ClientError('Recovery Token is not valid')
+      }
+
       const resetToken = app.service.authentication.issue({
         email: decoded.email,
-        reason: TOKEN_REASON_CONFIRMATION,
-        expiresIn: "5m"
+        reason: TOKEN_REASON_CONFIRMATION
+      }, {
+        expiresIn: "1m"
       })
+
+      user.security_token = resetToken
+      await user.save()
+
       return res.json({ resetToken })
     } catch (err) {
       next(err)
@@ -123,9 +147,16 @@ module.exports = (app) => {
 
   router.put('/password/reset', async (req, res, next) => {
     try {
-      if (!req.body.token) {
+      const token = req.body.token
+      if (!token) {
         throw new ClientError("Missing parameter token.")
       }
+
+      const decoded = app.service.authentication.verify(token)
+      if (decoded.reason !== TOKEN_REASON_CONFIRMATION) {
+        throw new ClientError('Recovery Token is not valid')
+      }
+
       if (!req.body.password) {
         throw new ClientError("Missing parameter password.")
       }
@@ -136,18 +167,9 @@ module.exports = (app) => {
         throw new ClientError("Passwords does not match.")
       }
 
-      const decoded = app.service.authentication.verify(req.body.token)
-      if (decoded.reason !== TOKEN_REASON_CONFIRMATION) {
-        throw new ClientError('Recovery Token is not valid')
-      }
-
-      const email = decoded.email
-      if (!email) {
-        throw new ClientError('Invalid Request. ERR_TOKEN')
-      }
-
       const user = await app.models.users.uiUser.findOne({
-        email: new EscapedRegExp(email,'i')
+        email: new EscapedRegExp(decoded.email,'i'),
+        security_token: token
       })
 
       if (!user) {
@@ -160,6 +182,9 @@ module.exports = (app) => {
       }
       passport.password = await passport.hashPassword(req.body.password)
       await passport.save()
+
+      user.security_token = null
+      user.save()
 
       res.json({})
     } catch (err) {
