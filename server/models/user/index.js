@@ -12,11 +12,13 @@ function BaseSchema () {
   const schema = new mongoose.Schema({
     username: { type: String, unique: true, required: true },
     email: { type: String, unique: true, required: true },
+    email_verified: { type: Boolean, default: false },
     extra_emails: [{ type: String }],
     name: { type: 'string' },
     enabled: { type: 'boolean', default: false },
     credential: { type: 'string' }, // global property for internal use. will replace session credential when set
     invitation_token: { type: 'string', default: '' },
+    security_token: { type: 'string', default: '' }, // user actions request
     devices: { type: 'array', default: [] },
     onboardingCompleted: { type: 'boolean', default: false },
     creation_date: { type: Date, default: () => { return new Date() }, required: true },

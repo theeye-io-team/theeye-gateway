@@ -1,4 +1,3 @@
-const isEmail = require('validator/lib/isEmail')
 const EscapedRegExp = require('../../escaped-regexp')
 const { ClientError, ServerError } = require('../../errors')
 const { validUsername } = require('../user/data-validate')

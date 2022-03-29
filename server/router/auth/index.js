@@ -1,8 +1,11 @@
 const Router = require('express').Router
 const logger = require('../../logger')('router:auth')
+const isEmail = require('validator/lib/isEmail')
 const EscapedRegExp = require('../../escaped-regexp')
 
 const { ClientError, ServerError } = require('../../errors')
+const TOKEN_REASON_EMAIL = 'recovery_email'
+const TOKEN_REASON_CONFIRMATION = 'recovery_verify'
 
 module.exports = (app) => {
   const router = Router()
@@ -53,11 +56,11 @@ module.exports = (app) => {
         app.config.services.authentication.strategies.ldapauth &&
         ! app.config.services.authentication.localBypass
       ) {
-        throw new ClientError('ldapSet')
+        throw new ClientError('local password authentication is disabled. domain access enabled')
       }
 
       const email = req.body.email
-      if (!email) {
+      if (!email || typeof email !== 'string' || !isEmail(email)) {
         throw new ClientError('Email Required')
       }
 
@@ -66,17 +69,32 @@ module.exports = (app) => {
       })
 
       if (!user) {
-        throw new ClientError('User not found', { statusCode: 404 })
+        return res.send('ok')
+        //throw new ClientError('User not found', { statusCode: 404 })
       }
 
       // @TODO verify local passport exists and is valid
       if (user.enabled) {
+        const token = user.security_token = app.service.authentication
+          .issue({
+            email: user.email,
+            reason: TOKEN_REASON_EMAIL
+          }, {
+            expiresIn: "10m"
+          })
+
+        user.security_token = token
+        await user.save()
+
         await app.service
           .notifications
           .email
-          .sendPasswordRecoverMessage({ user })
+          .sendPasswordRecoveryToken({ user, token })
       } else {
-        user.invitation_token = app.service.authentication.issue({ email: user.email })
+        user.invitation_token = app.service.authentication.issue({
+          email: user.email
+        })
+
         await app.service
           .notifications
           .email
@@ -90,14 +108,37 @@ module.exports = (app) => {
     }
   })
 
-  router.get('/password/recoververify', (req, res, next) => {
+  router.get('/password/recoververify', async (req, res, next) => {
     try {
-      if (!req.query.token) {
+      const token = req.query.token
+      if (!token) {
         throw new ClientError("Missing parameter token.")
       }
 
-      const decoded = app.service.authentication.verify(req.query.token)
-      const resetToken = app.service.authentication.issue({ email: decoded.email, expiresIn: "5m" })
+      const decoded = app.service.authentication.verify(token)
+      if (decoded.reason !== TOKEN_REASON_EMAIL) {
+        throw new ClientError('Recovery Token is not valid')
+      }
+
+      const user = await app.models.users.uiUser.findOne({
+        email: new EscapedRegExp(decoded.email,'i'),
+        security_token: token
+      })
+
+      if (!user) {
+        throw new ClientError('Recovery Token is not valid')
+      }
+
+      const resetToken = app.service.authentication.issue({
+        email: decoded.email,
+        reason: TOKEN_REASON_CONFIRMATION
+      }, {
+        expiresIn: "1m"
+      })
+
+      user.security_token = resetToken
+      await user.save()
+
       return res.json({ resetToken })
     } catch (err) {
       next(err)
@@ -106,9 +147,16 @@ module.exports = (app) => {
 
   router.put('/password/reset', async (req, res, next) => {
     try {
-      if (!req.body.token) {
+      const token = req.body.token
+      if (!token) {
         throw new ClientError("Missing parameter token.")
       }
+
+      const decoded = app.service.authentication.verify(token)
+      if (decoded.reason !== TOKEN_REASON_CONFIRMATION) {
+        throw new ClientError('Recovery Token is not valid')
+      }
+
       if (!req.body.password) {
         throw new ClientError("Missing parameter password.")
       }
@@ -119,15 +167,9 @@ module.exports = (app) => {
         throw new ClientError("Passwords does not match.")
       }
 
-      let decoded = app.service.authentication.verify(req.body.token)
-      const email = decoded.email
-
-      if (!email) {
-        throw new ClientError('Invalid Request. ERR_TOKEN')
-      }
-
       const user = await app.models.users.uiUser.findOne({
-        email: new EscapedRegExp(email,'i')
+        email: new EscapedRegExp(decoded.email,'i'),
+        security_token: token
       })
 
       if (!user) {
@@ -140,6 +182,9 @@ module.exports = (app) => {
       }
       passport.password = await passport.hashPassword(req.body.password)
       await passport.save()
+
+      user.security_token = null
+      user.save()
 
       res.json({})
     } catch (err) {
