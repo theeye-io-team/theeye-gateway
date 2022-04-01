@@ -82,13 +82,13 @@ const isUserKeyAvailable = async (app, data, currentUser = null) => {
       user.email.toLowerCase() === email ||
       user.username.toLowerCase() === email
     ) {
-      throw new ClientError('Email is in use. Choose another one')
+      throw new ClientError('Email is already registered')
     }
     if (
       user.username.toLowerCase() === username ||
       user.email.toLowerCase() === username
     ) {
-      throw new ClientError('Username is in use. Choose another one')
+      throw new ClientError('Username is in use')
     }
   }
 }
