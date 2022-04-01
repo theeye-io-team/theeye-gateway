@@ -6,7 +6,7 @@ const create = async (app, customer) => {
   const clientId = randomToken()
   const clientSecret = randomToken()
 
-  const email = `${customer.name}+${clientId}@theeye.io`.toLowerCase()
+  const email = `${clientId}@theeye.io`.toLowerCase()
   const name = `agent ${clientId}`
 
   const agentUser = await app.models.users.botUser.create({
