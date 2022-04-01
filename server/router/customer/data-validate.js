@@ -1,10 +1,10 @@
 const EscapedRegExp = require('../../escaped-regexp')
 const { ClientError, ServerError } = require('../../errors')
-const { validUsername } = require('../user/data-validate')
 
+const customerNamePattern = /^(?=.{6,}$)(?![_.-])(?!.*[_.-]{2})[a-zA-Z0-9._-]+(?<![_.-])$/
 const validateCustomerName = async (app, name) => {
-  if (!validUsername(name)) {
-    throw new ClientError('The organization name can contains 6 to 20 letters (a-z), numbers (0-9), period (.), underscore (_) and hyphen (-). It must starts and ends with an alphanumeric symbol')
+  if (!customerNamePattern.test(name)) {
+    throw new ClientError('The organization should be at least 6 characters long, letters (a-z), numbers (0-9), period (.), underscore (_) and hyphen (-) are allowed. It must starts and ends with an alphanumeric symbol')
   }
 
   customer = await app.models.customer.findOne({ name: new EscapedRegExp(name, 'i') })
