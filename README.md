@@ -1,5 +1,5 @@
 
-# TheEye Api Gateway
+# The Gate
 
 This repo contains
 
