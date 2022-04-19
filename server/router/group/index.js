@@ -8,8 +8,8 @@ module.exports = (app) => {
   router.get('/', dbFilterMiddleware({}), async (req, res, next) => {
     try {
       const dbFilters = req.filters
-      const policies = await app.models.group.apiFetch(dbFilters)
-      res.json(policies)
+      const groups = await app.models.group.apiFetch(dbFilters)
+      res.json(groups)
     } catch (err) {
       next(err)
     }
