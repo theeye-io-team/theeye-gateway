@@ -264,11 +264,18 @@ module.exports = function (app) {
 
       let memberOf = await app.models.member.find(query)
       if (memberOf.length === 0) {
+
+        if (customerName) {
+          message = `User is trying to access ${customerName} but it is not a member.`
+        } else {
+          message = 'User is not assigned to any Organization and will not be able to login.'
+        }
+
         app.service.notifications.eventNotifySupport({
-          subject: 'USER LOGIN MEMBERS ERROR.',
+          subject: 'USER LOGIN MEMBER ERROR.',
           body: `
             <div>
-              User is not assigned to any Organization. Cannot login.<br/>
+              ${message}<br/>
               <p>id: ${user._id}</p>
               <p>username: ${user.username}</p>
               <p>email: ${user.email}</p>
@@ -278,7 +285,7 @@ module.exports = function (app) {
 
         throw new ClientError('Forbidden', {
           message: 'Forbidden',
-          reason: 'not a member',
+          reason: 'not allowed',
           statusCode: 403
         })
       }
