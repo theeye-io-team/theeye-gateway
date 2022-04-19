@@ -265,20 +265,22 @@ module.exports = function (app) {
       let memberOf = await app.models.member.find(query)
       if (memberOf.length === 0) {
 
+        let message
         if (customerName) {
-          message = `User is trying to access ${customerName} but it is not a member.`
+          message = `"${user.email}" is trying to access "${customerName}" but it is not a member of that organization.`
         } else {
           message = 'User is not assigned to any Organization and will not be able to login.'
         }
 
         app.service.notifications.eventNotifySupport({
-          subject: 'USER LOGIN MEMBER ERROR.',
+          subject: 'MEMBER LOGIN ERROR.',
           body: `
             <div>
               ${message}<br/>
               <p>id: ${user._id}</p>
               <p>username: ${user.username}</p>
               <p>email: ${user.email}</p>
+              <p>auth method: ${passport.protocol}</p>
             </div>
           `
         })
