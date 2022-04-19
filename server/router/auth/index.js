@@ -18,11 +18,10 @@ module.exports = (app) => {
     }
   }, async (req, res, next) => {
     try {
-      let user = req.user
-      let passport = req.passport
-      let customerName = req.query.customer || null
-
-      let session = await app.service.authentication.membersLogin({ user, passport, customerName })
+      const user = req.user
+      const passport = req.passport
+      const customerName = req.query.customer || null
+      const session = await app.service.authentication.membersLogin({ user, passport, customerName })
       res.json({ access_token: session.token, credential: session.credential })
     } catch (err) {
       next(err)
@@ -33,11 +32,10 @@ module.exports = (app) => {
     app.service.authentication.middlewares.basicPassport,
     async (req, res, next) => {
       try {
-        let user = req.user
-        let passport = req.passport
-        let customerName = req.query.customer || null
-
-        let session = await app.service.authentication.membersLogin({ user, passport, customerName })
+        const user = req.user
+        const passport = req.passport
+        const customerName = req.query.customer || null
+        const session = await app.service.authentication.membersLogin({ user, passport, customerName })
         res.json({ access_token: session.token, credential: session.credential })
       } catch (err) {
         next(err)

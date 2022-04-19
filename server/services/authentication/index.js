@@ -264,21 +264,30 @@ module.exports = function (app) {
 
       let memberOf = await app.models.member.find(query)
       if (memberOf.length === 0) {
+
+        let message
+        if (customerName) {
+          message = `"${user.email}" is trying to access "${customerName}" but it is not a member of that organization.`
+        } else {
+          message = 'User is not assigned to any Organization and will not be able to login.'
+        }
+
         app.service.notifications.eventNotifySupport({
-          subject: 'USER LOGIN MEMBERS ERROR.',
+          subject: 'MEMBER LOGIN ERROR.',
           body: `
             <div>
-              User is not assigned to any Organization. Cannot login.<br/>
+              ${message}<br/>
               <p>id: ${user._id}</p>
               <p>username: ${user.username}</p>
               <p>email: ${user.email}</p>
+              <p>auth method: ${passport.protocol}</p>
             </div>
           `
         })
 
         throw new ClientError('Forbidden', {
           message: 'Forbidden',
-          reason: 'not a member',
+          reason: 'not allowed',
           statusCode: 403
         })
       }
