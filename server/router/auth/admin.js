@@ -9,6 +9,31 @@ const TOKEN_REASON = 'password recovery'
 module.exports = (app) => {
   const router = express.Router()
 
+  router.put('/password/change', async (req, res, next) => {
+    try {
+      const { user_id, password } = req.body
+
+      const user = await app.models.users.uiUser.findById(user_id)
+      if (!user) {
+        throw new ClientError('User not found', { statusCode: 404 })
+      }
+
+      const passport = await app.models.passport.findOne({ protocol: 'local', user_id: user.id })
+      if (!passport) {
+        throw new ClientError('Local login for the user is not enabled', { statusCode: 400 })
+      }
+
+      passport.password = await passport.hashPassword(password)
+      await passport.save()
+
+      await user.save() // increase last_update
+
+      res.json('ok')
+    } catch (err) {
+      next(err)
+    }
+  })
+
   router.post('/password/recovery', async (req, res, next) => {
     try {
       if (
