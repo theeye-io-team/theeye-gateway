@@ -1,9 +1,7 @@
 const express = require('express')
 const { ClientError, ServerError } = require('../../errors')
 const { validateUserData, isUserKeyAvailable } = require('../user/data-validate')
-const { validateCustomerName } = require('../customer/data-validate')
-const createAgentUser = require('../customer/create-agent')
-const { v4: uuidv4 } = require('uuid')
+const { create: createCustomer } = require('../customer/common')
 
 module.exports = (app) => {
   const router = express.Router()
@@ -27,12 +25,17 @@ module.exports = (app) => {
   })
 
   const register = async (data) => {
-    const customer = await registerCustomer(data.customer)
-
     if (!data.user.username) {
       data.user.username = data.user.email
     }
+
     const user = await registerUser(data.user)
+
+    if (!data.customer) { data.customer = {} }
+    data.customer.display_name = user.username
+    data.customer.owner = user._id
+    data.customer.owner_id = user._id
+    const customer = await createCustomer(app, data.customer)
 
     const member = await app.models.member.create({
       user: user._id,
@@ -43,30 +46,7 @@ module.exports = (app) => {
       credential: 'owner'
     })
 
-    customer.owner = user._id
-    customer.owner_id = user._id
-    await customer.save()
-
     return { user, customer, member }
-  }
-
-  const registerCustomer = async (data = {}) => {
-    let name = data.name
-    if (!name) {
-      name = uuidv4()
-    } else {
-      await validateCustomerName(app, name)
-    }
-
-    const customer = await app.models.customer.create({
-      name,
-      display_name: (data.display_name || ''),
-      description: (data.description || ''),
-    })
-
-    await createAgentUser(app, customer)
-
-    return customer
   }
 
   const registerUser = async (data) => {

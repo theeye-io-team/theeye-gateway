@@ -9,8 +9,7 @@ const EscapedRegExp = require('../../escaped-regexp')
 const { ClientError, ServerError } = require('../../errors')
 
 const { validUsername, usernameAvailable, isUserKeyAvailable } = require('../user/data-validate')
-const { validateCustomerName } = require('../customer/data-validate')
-const createCustomerAgentUser = require('../customer/create-agent')
+const { create: createCustomer } = require('../customer/common')
 
 const INVALID_USERNAME_MESSAGE = 'The username is not valid. It can contains 6 to 20 letters (a-z), numbers (0-9), period (.), underscore (_) and hyphen (-). It must starts and ends with an alphanumeric symbol'
 
@@ -186,17 +185,11 @@ module.exports = (app) => {
         throw new ClientError('Password is required')
       }
 
-      validateCustomerName(app, body.customername)
-
       const user = await verifyUserActivationData(body)
 
       const passport = await activateUser(user, body)
 
-      const customer = await activateCustomer(body.customername)
-
-      customer.owner = user._id
-      customer.owner_id = user._id
-      await customer.save()
+      const customer = await createCustomerForUser(user)
 
       // create member
       const member = await app.models.member.create({
@@ -268,14 +261,14 @@ module.exports = (app) => {
     return passport
   }
 
-  const activateCustomer = async (name) => {
+  const createCustomerForUser = async (user) => {
+    const data = {
+      display_name: user.username,
+      owner: user._id,
+      owner_id: user._id
+    }
     // create customer
-    const customer = await app.models.customer.create({
-      name: name.toLowerCase()
-    })
-
-    // create agent customer
-    await createCustomerAgentUser(app, customer)
+    const customer = await createCustomer(app, data)
 
     return customer
   }
