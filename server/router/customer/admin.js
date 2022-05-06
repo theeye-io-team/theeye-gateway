@@ -1,8 +1,7 @@
 const express = require('express')
 const dbFilterMiddleware = require('../db-filter-middleware')
 const { ClientError, ServerError } = require('../../errors')
-const { validateCustomerName } = require('./data-validate')
-const createAgentUser = require('./create-agent')
+const { create } = require('./common')
 
 module.exports = (app) => {
   const router = express.Router()
@@ -20,12 +19,7 @@ module.exports = (app) => {
   router.post('/', async (req, res, next) => {
     try {
       const data = req.body
-      const name = data.name.toLowerCase()
-      validateCustomerName(app, name)
-
-      const customer = await app.models.customer.create(data)
-      await createAgentUser(app, customer)
-
+      const customer = await create(app, data)
       res.json(customer)
     } catch (err) {
       next(err)
