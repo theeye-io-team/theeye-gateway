@@ -22,7 +22,7 @@ function BaseSchema () {
     devices: { type: 'array', default: [] },
     onboardingCompleted: { type: 'boolean', default: false },
     creation_date: { type: Date, default: () => { return new Date() }, required: true },
-    last_update: { type: Date, default: () => { return new Date() }, required: true }
+    last_update: { type: Date, default: () => { return new Date() } }
   }, {
     collection: 'gw_user',
     discriminatorKey: '_type'
