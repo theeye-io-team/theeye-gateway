@@ -21,6 +21,10 @@ function BaseSchema () {
     security_token: { type: 'string', default: '' }, // user actions request
     devices: { type: 'array', default: [] },
     onboardingCompleted: { type: 'boolean', default: false },
+    policies: [{
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Policy'
+    }],
     creation_date: { type: Date, default: () => { return new Date() }, required: true },
     last_update: { type: Date, default: () => { return new Date() } }
   }, {

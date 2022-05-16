@@ -6,6 +6,8 @@ const SessionModel = require('./session')
 const UserModel = require('./user')
 const CustomerModel = require('./customer')
 const MemberModel = require('./member')
+const PolicyModel = require('./policy')
+const GroupModel = require('./group')
 
 class Models {
   constructor (app) {
@@ -21,6 +23,8 @@ class Models {
     this.session = new SessionModel(db)
     this.customer = new CustomerModel(db)
     this.member = new MemberModel(db)
+    this.policy = new PolicyModel(db)
+    this.group = new GroupModel(db)
 
     const users = new UserModel(db)
     this.users = {
