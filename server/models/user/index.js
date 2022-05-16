@@ -13,7 +13,6 @@ module.exports = function (db) {
 
   const BotUser = User.discriminator('BotUser', new BaseSchema())
   const UiUser = User.discriminator('UiUser', new BaseSchema())
-
   return { User, BotUser, UiUser }
 }
 
@@ -31,13 +30,41 @@ function BaseSchema (extraProps = {}) {
       security_token: { type: 'string', default: '' }, // user actions request
       devices: { type: 'array', default: [] },
       onboardingCompleted: { type: 'boolean', default: false },
+      policies: [{
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Policy'
+      }],
       creation_date: { type: Date, default: () => { return new Date() }, required: true },
-      last_update: { type: Date, default: () => { return new Date() } }
+      last_update: { type: Date, default: () => { return new Date() }, required: true }
     }), {
       collection: 'gw_user',
       discriminatorKey: '_type'
     }
   )
+
+  const def = {
+    getters: true,
+    virtuals: true,
+    transform: function (doc, ret, options) {
+      // remove the _id of every document before returning the result
+      ret.id = ret._id
+      delete ret._id
+      delete ret.__v
+    }
+  }
+
+  schema.pre('save', function (next) {
+    this.last_update = new Date()
+    next(null)
+  })
+
+  schema.set('toJSON', def)
+  schema.set('toObject', def)
+
+  schema.statics.apiFetch = apiFetch
+
+  return schema
+}
 
   const def = {
     getters: true,
