@@ -10,6 +10,10 @@ module.exports = function (db) {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User'
     }],
+    policies: [{
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Policy'
+    }],
     description: String,
     creation_date: { type: Date, default: new Date() },
     last_update: { type: Date, default: new Date() },
