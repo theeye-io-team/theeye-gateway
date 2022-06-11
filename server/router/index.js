@@ -75,9 +75,15 @@ class Router {
     api.use('/', CompatibilityRouter(app))
 
     // static api route
+    api.get('/components/:component/*', (req, res) => {
+      const index = `../../client/dist/components/${req.params.component}/index.html`
+      res.sendFile(path.join(__dirname, index))
+    })
+
     const staticRoute = (req, res) => {
       res.sendFile(path.join(__dirname, '../../client/dist/index.html'))
     }
+
     api.get('/*', staticRoute)
     api.get('/admin/*', staticRoute)
   }
