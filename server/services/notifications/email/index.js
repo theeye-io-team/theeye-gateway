@@ -194,7 +194,7 @@ class Email extends AbstractNotification {
       app.config.services.registration.passwordResetUrl
     )
 
-    const body = Templates.passwordRecover({ url, email: user.email })
+    const body = Templates.passwordRecover({ url, email: user.email, name: user.name })
     const options = {
       to: user.email,
       subject: 'TheEye Password Recover',
