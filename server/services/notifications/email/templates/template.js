@@ -60,7 +60,8 @@ module.exports = function (data) {
                             color: #fff;
                             background-color: #007bff;
                             border-color: #007bff;
-                          " href="${data.link}">${data.btn_text}</a>
+                            text-decoration: none;
+                          " href="${data.link}"><strong>${data.btn_text}</strong></a>
                         </div>
                         <p>&nbsp;</p>
                         <p style="font-family: 'Helvetica Neue', 'Helvetica', Helvetica, Arial, sans-serif; font-size: 14px; line-height: 1.6em; font-weight: normal; margin: 0 0 10px; padding: 0;">
