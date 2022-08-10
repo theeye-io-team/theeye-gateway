@@ -67,7 +67,7 @@ module.exports = function (data) {
                         <p style="font-family: 'Helvetica Neue', 'Helvetica', Helvetica, Arial, sans-serif; font-size: 14px; line-height: 1.6em; font-weight: normal; margin: 0 0 10px; padding: 0;">
                           If, for any reason, you can't click the button, here is the actual link URL text. Copy and paste it on your browser's address bar:
                         </p>
-                        <a href="${data.link}" style="font-family: 'Helvetica Neue', 'Helvetica', Helvetica, Arial, sans-serif; word-wrap: break-word; max-width: 580px; font-size: 11px; line-height: 1.2em; font-weight: normal; margin: 0 0 10px; padding: 0;">
+                        <a href="${data.link}" style="font-family: 'Helvetica Neue', 'Helvetica', Helvetica, Arial, sans-serif; word-wrap: break-word; word-break:break-all; max-width: 580px; font-size: 11px; line-height: 1.2em; font-weight: normal; margin: 0 0 10px; padding: 0;">
                           <strong>${data.link}</strong>
                         </a>
                       ` : ''}
