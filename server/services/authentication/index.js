@@ -7,8 +7,16 @@ const ldapauth = require('./ldapauth')
 const ACL = require('./acl')
 
 const logger = require('../../logger')(':services:authentication')
-const { ClientError, ServerError } = require('../../errors')
 const EscapedRegExp = require('../../escaped-regexp')
+const {
+  ClientError,
+  ServerError,
+  CustomerUniqueIdConflictError,
+  CustomerNotFoundError,
+  CustomerNotMemberError,
+  CustomerDefinitionCorruptedError,
+  UserNotMemberError
+} = require('../../errors')
 
 /**
  * jwToken
@@ -256,44 +264,101 @@ module.exports = function (app) {
       }
     }
 
-    async membersLogin ({ user, passport, customerName }) {
-      let query = { user_id: user._id }
-      if (customerName) {
-        query.customer_name = customerName
-      }
+    async membersLogin ({ user, passport, customerName = null }) {
+      try {
+        let customer
+        if (customerName !== null) {
+          const customers = await app.models.customer.find({
+            $or: [
+              // uuid or legacy unrestricted string
+              { $and: [
+                { name: customerName },
+                { name: { $ne: null } },
+                { name: { $exists: true } },
+              ] },
+              { $and: [
+                { alias: customerName },
+                { alias: { $ne: null } },
+                { alias: { $exists: true } },
+              ] }
+            ]
+          })
 
-      let memberOf = await app.models.member.find(query)
-      if (memberOf.length === 0) {
+          if (customers.length !== 1) {
+            if (customers.length === 0) {
+              throw new CustomerNotFoundError({
+                passport,
+                user,
+                customer: { name: customerName }
+              })
+            } else {
+              throw new CustomerUniqueIdConflictError({
+                passport,
+                user,
+                customer: { name: customerName },
+                customers: customers.map(c => c.name)
+              })
+            }
+          }
 
-        let message
-        if (customerName) {
-          message = `"${user.email}" is trying to access "${customerName}" but it is not a member of that organization.`
-        } else {
-          message = 'User is not assigned to any Organization and will not be able to login.'
+          customer = customers[0]
+          if (!customer._id || !customer.name) {
+            throw new CustomerDefinitionCorruptedError({
+              passport,
+              user,
+              customer
+            })
+          }
         }
 
+        const query = { user_id: user._id }
+        if (customer) {
+          query.customer_id = customer._id
+        }
+
+        const memberOf = await app.models.member.find(query)
+        if (memberOf.length === 0) {
+          if (customer) {
+            throw new CustomerNotMemberError({ passport, user, customer })
+          } else {
+            throw new UserNotMemberError({ passport, user })
+          }
+        }
+
+        let member
+        if (user.default_customer_id !== null) {
+          const member = memberOf.find(member => {
+            return member.customer_id.toString() == user.last_customer_id.toString()
+          })
+        } else {
+          member = memberOf[0]
+        }
+
+        return this.createSession({ member, protocol: passport.protocol })
+      } catch (err) {
+        logger.error(err)
+        const data = err.data
+
         app.service.notifications.eventNotifySupport({
-          subject: 'MEMBER LOGIN ERROR.',
+          subject: 'MEMBER LOGIN ALERT',
           body: `
             <div>
-              ${message}<br/>
-              <p>id: ${user._id}</p>
-              <p>username: ${user.username}</p>
-              <p>email: ${user.email}</p>
-              <p>auth method: ${passport.protocol}</p>
+              ${err.message}<br/>
+              <p>id: ${user?._id}</p>
+              <p>username: ${user?.username}</p>
+              <p>email: ${user?.email}</p>
+              <p>auth method: ${passport?.protocol}</p>
             </div>
           `
         })
 
+        // continue throwing Forbidden error
         throw new ClientError('Forbidden', {
           message: 'Forbidden',
-          reason: 'not allowed',
+          reason: 'Not Allowed',
           statusCode: 403
         })
       }
-
-      let member = memberOf[0]
-      return this.createSession({ member, protocol: passport.protocol })
     }
 
     /**

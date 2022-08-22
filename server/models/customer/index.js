@@ -11,6 +11,12 @@ module.exports = function (db) {
       required: true,
       dropDups: true
     },
+    alias: {
+      type: String,
+      index: true,
+      unique: true,
+      required: false
+    },
     display_name: { type: String },
     description: { type: String, default: '' },
     owner_id: { type: mongoose.Schema.Types.ObjectId },
