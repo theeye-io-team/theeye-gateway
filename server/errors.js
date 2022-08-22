@@ -112,7 +112,63 @@ class ServerError extends ExtendedError {
   }
 }
 
+// custom errors
+class CustomerUniqueIdConflictError extends ExtendedError {
+  constructor (data) {
+    const label = data.customer.name
+    super(`non unique customer id ${label}. alias, name/uuid, id collision`)
+    this.name = this.constructor.name
+    this.code = 4001
+    this.data = data
+  }
+}
+
+class CustomerNotFoundError extends ExtendedError {
+  constructor (data) {
+    const label = data.customer.name
+    super(`customer not found with id ${label}`)
+    this.name = this.constructor.name
+    this.code = 4002
+    this.data = data
+  }
+}
+
+class CustomerNotMemberError extends ExtendedError {
+  constructor (data) {
+    const label = data.customer.name
+    const user_id = data.user.email
+    super(`"${user_id}" is trying to access "${label}" but it is not a member.`)
+    this.name = this.constructor.name
+    this.code = 4003
+    this.data = data
+  }
+}
+
+class CustomerDefinitionCorruptedError extends ExtendedError {
+  constructor (data) {
+    const label = (data.customer.alias || data.customer.name)
+    const user_id = data.user.email
+    super(`"${user_id}" is trying to access "${label}" but it is corrupted.`)
+    this.name = this.constructor.name
+    this.code = 4004
+    this.data = data
+  }
+}
+
+class UserNotMemberError extends ExtendedError {
+  constructor (data) {
+    const user_id = data.user.email
+    super(`"${user_id}" is trying to access but does not have organizations allowed.`)
+    this.name = this.constructor.name
+    this.code = 4005
+    this.data = data
+  }
+}
+
 ErrorHandler.ClientError = ClientError
-
 ErrorHandler.ServerError = ServerError
-
+ErrorHandler.CustomerUniqueIdConflictError = CustomerUniqueIdConflictError
+ErrorHandler.CustomerNotFoundError = CustomerNotFoundError
+ErrorHandler.CustomerNotMemberError = CustomerNotMemberError
+ErrorHandler.CustomerDefinitionCorruptedError = CustomerDefinitionCorruptedError
+ErrorHandler.UserNotMemberError = UserNotMemberError

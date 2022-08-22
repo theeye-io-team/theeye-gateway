@@ -2,31 +2,42 @@ const mongoose = require('mongoose')
 const apiFetch = require('../api-fetch')
 
 module.exports = function (db) {
-  const User = db.model('User', new BaseSchema())
+
+  const User = db.model('User', new BaseSchema({ }))
+
   const BotUser = User.discriminator('BotUser', new BaseSchema())
-  const UiUser = User.discriminator('UiUser', new BaseSchema())
+  const UiUser = User.discriminator('UiUser', new BaseSchema({
+    default_customer_id: {
+      "type": mongoose.Schema.Types.ObjectId,
+      "default": null,
+      "required": false
+    }
+  }))
+
   return { User, BotUser, UiUser }
 }
 
-function BaseSchema () {
-  const schema = new mongoose.Schema({
-    username: { type: String, unique: true, required: true },
-    email: { type: String, unique: true, required: true },
-    email_verified: { type: Boolean, default: false },
-    extra_emails: [{ type: String }],
-    name: { type: 'string' },
-    enabled: { type: 'boolean', default: false },
-    credential: { type: 'string' }, // global property for internal use. will replace session credential when set
-    invitation_token: { type: 'string', default: '' },
-    security_token: { type: 'string', default: '' }, // user actions request
-    devices: { type: 'array', default: [] },
-    onboardingCompleted: { type: 'boolean', default: false },
-    creation_date: { type: Date, default: () => { return new Date() }, required: true },
-    last_update: { type: Date, default: () => { return new Date() } }
-  }, {
-    collection: 'gw_user',
-    discriminatorKey: '_type'
-  })
+function BaseSchema (extraProps = {}) {
+  const schema = new mongoose.Schema(
+    Object.assign({}, extraProps, {
+      username: { type: String, unique: true, required: true },
+      email: { type: String, unique: true, required: true },
+      email_verified: { type: Boolean, default: false },
+      extra_emails: [{ type: String }],
+      name: { type: 'string' },
+      enabled: { type: 'boolean', default: false },
+      credential: { type: 'string' }, // global property for internal use. will replace session credential when set
+      invitation_token: { type: 'string', default: '' },
+      security_token: { type: 'string', default: '' }, // user actions request
+      devices: { type: 'array', default: [] },
+      onboardingCompleted: { type: 'boolean', default: false },
+      creation_date: { type: Date, default: () => { return new Date() }, required: true },
+      last_update: { type: Date, default: () => { return new Date() } }
+    }), {
+      collection: 'gw_user',
+      discriminatorKey: '_type'
+    }
+  )
 
   const def = {
     getters: true,
