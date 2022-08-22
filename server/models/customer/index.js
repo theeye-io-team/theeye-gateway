@@ -18,6 +18,7 @@ module.exports = function (db) {
       required: false
     },
     display_name: { type: String },
+    logo: { type: String },
     description: { type: String, default: '' },
     owner_id: { type: mongoose.Schema.Types.ObjectId },
     owner: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },

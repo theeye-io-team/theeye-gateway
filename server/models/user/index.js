@@ -20,6 +20,7 @@ module.exports = function (db) {
 function BaseSchema (extraProps = {}) {
   const schema = new mongoose.Schema(
     Object.assign({}, extraProps, {
+      avatar: { type: String },
       username: { type: String, unique: true, required: true },
       email: { type: String, unique: true, required: true },
       email_verified: { type: Boolean, default: false },
