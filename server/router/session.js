@@ -71,54 +71,53 @@ module.exports = (app) => {
   /**
    * replace current session customer. need to generate a new session
    */
-  router.put(
-    '/customer/:customer',
-    async (req, res, next) => {
-      try {
-        const user = req.user
-        const customer_id = req.params.customer
+  router.put('/customer/:customer', async (req, res, next) => {
+    try {
+      const user = req.user
+      const customer_id = req.params.customer
 
-        const member = await app.models.member.findOne({
-          user_id: user._id,
-          customer_id: mongoose.Types.ObjectId(customer_id)
-        })
+      const member = await app.models.member.findOne({
+        user_id: user._id,
+        customer_id: mongoose.Types.ObjectId(customer_id)
+      })
 
-        if (!member) {
-          throw new ClientError('Forbidden', {code:'UserIsNoMember', statusCode: 403})
-        }
-
-        req.member = member
-        next()
-      } catch (err) {
-        next(err)
+      if (!member) {
+        throw new ClientError('Forbidden', {code:'UserIsNoMember', statusCode: 403})
       }
-    },
-    async (req, res, next) => {
-      try {
-        const member = req.member
-        const session = req.session
-        const newSession = await app.service.authentication.createSession({ member, protocol: session.protocol })
-        const model = { _id: session._id, user_id: session.user_id } // information to identify target user
 
-        app.service.notifications.sockets.sendEvent({
-          topic: TopicConstants.SESSION,
-          data: {
-            model,
-            model_type: 'session',
-            operation: REPLACE
-          }
-        })
-
-        // destroy current session
-        await req.session.remove()
-
-        // return new session
-        res.json({ access_token: newSession.token })
-      } catch (err) {
-        next(err)
-      }
+      req.member = member
+      next()
+    } catch (err) {
+      next(err)
     }
-  )
+  }, async (req, res, next) => {
+    try {
+      const { member, session, user } = req
+      const newSession = await app.service.authentication.createSession({ member, protocol: session.protocol })
+      const model = { _id: session._id, user_id: session.user_id } // information to identify target user
+
+      app.service.notifications.sockets.sendEvent({
+        topic: TopicConstants.SESSION,
+        data: {
+          model,
+          model_type: 'session',
+          operation: REPLACE
+        }
+      })
+
+      // destroy current session
+      await req.session.remove()
+
+      // update current customer
+      user.current_customer_id = member.customer_id
+      await user.save()
+
+      // return new session
+      res.json({ access_token: newSession.token })
+    } catch (err) {
+      next(err)
+    }
+  })
 
   const logout = async (req, res, next) => {
     try {
