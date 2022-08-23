@@ -7,7 +7,7 @@ module.exports = function (db) {
 
   const BotUser = User.discriminator('BotUser', new BaseSchema())
   const UiUser = User.discriminator('UiUser', new BaseSchema({
-    default_customer_id: {
+    current_customer_id: {
       "type": mongoose.Schema.Types.ObjectId,
       "default": null,
       "required": false

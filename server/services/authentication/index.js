@@ -326,12 +326,17 @@ module.exports = function (app) {
         }
 
         let member
-        if (user.default_customer_id !== null) {
-          const member = memberOf.find(member => {
-            return member.customer_id.toString() == user.last_customer_id.toString()
+        if (user.current_customer_id !== null) {
+          member = memberOf.find(member => {
+            return member.customer_id.toString() == user.current_customer_id.toString()
           })
-        } else {
+        }
+
+        if (!member) {
           member = memberOf[0]
+          // update current customer
+          user.current_customer_id = member.customer_id
+          await user.save()
         }
 
         return this.createSession({ member, protocol: passport.protocol })
