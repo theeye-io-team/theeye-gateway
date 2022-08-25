@@ -326,9 +326,9 @@ module.exports = function (app) {
         }
 
         let member
-        if (user.current_customer_id !== null) {
+        if (Boolean(user.current_customer_id)) {
           member = memberOf.find(member => {
-            return member.customer_id.toString() == user.current_customer_id.toString()
+            return member.customer_id.toString() == user.current_customer_id?.toString()
           })
         }
 

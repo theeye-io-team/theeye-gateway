@@ -3,16 +3,16 @@ const apiFetch = require('../api-fetch')
 
 module.exports = function (db) {
 
-  const User = db.model('User', new BaseSchema({ }))
-
-  const BotUser = User.discriminator('BotUser', new BaseSchema())
-  const UiUser = User.discriminator('UiUser', new BaseSchema({
+  const User = db.model('User', new BaseSchema({
     current_customer_id: {
       "type": mongoose.Schema.Types.ObjectId,
       "default": null,
       "required": false
     }
   }))
+
+  const BotUser = User.discriminator('BotUser', new BaseSchema())
+  const UiUser = User.discriminator('UiUser', new BaseSchema())
 
   return { User, BotUser, UiUser }
 }
