@@ -33,6 +33,6 @@ jobs:
      name: Build image and push to Docker Hub 
      uses: docker/build-push-action@v3
      with:
-          push: ${{ github.ref_type == 'tag' }}
+          push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
