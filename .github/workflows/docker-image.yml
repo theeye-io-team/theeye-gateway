@@ -3,6 +3,8 @@ name: Docker Image CI
 on:
   push:
     branches: [ "master" ]
+    tags:
+      - '*'
 
 jobs:
   docker:
@@ -33,7 +35,6 @@ jobs:
      name: Build image and push to Docker Hub 
      uses: docker/build-push-action@v3
      with:
-          # Note: tags has to be all lower-case
+          push: ${{ github.ref_type == 'tag' }}
           tags: ${{ steps.meta.outputs.tags }}
-          # build on feature branches, push only on main branch
-          push: true
+          labels: ${{ steps.meta.outputs.labels }}
