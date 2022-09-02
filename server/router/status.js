@@ -18,7 +18,7 @@ const nodeStatus = async (req, res, next) => {
     message.node_hostname = process.env.THEEYE_NODE_HOSTNAME || os.hostname()
     message.node_uptime = new Date(Date.now() - os.uptime()*1000)
     message.process_uptime = new Date(Date.now() - process.uptime()*1000)
-    message.theeye_version = (await getVersion()).trim()
+    message.theeye_version = (await getVersion().catch(err => '')).trim()
     message.load_average = os.loadavg()
 
     res.status(200).json(message)
