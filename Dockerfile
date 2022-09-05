@@ -6,6 +6,7 @@ RUN mkdir -p ${destDir}
 WORKDIR ${destDir}
 COPY . ${destDir}
 # install
+RUN apt update; apt install git
 RUN cd ${destDir}; npm install
 
 EXPOSE 6080
