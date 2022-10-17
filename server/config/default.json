@@ -1,6 +1,6 @@
 {
   "app": {
-    "base_url": "http://localhost:6080",
+    "base_url": "http://127.0.0.1:6080",
     "port": 6080,
     "secret": "692fc164a0c06a9fd02575cf17688c9e",
     "supportEmail": "info@theeye.io"
@@ -23,47 +23,33 @@
       "url": "http://127.0.0.1:60080/job/secret/d1ef702640e8a6bdaf56e452af4425727fc3750a15d26645d2ed0a4ad1f4bf9f?customer=demo&task=5eea8228aa74880dfcba2e25"
     }
   },
-  "boilerplates": {
-    "repo": "https://raw.githubusercontent.com/theeye-io-team/theeye-boilerplates/main/"
-  },
   "services": {
+    "aws": {
+      "username": "",
+      "accessKeyId": "",
+      "secretAccessKey": "",
+      "region": ""
+    },
     "registration": {
-      "enabled": true,
+      "enabled": false,
       "notifyUs": true,
-      "finishUrl": "http://localhost:6080/finishregistration?",
-      "activateUrl": "http://localhost:6080/activate?",
-      "passwordResetUrl": "http://localhost:6080/passwordreset?"
+      "finishUrl": "http://127.0.0.1:6080/finishregistration?",
+      "activateUrl": "http://127.0.0.1:6080/activate?",
+      "passwordResetUrl": "http://127.0.0.1:6080/passwordreset?"
     },
     "authentication": {
       "secret": "692fc164a0c06a9fd02575cf17688c9e",
-      "expires": 10800,
-      "localBypass": true,
+      "cookie": {
+        "domain": ".theeye.io",
+        "sameSite": "lax",
+        "expires": 86400,
+        "httpOnly": true,
+        "secure": true,
+        "signed": true
+      },
+      "expires": 86400,
+      "localBypass": false,
       "strategies": {
-        "ldapauth": {
-          "defaultGroup": "theeye_users",
-          "defaultCustomerName": "ldap",
-          "provider": "ldap",
-          "server": {
-            "url": "ldap://127.0.0.1:10389",
-            "bindDN": "cn=admin,dc=planetexpress,dc=com",
-            "bindCredentials": "GoodNewsEveryone",
-            "searchBase": "ou=people,dc=planetexpress,dc=com",
-            "searchAttributes": [
-              "uid",
-              "cn",
-              "mail",
-              "objectClass"
-            ],
-            "searchFilter": "(uid={{username}})"
-          },
-          "fields": {
-            "id": "uid",
-            "name": "cn",
-            "username": "uid",
-            "email": "mail",
-            "groups": "objectClass"
-          }
-        },
         "google": {
           "name": "Google",
           "options": {
@@ -96,15 +82,12 @@
         "replyTo": "Support <support@theeye.io>",
         "only_support": false,
         "include_support_bcc": false,
-        "support": [],
+        "support": [
+          "facugon@theeye.io"
+        ],
         "invitation": "contact@theeye.io",
         "transport": {
-          "type": "smtp",
-          "options": {
-            "port": 6025,
-            "secure": false,
-            "ignoreTLS": true
-          }
+          "type": "sendmail"
         },
         "message": {
           "activation": {
@@ -140,25 +123,24 @@
     "timeout": 10000,
     "client_id": "939e7ad87f616af22325a84b6192ba7974404160",
     "client_secret": "4611b7a50f63c2bb259aa72e0b8b54ae54c326c6",
-    "url": "http://localhost:60080",
-    "public_url": "http://localhost:60080",
-    "port": 60080,
+    "url": "http://127.0.0.1:60080",
+    "public_url": "http://127.0.0.1:60080",
     "secret": "77E0EAF3B83DD7A7A4004602626446EADED31BF794956FC9BBAD051FA5A25038"
   },
   "agent": {
     "binary": {
       "windows": {
-        "url": "https://s3.amazonaws.com/theeye.agent/theEyeInstallerx64.exe",
+        "url": "https://theeye-agent.s3.amazonaws.com/theEyeInstallerx64.exe",
         "name": "theEyeInstallerx64.exe"
       }
     },
     "installer": {
       "linux": {
-        "url": "https://s3.amazonaws.com/theeye.agent/linux/setup.sh"
+        "url": "https://theeye-agent.s3.amazonaws.com/linux/setup.sh"
       },
       "windows": {
-        "url": "https://s3.amazonaws.com/theeye.agent/windows/agent-installer.ps1",
-        "schtask_url": "https://s3.amazonaws.com/theeye.agent/windows/agent-installer-schtask.ps1"
+        "url": "https://theeye-agent.s3.amazonaws.com/windows/agent-installer.ps1",
+        "schtask_url": "https://theeye-agent.s3.amazonaws.com/windows/agent-installer-schtask.ps1"
       }
     }
   },
