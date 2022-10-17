@@ -1,5 +1,6 @@
 const logger = require('../../logger')('router:member:common')
 const EscapedRegExp = require('../../escaped-regexp')
+const { ClientError, ServerError } = require('../../errors')
 
 module.exports = function (app) {
   const handlers = {
@@ -27,9 +28,7 @@ module.exports = function (app) {
 
         const customer = await app.models.customer.findById(context.customer_id)
         if (!customer) {
-          const err = Error('Customer not found.')
-          err.status = 400
-          throw err
+          throw new ClientError('Customer not found.')
         }
 
         const user = await app.models.users.uiUser.findOne({
@@ -54,9 +53,7 @@ module.exports = function (app) {
 
         const customer = await app.models.customer.findById(context.customer_id)
         if (!customer) {
-          const err = Error('Customer not found.')
-          err.status = 400
-          throw err
+          throw new ClientError('Customer not found.')
         }
 
         const user = await app.models.users.uiUser.findOne({
@@ -64,9 +61,7 @@ module.exports = function (app) {
         })
 
         if (!user) {
-          const err = Error('User not found.')
-          err.status = 400
-          throw err
+          throw new ClientError('User not found.')
         }
 
         let member = await app.models.member.findOne({
@@ -76,10 +71,7 @@ module.exports = function (app) {
 
         if (member) {
           // member exists and user is activated. nothing to do
-          const err = new Error('Member already activated')
-          err.code = 'AlreadyActiveMember'
-          err.status = 400
-          throw err
+          throw new ClientError('Member already activated', { code: 'AlreadyActiveMember' })
         }
 
         const data = {
@@ -151,10 +143,7 @@ module.exports = function (app) {
 
     if (member && user.enabled) {
       // member exists and user is activated. nothing to do
-      let err = new Error('Member already activated')
-      err.code = 'AlreadyActiveMember'
-      err.status = 400
-      throw err
+      throw new ClientError('Member already activated', { code: 'AlreadyActiveMember' })
     }
 
     if (!member) {

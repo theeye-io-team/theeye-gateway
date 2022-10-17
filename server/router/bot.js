@@ -48,23 +48,32 @@ module.exports = (app) => {
         app.config.supervisor.public_url
       )
 
-      botAgent.windowsSchtask = format(
-        'powershell -command "&{&"Invoke-WebRequest" -uri "%s" -outFile agent-installer-schtask.ps1}" && powershell.exe -ExecutionPolicy ByPass -File agent-installer.ps1 "%s" "%s" "%s" "%s"',
-        app.config.agent.installer.windows.url,
-        botAgent.client_id,
-        botAgent.client_secret,
-        botAgent.customer_name,
-        app.config.supervisor.public_url
-      )
+      const windowsInstaller = 'powershell -command "&{&"Invoke-WebRequest" -uri "%s" -outFile agent-installer.ps1}" && powershell.exe -ExecutionPolicy ByPass -File agent-installer.ps1 "%s" "%s" "%s" "%s"'
+      if (!app.config.agent.installer.windows?.url) {
+        botAgent.windowsCurl = 'configuration error'
+      } else {
+        botAgent.windowsCurl = format(
+          windowsInstaller,
+          app.config.agent.installer.windows.url,
+          botAgent.client_id,
+          botAgent.client_secret,
+          botAgent.customer_name,
+          app.config.supervisor.public_url
+        )
+      }
 
-      botAgent.windowsCurl = format(
-        'powershell -command "&{&"Invoke-WebRequest" -uri "%s" -outFile agent-installer.ps1}" && powershell.exe -ExecutionPolicy ByPass -File agent-installer.ps1 "%s" "%s" "%s" "%s"',
-        app.config.agent.installer.windows.url,
-        botAgent.client_id,
-        botAgent.client_secret,
-        botAgent.customer_name,
-        app.config.supervisor.public_url
-      )
+      if (!app.config.agent.installer.windows?.schtask_url) {
+        botAgent.windowsSchtask = 'configuration error'
+      } else {
+        botAgent.windowsSchtask = format(
+          windowsInstaller,
+          app.config.agent.installer.windows.schtask_url,
+          botAgent.client_id,
+          botAgent.client_secret,
+          botAgent.customer_name,
+          app.config.supervisor.public_url
+        )
+      }
 
       botAgent.dockerCurl = format(
         `docker run --name "%s" -e NODE_ENV="production" \\
