@@ -29,6 +29,10 @@ const nodeStatus = async (req, res, next) => {
 
 const getVersion = () => {
   return new Promise( (resolve, reject) => {
+    if (process.env.APP_VERSION) {
+      return resolve(process.env.APP_VERSION)
+    }
+
     const cmd = 'cd ' + process.cwd() + ' && git describe'
     exec(cmd, {}, (err, stdout, stderr) => {
       if (err) reject(err)
