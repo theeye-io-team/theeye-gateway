@@ -1,5 +1,5 @@
-const socketIO = require('socket.io')
-const socketIOredis = require('socket.io-redis')
+const socketio = require('socket.io')
+const socketioredis = require('socket.io-redis')
 const logger = require('../../../logger')(':services:notifications:sockets')
 const TopicConstants = require('../../../constants/topics')
 const AbstractNotification = require('../abstract')
@@ -15,11 +15,11 @@ module.exports = function (app, config) {
     }
 
     start (server) {
-      const io = this.io = socketIO.listen(server)
-      io.adapter(socketIOredis(app.config.redis))
-      io.sockets.on('connection', function onConnection (socket) {
+      const io = this.io = socketio(server)
+      io.adapter(socketioredis(app.config.redis))
+      io.on('connection', (socket) => {
         logger.log('user connected')
-        let handler = new SocketHandler(socket)
+        SocketHandler(socket)
       })
     }
 
@@ -55,6 +55,7 @@ module.exports = function (app, config) {
       logger.log('client disconnected')
       const socket = req.socket
 
+      return
       for (let room in socket.rooms) {
         let msg = `member leaving room ${room}`
         logger.debug(msg)
