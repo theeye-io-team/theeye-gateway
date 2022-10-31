@@ -55,7 +55,6 @@ module.exports = function (app, config) {
       logger.log('client disconnected')
       const socket = req.socket
 
-      return
       for (let room in socket.rooms) {
         let msg = `member leaving room ${room}`
         logger.debug(msg)
