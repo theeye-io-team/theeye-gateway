@@ -36,73 +36,9 @@ module.exports = (app) => {
       const botAgent = {
         customer_name: agentMember.customer_name,
         client_id: agentPassport.identifier,
-        client_secret: agentPassport.tokens.refresh_token
+        client_secret: agentPassport.tokens.refresh_token,
+        downloads: app.config.downloads.agent
       }
-
-      botAgent.curl = format(
-        `curl -s "%s" | bash -s\\\n    "%s"\\\n    "%s"\\\n    "%s"\\\n    "%s"`,
-        app.config.agent.installer.linux.url,
-        botAgent.client_id,
-        botAgent.client_secret,
-        botAgent.customer_name,
-        app.config.supervisor.public_url
-      )
-
-      const windowsInstaller = 'powershell -command "&{&"Invoke-WebRequest" -uri "%s" -outFile agent-installer.ps1}" && powershell.exe -ExecutionPolicy ByPass -File agent-installer.ps1 "%s" "%s" "%s" "%s"'
-      if (!app.config.agent.installer.windows?.url) {
-        botAgent.windowsCurl = 'configuration error'
-      } else {
-        botAgent.windowsCurl = format(
-          windowsInstaller,
-          app.config.agent.installer.windows.url,
-          botAgent.client_id,
-          botAgent.client_secret,
-          botAgent.customer_name,
-          app.config.supervisor.public_url
-        )
-      }
-
-      if (!app.config.agent.installer.windows?.schtask_url) {
-        botAgent.windowsSchtask = 'configuration error'
-      } else {
-        botAgent.windowsSchtask = format(
-          windowsInstaller,
-          app.config.agent.installer.windows.schtask_url,
-          botAgent.client_id,
-          botAgent.client_secret,
-          botAgent.customer_name,
-          app.config.supervisor.public_url
-        )
-      }
-
-      botAgent.dockerCurl = format(
-        `docker run --name "%s" -e NODE_ENV="production" \\
-  -e DEBUG="*eye*err*" \\
-  -e THEEYE_SUPERVISOR_CLIENT_ID="%s" \\
-  -e THEEYE_SUPERVISOR_CLIENT_SECRET="%s" \\
-  -e THEEYE_SUPERVISOR_CLIENT_CUSTOMER="%s" \\
-  -e THEEYE_SUPERVISOR_API_URL="%s" \\
-  -e THEEYE_CLIENT_HOSTNAME="%s" \\
-  -d theeye/theeye-agent`,
-        botAgent.customer_name,
-        botAgent.client_id,
-        botAgent.client_secret,
-        botAgent.customer_name,
-        app.config.supervisor.public_url,
-        botAgent.customer_name
-      )
-
-      botAgent.awsCurl = format(
-        `#!/bin/bash \n hostnamectl set-hostname %s-aws \n curl -s "%s" | bash -s\\\n   "%s"\\\n   "%s"\\\n   "%s"\\\n   "%s"`,
-        botAgent.customer_name,
-        app.config.agent.installer.linux.url,
-        botAgent.client_id,
-        botAgent.client_secret,
-        botAgent.customer_name,
-        app.config.supervisor.public_url
-      )
-
-      botAgent.localLinux = `THEEYE_CLIENT_HOSTNAME="${botAgent.customer_name}" DEBUG="*eye*" NODE_ENV="${botAgent.customer_name}" node . `
 
       res.status(200).json(botAgent)
     } catch (err) {

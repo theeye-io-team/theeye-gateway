@@ -162,6 +162,17 @@
       }
     }
   },
+  "downloads": {
+    "agent": {
+      "base_url": "http://localhost:6080/downloads",
+      "linux_binary": "/linux/theeye-agent64.tar.gz",
+      "linux_installer": "/linux/setup.sh",
+      "windows_binary": "/windows/theeye-agent.zip",
+      "windows_installer": "/windows/agent-installer.ps1",
+      "windows_schtask_installer":"/windows/agent-installer-schtask.ps1",
+      "docker_image": "/docker/theeye-agent.tar"
+    }
+  },
   "grecaptcha": {
     "enabled": false,
     "v2_secret": "",

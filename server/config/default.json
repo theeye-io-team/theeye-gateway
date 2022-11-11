@@ -127,21 +127,14 @@
     "public_url": "http://127.0.0.1:60080",
     "secret": "77E0EAF3B83DD7A7A4004602626446EADED31BF794956FC9BBAD051FA5A25038"
   },
-  "agent": {
-    "binary": {
-      "windows": {
-        "url": "https://theeye-agent.s3.amazonaws.com/theEyeInstallerx64.exe",
-        "name": "theEyeInstallerx64.exe"
-      }
-    },
-    "installer": {
-      "linux": {
-        "url": "https://theeye-agent.s3.amazonaws.com/linux/setup.sh"
-      },
-      "windows": {
-        "url": "https://theeye-agent.s3.amazonaws.com/windows/agent-installer.ps1",
-        "schtask_url": "https://theeye-agent.s3.amazonaws.com/windows/agent-installer-schtask.ps1"
-      }
+  "downloads": {
+    "agent": {
+      "base_url": "https://theeye-agent.s3.amazonaws.com",
+      "linux_binary": "/linux/theeye-agent64.tar.gz",
+      "linux_installer": "/linux/setup.sh",
+      "windows_binary": "/windows/theeye-agent.zip",
+      "windows_installer": "/windows/agent-installer.ps1",
+      "windows_schtask_installer":"/windows/agent-installer-schtask.ps1"
     }
   },
   "grecaptcha": {
