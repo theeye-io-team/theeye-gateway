@@ -172,8 +172,8 @@ module.exports = function (app, config) {
       socket.disconnect()
     }
 
-    if (socket.handshake.query && socket.handshake.query.access_token) {
-      let token = socket.handshake.query.access_token
+    if (socket.handshake.auth && socket.handshake.auth.access_token) {
+      let token = socket.handshake.auth.access_token
       app.service.authentication.verifySessionToken(token, (err, user, session) => {
         if (err) {
           logger.error(err)
