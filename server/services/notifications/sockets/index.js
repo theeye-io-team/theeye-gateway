@@ -1,5 +1,6 @@
-const socketio = require('socket.io')
-const socketioredis = require('socket.io-redis')
+const { Server } = require('socket.io')
+const { createAdapter } = require("@socket.io/redis-adapter")
+const redis = require('redis')
 const logger = require('../../../logger')(':services:notifications:sockets')
 const TopicConstants = require('../../../constants/topics')
 const AbstractNotification = require('../abstract')
@@ -14,9 +15,24 @@ module.exports = function (app, config) {
       this.emitter = new Emitter()
     }
 
-    start (server) {
-      const io = this.io = socketio(server)
-      io.adapter(socketioredis(app.config.redis))
+    async start () {
+      const io = this.io = new Server(app.server)
+
+      const pubClient = redis.createClient(app.config.redis)
+      const subClient = pubClient.duplicate()
+
+      pubClient.on('error', (err) => {
+        console.log('redis pub client error', err)
+      })
+      subClient.on('error', (err) => {
+        console.log('redis sub client error', err)
+      })
+
+      await pubClient.connect()
+      await subClient.connect()
+
+      io.adapter(createAdapter(pubClient, subClient))
+
       io.on('connection', (socket) => {
         logger.log('user connected')
         SocketHandler(socket)
@@ -33,18 +49,15 @@ module.exports = function (app, config) {
   }
 
   function SocketHandler (socket) {
-    // extend
-    var $on = socket.on
-    socket.on = function (eventName, handler) {
-      $on.call(socket, eventName, function () {
-        logger.debug('socket event receive %s, %o', eventName, arguments[0])
-        if (!handler) { logger.log(`no handled for socket event ${eventName}`) }
-        else { handler.apply(socket, arguments) }
-      })
-    }
+    socket.onAny((eventName, ...args) => {
+      logger.debug('socket event receive %s, %o', eventName, args[0])
+    })
 
     for (let eventName in SocketEvents) {
-      socket.on(eventName, middlewares(socket, eventName, SocketEvents[eventName]))
+      socket.on(
+        eventName,
+        middlewares(socket, eventName, SocketEvents[eventName])
+      )
     }
 
     return this
@@ -53,15 +66,6 @@ module.exports = function (app, config) {
   const SocketEvents = {
     'disconnect': (req, next) => {
       logger.log('client disconnected')
-      const socket = req.socket
-
-      for (let room in socket.rooms) {
-        let msg = `member leaving room ${room}`
-        logger.debug(msg)
-        socket.leave(room)
-      }
-
-      next({ status: 200 })
     },
     'post:autosubscribe': (req, next) => {
       //const user = req.user
