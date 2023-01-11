@@ -3,11 +3,17 @@ const logger = require('../../logger')('router:customer')
 const CredentialsConstants = require('../../constants/credentials')
 const credentialMiddleware = require ('../credentialMiddleware')
 
+const { ClientError } = require('../../errors')
+
 module.exports = (app) => {
   const router = express.Router()
 
   router.put('/config',
-    credentialMiddleware.check([CredentialsConstants.ROOT, CredentialsConstants.OWNER, CredentialsConstants.ADMIN]),
+    credentialMiddleware.check([
+      CredentialsConstants.ROOT,
+      CredentialsConstants.OWNER,
+      CredentialsConstants.ADMIN
+    ]),
     async (req, res, next) => {
       try {
         const session = req.session
@@ -28,22 +34,56 @@ module.exports = (app) => {
         const integration = req.body.integration
         const config = req.body.config
 
-        let customer = await app.models.customer.findById(id)
+        const customer = await app.models.customer.findById(id)
         if (!customer) {
           let err = new Error('Customer Not Found')
           err.status = 404
           throw err
         }
 
-        let key = 'config.' + integration
-        customer.set({[key]: config})
+        customer.set({ ['config.' + integration]: config })
 
         await customer.save()
 
-        res.json({[integration]: config})
+        res.json({ [ integration ] : config })
       } catch (err) {
-        if (err.status) { res.status(err.status).json( { message: err.message }) }
-        else res.status(500).json('Internal Server Error')
+        next(err)
+      }
+    }
+  )
+
+  router.delete('/config',
+    credentialMiddleware.check([
+      CredentialsConstants.ROOT,
+      CredentialsConstants.OWNER,
+      CredentialsConstants.ADMIN
+    ]),
+    async (req, res, next) => {
+      try {
+        const session = req.session
+        // invalid session
+        if (!session.customer_id) {
+          throw new ClientError('Forbidden', { statusCode: 403 })
+        }
+        // bad payload
+        if (!req.body.integration) {
+          throw new ClientError('Integration required')
+        }
+        //
+        const customer = await app.models.customer.findById(session.customer_id)
+        if (!customer) {
+          throw new ClientError('Forbidden', { statusCode: 403 })
+        }
+
+        if (customer.config[req.body.integration]) {
+          delete customer.config[req.body.integration]
+          customer.markModified('config')
+          await customer.save()
+        }
+
+        res.json(customer.config)
+      } catch (err) {
+        next(err)
       }
     }
   )
