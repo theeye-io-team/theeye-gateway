@@ -24,14 +24,7 @@ module.exports = function (db) {
     config: {
       type: Object,
       default: () => {
-        return {
-          monitor: {},
-          kibana: null,
-          elasticsearch: {
-            enabled: false,
-            url: ''
-          }
-        }
+        return { }
       }
     },
     creation_date: { type: Date, default: () => { return new Date() } },
