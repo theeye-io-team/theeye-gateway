@@ -1,5 +1,6 @@
 const logger = require('../../logger')(':services:authentication:ldapauth')
 const { ClientError, ServerError } = require('../../errors')
+const EscapedRegExp = require('../../escaped-regexp')
 
 const PROTOCOL = 'ldap'
 
@@ -132,10 +133,11 @@ module.exports = async (app) => {
    * @return {Promise<User>}
    */
   const handleUserProfile = async (profile) => {
+    // use exact search
     const user = await app.models.users.uiUser.findOne({
       $or: [
-        { email: new RegExp(profile.email, 'i') },
-        { username: new RegExp(profile.username, 'i') }
+        { email: new EscapedRegExp(profile.email, 'i') },
+        { username: new EscapedRegExp(profile.username, 'i') }
       ]
     })
 
