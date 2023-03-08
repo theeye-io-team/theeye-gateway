@@ -1,6 +1,6 @@
 const { Server } = require('socket.io')
 const { createAdapter } = require("@socket.io/redis-adapter")
-const redis = require('redis')
+const { createClient } = require('redis')
 const logger = require('../../../logger')(':services:notifications:sockets')
 const TopicConstants = require('../../../constants/topics')
 const AbstractNotification = require('../abstract')
@@ -18,7 +18,7 @@ module.exports = function (app, config) {
     async start () {
       const io = this.io = new Server(app.server)
 
-      const pubClient = redis.createClient(app.config.redis)
+      const pubClient = createClient(app.config.redis)
       const subClient = pubClient.duplicate()
 
       pubClient.on('error', (err) => {

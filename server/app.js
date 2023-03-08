@@ -13,7 +13,7 @@ const EventEmitter = require('events')
 const ErrorHandler = require('./errors')
 const useSwagger = require('./swagger')
 const AWS = require('aws-sdk')
-const redis = require('redis')
+const { createClient } = require('redis')
 
 class App extends EventEmitter {
 
@@ -29,18 +29,19 @@ class App extends EventEmitter {
     this.models = new Models(this)
     await this.models.configure()
 
-    await this.setupServices(config)
+    await this.setupServices()
     // routes require models
     this.setupApi()
 
     this.emit('configured')
   }
 
-  async setupServices (config) {
+  async setupServices () {
     // services
     this.service = {}
 
-    const pubClient = redis.createClient(config.redis)
+    console.log(this.config.redis)
+    const pubClient = createClient(this.config.redis)
     await pubClient.connect()
 
     pubClient.on('error', (err) => {
