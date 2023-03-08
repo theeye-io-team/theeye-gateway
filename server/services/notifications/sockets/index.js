@@ -16,7 +16,12 @@ module.exports = function (app, config) {
     }
 
     async start () {
-      const io = this.io = new Server(app.server)
+      const io = this.io = new Server(app.server, {
+        cors: {
+          origin: "*",
+          credentials: true
+        }
+      })
 
       const pubClient = createClient(app.config.redis)
       const subClient = pubClient.duplicate()
