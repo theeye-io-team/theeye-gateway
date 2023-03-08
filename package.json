@@ -10,6 +10,7 @@
   "license": "AGPL-3.0",
   "author": "",
   "dependencies": {
+    "@socket.io/redis-adapter": "^7.2.0",
     "aws-sdk": "~2.648.0",
     "bcrypt": "~4.0.1",
     "compression": "~1.7.4",
@@ -31,9 +32,8 @@
     "passport-http": "~0.3.0",
     "passport-http-bearer": "~1.0.1",
     "passport-ldapauth": "^2.1.4",
-    "redis": "~3.0.2",
-    "socket.io": "~2.3.0",
-    "socket.io-redis": "~5.2.0",
+    "redis": "^4.5.0",
+    "socket.io": "^4.5.3",
     "swagger-ui-express": "~4.1.6",
     "uuid": "~8.3.2",
     "validator": "~13.7.0"

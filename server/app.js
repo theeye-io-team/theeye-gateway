@@ -1,5 +1,4 @@
 const express = require('express')
-
 const compression = require('compression')
 const path = require('path')
 const http = require('http')
@@ -7,16 +6,14 @@ const https = require('https')
 const passport = require('passport')
 const Router = require('./router')
 const Models = require('./models')
-
 const logger = require('./logger')('app')
 const Authentication = require('./services/authentication')
 const Notifications = require('./services/notifications')
 const EventEmitter = require('events')
-
 const ErrorHandler = require('./errors')
 const useSwagger = require('./swagger')
-
 const AWS = require('aws-sdk')
+const redis = require('redis')
 
 class App extends EventEmitter {
 
@@ -32,8 +29,25 @@ class App extends EventEmitter {
     this.models = new Models(this)
     await this.models.configure()
 
+    await this.setupServices(config)
+    // routes require models
+    this.setupApi()
+
+    this.emit('configured')
+  }
+
+  async setupServices (config) {
     // services
     this.service = {}
+
+    const pubClient = redis.createClient(config.redis)
+    await pubClient.connect()
+
+    pubClient.on('error', (err) => {
+      console.log('redis client error', err)
+    })
+
+    this.service.redis = pubClient
 
     this.service.authentication = new Authentication(this)
     await this.service.authentication.configure()
@@ -42,20 +56,15 @@ class App extends EventEmitter {
     if (this.config.services?.aws) {
       this.service.sns = new AWS.SNS(new AWS.Config(this.config.services.aws))
     }
-
-    // routes require models
-    this.setupApi()
-
-    this.emit('configured')
   }
 
-  start () {
+  async start () {
     const port = (process.env.PORT || this.config.app.port)
     const server = this.server = this.api.listen(port, () => {
       logger.log(`API ready at port ${port}`)
     })
 
-    this.service.notifications.sockets.start(server)
+    await this.service.notifications.sockets.start()
   }
 
   setupApi () {
@@ -64,10 +73,8 @@ class App extends EventEmitter {
     //const server = process.env.NODE_ENV === 'development' ? http.Server(api) : https.Server(api)
 
     api.use(compression())
-
     api.use(express.json())
     api.use(express.urlencoded({ extended: true }))
-
     api.use(passport.initialize())
 
     // authentication require models
