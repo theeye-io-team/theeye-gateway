@@ -20,7 +20,7 @@ jobs:
         uses: docker/metadata-action@v4
         id: meta
         with:
-          images: theeye/theeye-gateway
+          images: theeyeteam/theeye-gateway
           tags: |
             type=schedule
             type=ref,event=branch
@@ -30,8 +30,8 @@ jobs:
       - name: Login to DockerHub
         uses: docker/login-action@v2
         with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
+          username: ${{ secrets.DOCKER_TEAM_USERNAME }}
+          password: ${{ secrets.DOCKER_TEAM_PASSWORD }}
       - name: Build image and push to Docker Hub 
         uses: docker/build-push-action@v3
         with:
