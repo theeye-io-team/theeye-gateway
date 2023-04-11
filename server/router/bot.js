@@ -37,7 +37,7 @@ module.exports = (app) => {
         customer_name: agentMember.customer_name,
         client_id: agentPassport.identifier,
         client_secret: agentPassport.tokens.refresh_token,
-        downloads: app.config.downloads.agent
+        downloads: app.config.downloads?.agent
       }
 
       res.status(200).json(botAgent)
