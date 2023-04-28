@@ -50,9 +50,9 @@ module.exports = (app) => {
       } else {
         try {
           // verify is the same username && email
-          if (profile.username !== user.username) {
+          if (profile.username.toLowerCase() !== user.username.toLowerCase()) {
             throw new ClientError('User profile conflict. Username/Email does not match', { statusCode: 403 })
-          } else if (profile.email !== user.email) {
+          } else if (profile.email.toLowerCase() !== user.email.toLowerCase()) {
             // same username, different email.
             // we should check if the emails are associated to the same user.
             if ( !user.extra_emails.includes(profile.email.toLowerCase()) ) {
