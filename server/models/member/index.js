@@ -8,8 +8,13 @@ module.exports = function (db) {
     customer_id: { type: mongoose.Schema.Types.ObjectId },
     customer_name: { type: 'string' },
     credential: { type: 'string', default: 'viewer' },
+    roles: [{ }],
     creation_date: { type: Date, default: new Date(), required: true },
     last_update: { type: Date, default: new Date(), required: true },
+    groups: [{
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Group'
+    }],
     notifications: {
       type: 'object',
       default: () => {

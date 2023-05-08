@@ -4,14 +4,21 @@ const apiFetch = require('../api-fetch')
 module.exports = function (db) {
   const schema = new mongoose.Schema({
     name: String,
+    description: String,
     customer: { type: mongoose.Schema.Types.ObjectId, ref: 'Customer', required: true },
     customer_id: { type: mongoose.Schema.Types.ObjectId },
-    roles: [{ }],
-    description: String,
+    builtIn: { type: 'boolean', default: false },
+    permissions: [{
+      service: 'string',
+      text: 'string',
+      id: 'string',
+      method: 'string',
+      path: 'string',
+    }],
     creation_date: { type: Date, default: new Date() },
     last_update: { type: Date, default: new Date() },
   }, {
-    collection: 'gw_groups',
+    collection: 'gw_roles',
     discriminatorKey: '_type'
   })
 
@@ -35,5 +42,6 @@ module.exports = function (db) {
   schema.set('toJSON', def)
   schema.set('toObject', def)
 
-  return db.model('Group', schema)
+  return db.model('Policy', schema)
 }
+

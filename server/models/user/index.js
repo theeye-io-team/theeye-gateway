@@ -65,27 +65,3 @@ function BaseSchema (extraProps = {}) {
 
   return schema
 }
-
-  const def = {
-    getters: true,
-    virtuals: true,
-    transform: function (doc, ret, options) {
-      // remove the _id of every document before returning the result
-      ret.id = ret._id
-      delete ret._id
-      delete ret.__v
-    }
-  }
-
-  schema.pre('save', function (next) {
-    this.last_update = new Date()
-    next(null)
-  })
-
-  schema.set('toJSON', def)
-  schema.set('toObject', def)
-
-  schema.statics.apiFetch = apiFetch
-
-  return schema
-}

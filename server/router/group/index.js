@@ -8,6 +8,8 @@ module.exports = (app) => {
   router.get('/', dbFilterMiddleware({}), async (req, res, next) => {
     try {
       const dbFilters = req.filters
+
+      dbFilters.where.customer_id = req.session.customer_id
       const groups = await app.models.group.apiFetch(dbFilters)
       res.json(groups)
     } catch (err) {
@@ -17,7 +19,10 @@ module.exports = (app) => {
 
   router.get('/:id', async (req, res, next) => {
     try {
-      const group = await app.models.group.findById(id)
+      const group = await app.models.group.find({
+        id,
+        customer_id: req.session.customer_id
+      })
       if (!group) {
         throw new ClientError('group not found')
       }
@@ -30,6 +35,9 @@ module.exports = (app) => {
   router.post('/', async (req, res, next) => {
     try {
       const data = req.body
+      data.customer = req.session.customer_id
+      data.customer_id = req.session.customer_id
+
       const group = await app.models.group.create(data)
       res.json(group)
     } catch (err) {

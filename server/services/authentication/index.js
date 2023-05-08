@@ -4,7 +4,6 @@ const passportBasic = require('passport-http').BasicStrategy
 const googleStrategy = require('passport-google-oauth').OAuth2Strategy
 const passportLdap = require('passport-ldapauth')
 const ldapauth = require('./ldapauth')
-const ACL = require('./acl')
 
 const logger = require('../../logger')(':services:authentication')
 const EscapedRegExp = require('../../escaped-regexp')
@@ -29,8 +28,6 @@ module.exports = function (app) {
   class Authentication {
     constructor () {
       this.config = app.config.services.authentication
-
-      this.acl = new ACL()
     }
 
     async configure () {
@@ -271,16 +268,20 @@ module.exports = function (app) {
           const customers = await app.models.customer.find({
             $or: [
               // uuid or legacy unrestricted string
-              { $and: [
-                { name: customerName },
-                { name: { $ne: null } },
-                { name: { $exists: true } },
-              ] },
-              { $and: [
-                { alias: customerName },
-                { alias: { $ne: null } },
-                { alias: { $exists: true } },
-              ] }
+              {
+                $and: [
+                  { name: customerName },
+                  { name: { $ne: null } },
+                  { name: { $exists: true } },
+                ]
+              },
+              {
+                $and: [
+                  { alias: customerName },
+                  { alias: { $ne: null } },
+                  { alias: { $exists: true } },
+                ]
+              }
             ]
           })
 
@@ -398,6 +399,7 @@ module.exports = function (app) {
       session.customer = member.customer_id
       session.customer_id = member.customer_id
       session.protocol = protocol
+      session.roles = member.roles
 
       if (member.user.credential) {
         session.credential = member.user.credential
