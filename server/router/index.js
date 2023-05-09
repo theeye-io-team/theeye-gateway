@@ -1,6 +1,7 @@
 const path = require('path')
 const StatusRouter = require('./status')
 const AuthRouter = require('./auth')
+const RBACAuthRouter = require('./auth/rbac')
 const AuthAdminRouter = require('./auth/admin')
 const SocialAuthRouter = require('./auth/social')
 const EnterpriseAuthRouter = require('./auth/enterprise')
@@ -45,8 +46,10 @@ class Router {
     })
 
     api.use('/api/auth', AuthRouter(app))
+    //api.use('/api/auth/rbac', bearerMiddleware, RBACAuthRouter(app))
     api.use('/api/auth/enterprise', internalMiddleware, EnterpriseAuthRouter(app))
     api.use('/api/auth/social', SocialAuthRouter(app))
+    api.use('/api/accesscontrol', bearerMiddleware, RBACAuthRouter(app))
     api.use('/api/status', StatusRouter(app))
     api.use('/api/registration', RegistrationRouter(app))
 
