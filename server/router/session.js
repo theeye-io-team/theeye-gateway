@@ -160,61 +160,57 @@ module.exports = (app) => {
    * update notifications preferences
    *
    */
-  router.put(
-    '/profile/notifications',
-    (req, res, next) => {
-      try {
-        //const params = req.params.all()
-        if (!req.body) {
-          throw new ClientError('Invalid Payload', { code: 'EmptyBody' })
-        }
-
-        let payload = req.body
-        let upgradeable = [
-          'notificationFilters',
-          'email',
-          'push',
-          'desktop',
-          'mute'
-        ]
-
-        // extra property
-        let updates = {}
-        for (let prop in payload) {
-          if (upgradeable.indexOf(prop) !== -1) { // can update?
-            //let err = new Error('Invalid Payload Property')
-            //err.statusCode(400)
-            //throw err
-            updates[prop] = payload[prop]
-          }
-        }
-
-        if (Object.keys(updates) === 0) {
-          throw new ClientError('Invalid Payload', { code: 'EmptyNotificationsUpdate' })
-        }
-
-        req.notifications = updates
-        next()
-      } catch (err) {
-        next(err)
+  router.put('/profile/notifications', (req, res, next) => {
+    try {
+      //const params = req.params.all()
+      if (!req.body) {
+        throw new ClientError('Invalid Payload', { code: 'EmptyBody' })
       }
-    },
-    async (req, res, next) => {
-      try {
-        const session = req.session
-        await session.populate('member','notifications').execPopulate()
-        const member = session.member
 
-        //@TODO: create member 1 <> * notifications collection
-        member.notifications = req.notifications
-        await member.save()
+      let payload = req.body
+      let upgradeable = [
+        'notificationFilters',
+        'email',
+        'push',
+        'desktop',
+        'mute'
+      ]
 
-        res.status(200).json({ notifications: member.notifications })
-      } catch (err) {
-        next(err)
+      // extra property
+      let updates = {}
+      for (let prop in payload) {
+        if (upgradeable.indexOf(prop) !== -1) { // can update?
+          //let err = new Error('Invalid Payload Property')
+          //err.statusCode(400)
+          //throw err
+          updates[prop] = payload[prop]
+        }
       }
+
+      if (Object.keys(updates) === 0) {
+        throw new ClientError('Invalid Payload', { code: 'EmptyNotificationsUpdate' })
+      }
+
+      req.notifications = updates
+      next()
+    } catch (err) {
+      next(err)
     }
-  )
+  }, async (req, res, next) => {
+    try {
+      const session = req.session
+      await session.populate('member','notifications').execPopulate()
+      const member = session.member
+
+      //@TODO: create member 1 <> * notifications collection
+      member.notifications = req.notifications
+      await member.save()
+
+      res.status(200).json({ notifications: member.notifications })
+    } catch (err) {
+      next(err)
+    }
+  })
 
   router.put('/profile/onboarding/completed', async (req, res, next) => {
     try {
