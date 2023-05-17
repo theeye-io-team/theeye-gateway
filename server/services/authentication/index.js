@@ -5,6 +5,7 @@ const googleStrategy = require('passport-google-oauth').OAuth2Strategy
 const passportLdap = require('passport-ldapauth')
 const ldapauth = require('./ldapauth')
 const ACL = require('./acl')
+const fs = require('fs')
 
 const logger = require('../../logger')(':services:authentication')
 const EscapedRegExp = require('../../escaped-regexp')
@@ -29,6 +30,18 @@ module.exports = function (app) {
   class Authentication {
     constructor () {
       this.config = app.config.services.authentication
+
+      if (this.config.rs256) {
+        this.keys = {
+          pub: fs.readFileSync(this.config.rs256.pub,'utf8'),
+          priv: fs.readFileSync(this.config.rs256.priv,'utf8'),
+        }
+      } else {
+        this.keys = {
+          pub: this.config.secret,
+          priv: this.config.secret,
+        }
+      }
 
       this.acl = new ACL()
     }
@@ -58,9 +71,10 @@ module.exports = function (app) {
     issue (payload, options = {}) {
       return jwt.sign(
         payload,
-        this.config.secret, // our Private Key
+        this.keys.priv, // our Private Key
         {
-          expiresIn: options.expiresIn || this.config.expires
+          expiresIn: options.expiresIn || this.config.expires,
+          algorithm: "RS256"
         }
       )
     }
@@ -78,7 +92,7 @@ module.exports = function (app) {
       try {
         decoded = jwt.verify(
           token,
-          this.config.secret,
+          this.keys.pub,
           {}
         )
       } catch (err) {
@@ -210,27 +224,8 @@ module.exports = function (app) {
       logger.log('new connection [bearer]')
 
       try {
-        //let decoded = app.service.authentication.verify(token)
         const session = await app.models.session.findOne({ token })
         if (!session) {
-          //let decoded
-          //try {
-          //  decoded = this.verify(token)
-          //} catch (err) {
-          //  logger.error(err)
-          //}
-
-          //app.service.notifications.eventNotifySupport({
-          //  subject: 'INVALID SESSION FORBIDDEN.',
-          //  body: `
-          //    <div>
-          //      Bearer session not found.<br/>
-          //      <p>Token: ${token}</p>
-          //      <p>Decoded: ${JSON.stringify(decoded)}</p>
-          //    </div>
-          //  `
-          //})
-
           throw new Error('invalid or outdated token')
         }
 
@@ -239,22 +234,43 @@ module.exports = function (app) {
           throw new Error('user no longer available')
         }
 
-        //if (user.enabled === false) {
-        //  app.service.notifications.eventNotifySupport({
-        //    subject: 'DISABLED BEARER SESSION FORBIDDEN.',
-        //    body: `
-        //      <div>
-        //        User is disabled. Bearer session was blocked.<br/>
-        //        <p>Token: ${token}</p>
-        //        <p>id: ${user._id}</p>
-        //        <p>username: ${user.username}</p>
-        //        <p>email: ${user.email}</p>
-        //      </div>
-        //    `
-        //  })
+        if (user.enabled === false) {
+          app.service.notifications.eventNotifySupport({
+            subject: 'USER DISABLED. INVALID BEARER TOKEN.',
+            body: `
+              <div>
+                User is disabled. Bearer session was blocked.<br/>
+                <p>Token: ${token}</p>
+                <p>id: ${user._id}</p>
+                <p>username: ${user.username}</p>
+                <p>email: ${user.email}</p>
+              </div>
+            `
+          })
 
-        //  throw new ClientError('Forbidden', { code: 'UsernameLocked', statusCode: 403 })
-        //}
+          throw new ClientError('Forbidden', { code: 'Locked', statusCode: 403 })
+        }
+        
+        let decoded
+        try {
+          decoded = this.verify(token)
+        } catch (err) {
+          logger.error(err)
+        }
+
+        if (!decoded) {
+          app.service.notifications.eventNotifySupport({
+            subject: 'INVALID JWT.',
+            body: `
+              <div>
+                Invalid bearer session jwt.<br/>
+                <p>Token: ${token}</p>
+                <p>Decoded: ${JSON.stringify(decoded)}</p>
+              </div>
+            `
+          })
+        }
+
 
         logger.log('client %s/%s connected [bearer]', user.username, user.email)
         next(null, user, session)
