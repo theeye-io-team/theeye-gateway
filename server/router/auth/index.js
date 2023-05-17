@@ -21,6 +21,8 @@ module.exports = (app) => {
       const user = req.user
       const passport = req.passport
       const customerName = req.query.customer || null
+      const callback = req.query.callback
+
       const session = await app.service.authentication.membersLogin({
         user,
         passport,
@@ -29,7 +31,16 @@ module.exports = (app) => {
       
       res.cookie('auth', session.token, app.config.services.authentication.cookie)
 
-      res.json({ access_token: session.token, credential: session.credential })
+      if (callback) {
+        res.set('Location', `${callback}?access_token=${session.token}`)
+        res.status(303)
+        res.send()
+      } else {
+        res.json({
+          access_token: session.token,
+          credential: session.credential
+        })
+      }
     } catch (err) {
       next(err)
     }
