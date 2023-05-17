@@ -14,6 +14,7 @@
     "aws-sdk": "~2.648.0",
     "bcrypt": "~4.0.1",
     "compression": "~1.7.4",
+    "cookie-parser": "~1.4.6",
     "express": "~4.17.1",
     "fast-proxy": "~1.5.0",
     "form-data": "~3.0.0",

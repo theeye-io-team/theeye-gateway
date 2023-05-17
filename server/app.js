@@ -1,4 +1,5 @@
 const express = require('express')
+const cookieParser = require('cookie-parser')
 const compression = require('compression')
 const path = require('path')
 const http = require('http')
@@ -73,6 +74,7 @@ class App extends EventEmitter {
     let api = this.api = express()
     //const server = process.env.NODE_ENV === 'development' ? http.Server(api) : https.Server(api)
 
+    api.use(cookieParser(this.config.services.authentication.secret))
     api.use(compression())
     api.use(express.json())
     api.use(express.urlencoded({ extended: true }))

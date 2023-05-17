@@ -37,6 +37,14 @@
       "secret": "692fc164a0c06a9fd02575cf17688c9e",
       "expires": 10800,
       "localBypass": true,
+      "cookie": {
+        "domain": "localhost",
+        "sameSite": "lax",
+        "expire": 86400,
+        "httpOnly": true,
+        "secure": true,
+        "signed": true
+      },
       "strategies": {
         "ldapauth": {
           "defaultGroup": "theeye_users",

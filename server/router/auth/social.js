@@ -85,9 +85,12 @@ module.exports = (app) => {
           passport = await app.models.passport.create(passportData)
         }
 
-        let customerName = req.query.customer || null
+        const customerName = req.query.customer || null
         // hago el login
-        let session = await app.service.authentication.membersLogin({ user, passport, customerName })
+        const session = await app.service.authentication.membersLogin({ user, passport, customerName })
+
+        res.cookie('auth', session.token, app.config.services.authentication.cookie)
+
         res.json({ access_token: session.token })
       } catch (err) {
         logger.error('%o', err)
@@ -117,8 +120,10 @@ module.exports = (app) => {
             })
           }
 
-        let member = memberOf[0]
+        const member = memberOf[0]
         const session = await app.service.authentication.createSession({ member, protocol: passport.protocol })
+
+        res.cookie('auth', session.token, app.config.services.authentication.cookie)
 
         const queryString = new Buffer( JSON.stringify({ access_token: session.token }) ).toString('base64')
         return res.redirect('/sociallogin?' + queryString)
