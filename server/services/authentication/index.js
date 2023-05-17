@@ -253,7 +253,7 @@ module.exports = function (app) {
         
         let decoded
         try {
-          decoded = this.verify(token)
+          decoded = app.service.authentication.verify(token)
         } catch (err) {
           logger.error(err)
         }
@@ -508,7 +508,9 @@ module.exports = function (app) {
       }
     } else if (req.query.gateway_token) {
       try {
-        const payload = jwt.verify(req.query.gateway_token, secret, {})
+        const payload = app.service
+          .authentication
+          .verify(req.query.gateway_token)
         req.session = payload.context
         next()
       } catch (err) {
