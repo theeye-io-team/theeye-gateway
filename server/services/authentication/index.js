@@ -93,7 +93,7 @@ module.exports = function (app) {
         decoded = jwt.verify(
           token,
           this.keys.pub,
-          {}
+          { algorithms: ['RS256'] }
         )
       } catch (err) {
         if (err.message === 'jwt expired')  {

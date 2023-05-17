@@ -16,7 +16,13 @@ module.exports = (app) => {
     } else {
       app.service.authentication.middlewares.basicPassport(req, res, next)
     }
-  }, async (req, res, next) => {
+  }, createLoginSession)
+
+  router.post('/login/local',
+    app.service.authentication.middlewares.basicPassport,
+    createLoginSession)
+
+  const createLoginSession = async (req, res, next) => {
     try {
       const user = req.user
       const passport = req.passport
@@ -28,7 +34,7 @@ module.exports = (app) => {
         passport,
         customerName
       })
-      
+
       res.cookie('auth', session.token, app.config.services.authentication.cookie)
 
       if (callback) {
@@ -36,37 +42,12 @@ module.exports = (app) => {
         res.status(303)
         res.send()
       } else {
-        res.json({
-          access_token: session.token,
-          credential: session.credential
-        })
+        res.json({ access_token: session.token })
       }
     } catch (err) {
       next(err)
     }
-  })
-
-  router.post('/login/local',
-    app.service.authentication.middlewares.basicPassport,
-    async (req, res, next) => {
-      try {
-        const user = req.user
-        const passport = req.passport
-        const customerName = req.query.customer || null
-        const session = await app.service.authentication.membersLogin({
-          user,
-          passport,
-          customerName
-        })
-
-        res.cookie('auth', session.token, app.config.services.authentication.cookie)
-
-        res.json({ access_token: session.token, credential: session.credential })
-      } catch (err) {
-        next(err)
-      }
-    }
-  )
+  }
 
   /**
    *
