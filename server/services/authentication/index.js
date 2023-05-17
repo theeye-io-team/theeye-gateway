@@ -373,22 +373,34 @@ module.exports = function (app) {
      * @return {Promise} session
      */
     async createSession (params) {
-      let { member, protocol, expiration } = params
+      const { member, protocol } = params
 
-      if (expiration !== undefined) {
-        expiration = params.expiration
-      } else {
+      let expiration = params.expiration
+      if (!expiration) {
         let expSecs = this.config.expires
         expiration = new Date()
         expiration.setSeconds(expiration.getSeconds() + expSecs)
       }
 
-      let token = app.service.authentication.issue({ user_id: member.user_id })
+      await member
+        .populate('user', {
+          id: 1,
+          credential: 1,
+          username: 1,
+          email: 1
+        })
+        .populate('customer', { name: 1 })
+        .execPopulate()
 
-      await member.populate('user', { id: 1, credential: 1 }).execPopulate()
+      const token = app.service.authentication.issue({
+        email: member.user.email,
+        username: member.user.username,
+        user_id: member.user._id.toString(),
+        org_uuid: member.customer.name
+      })
 
       // register issued tokens
-      let session = new app.models.session()
+      const session = new app.models.session()
       session.token = token
       session.expires = expiration
       session.user = member.user_id
@@ -412,12 +424,27 @@ module.exports = function (app) {
      * @param {Session}
      * @return {Promise}
      */
-    refreshSession (session) {
-      let expiration = new Date()
-      let expSecs = this.config.expires
+    async refreshSession (session) {
+      const expiration = new Date()
+      const expSecs = this.config.expires
       expiration.setSeconds(expiration.getSeconds() + expSecs)
 
-      let token = app.service.authentication.issue({ user_id: session.user_id })
+      await session
+        .populate('user', {
+          id: 1,
+          credential: 1,
+          username: 1,
+          email: 1
+        })
+        .populate('customer', { name: 1 })
+        .execPopulate()
+
+      const token = app.service.authentication.issue({
+        user_id: session.user_id,
+        email: session.user.email,
+        username: session.user.username,
+        org_uuid: session.customer.name
+      })
 
       // register issued tokens
       session.token = token
