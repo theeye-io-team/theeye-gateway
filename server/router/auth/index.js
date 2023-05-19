@@ -10,18 +10,6 @@ const TOKEN_REASON_CONFIRMATION = 'recovery_verify'
 module.exports = (app) => {
   const router = Router()
 
-  router.post('/login', (req, res, next) => {
-    if (app.config.services.authentication.strategies.ldapauth) {
-      app.service.authentication.middlewares.ldapPassport(req, res, next)
-    } else {
-      app.service.authentication.middlewares.basicPassport(req, res, next)
-    }
-  }, createLoginSession)
-
-  router.post('/login/local',
-    app.service.authentication.middlewares.basicPassport,
-    createLoginSession)
-
   const createLoginSession = async (req, res, next) => {
     try {
       const user = req.user
@@ -48,6 +36,18 @@ module.exports = (app) => {
       next(err)
     }
   }
+
+  router.post('/login', (req, res, next) => {
+    if (app.config.services.authentication.strategies.ldapauth) {
+      app.service.authentication.middlewares.ldapPassport(req, res, next)
+    } else {
+      app.service.authentication.middlewares.basicPassport(req, res, next)
+    }
+  }, createLoginSession)
+
+  router.post('/login/local',
+    app.service.authentication.middlewares.basicPassport,
+    createLoginSession)
 
   /**
    *
