@@ -21,8 +21,15 @@ module.exports = (app) => {
       const user = req.user
       const passport = req.passport
       const customerName = req.query.customer || null
-      const session = await app.service.authentication.membersLogin({ user, passport, customerName })
-      res.json({ access_token: session.token, credential: session.credential })
+      const session = await app.service
+        .authentication
+        .membersLogin({
+          user,
+          passport,
+          customerName
+        })
+
+      res.json({ access_token: session.token })
     } catch (err) {
       next(err)
     }
@@ -35,8 +42,15 @@ module.exports = (app) => {
         const user = req.user
         const passport = req.passport
         const customerName = req.query.customer || null
-        const session = await app.service.authentication.membersLogin({ user, passport, customerName })
-        res.json({ access_token: session.token, credential: session.credential })
+        const session = await app.service
+          .authentication
+          .membersLogin({
+            user,
+            passport,
+            customerName
+          })
+
+        res.json({ access_token: session.token })
       } catch (err) {
         next(err)
       }

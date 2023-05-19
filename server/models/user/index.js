@@ -13,7 +13,6 @@ module.exports = function (db) {
 
   const BotUser = User.discriminator('BotUser', new BaseSchema())
   const UiUser = User.discriminator('UiUser', new BaseSchema())
-
   return { User, BotUser, UiUser }
 }
 
@@ -31,8 +30,12 @@ function BaseSchema (extraProps = {}) {
       security_token: { type: 'string', default: '' }, // user actions request
       devices: { type: 'array', default: [] },
       onboardingCompleted: { type: 'boolean', default: false },
+      policies: [{
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Policy'
+      }],
       creation_date: { type: Date, default: () => { return new Date() }, required: true },
-      last_update: { type: Date, default: () => { return new Date() } }
+      last_update: { type: Date, default: () => { return new Date() }, required: true }
     }), {
       collection: 'gw_user',
       discriminatorKey: '_type'
