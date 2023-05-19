@@ -1,22 +1,26 @@
 const mongoose = require('mongoose')
-const apiFetch = require('../api-fetch')
+const apiFetch = require('./api-fetch')
 
 module.exports = function (db) {
+  const ActionSchema = new mongoose.Schema({
+    name: 'string',
+    service: 'string',
+    method: 'string',
+    path: 'string',
+    params: [{ // a subset of parameters for this action that must match
+      name: 'string',
+      value: 'string'
+    }]
+  })
+
   const schema = new mongoose.Schema({
     name: String,
     description: String,
     customer: { type: mongoose.Schema.Types.ObjectId, ref: 'Customer', required: true },
     customer_id: { type: mongoose.Schema.Types.ObjectId },
-    builtIn: { type: 'boolean', default: false },
-    permissions: [{
-      service: 'string',
-      text: 'string',
-      id: 'string',
-      method: 'string',
-      path: 'string',
-    }],
     creation_date: { type: Date, default: new Date() },
     last_update: { type: Date, default: new Date() },
+    actions: [ ActionSchema ],
   }, {
     collection: 'gw_roles',
     discriminatorKey: '_type'
@@ -42,6 +46,6 @@ module.exports = function (db) {
   schema.set('toJSON', def)
   schema.set('toObject', def)
 
-  return db.model('Policy', schema)
+  return db.model('Role', schema)
 }
 

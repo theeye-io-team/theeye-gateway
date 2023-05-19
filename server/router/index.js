@@ -26,7 +26,8 @@ const logger = require('../logger')('router::route')
 const CompatibilityRouter = require('./compatibility')
 const HelperRouter = require('./helper')
 const GroupRouter = require('./group')
-const PolicyRouter = require('./policy')
+//const PolicyRouter = require('./policy')
+const RoleRouter = require('./role')
 
 const GatewayRouter = require('./gateway')
 
@@ -61,7 +62,7 @@ class Router {
     api.use('/api/message', bearerMiddleware, MessageRouter(app))
     api.use('/api/customer', bearerMiddleware, CustomerRouter(app))
     api.use('/api/group', bearerMiddleware, GroupRouter(app))
-    api.use('/api/policy', bearerMiddleware, PolicyRouter(app))
+    api.use('/api/role', bearerMiddleware, RoleRouter(app))
 
     // admin routes
     api.use('/api/admin/auth', bearerMiddleware, credentialMiddleware.root(), AuthAdminRouter(app))
