@@ -459,7 +459,7 @@ module.exports = function (app) {
         user_id: session.user_id,
         email: session.user.email,
         username: session.user.username,
-        org_uuid: session.customer.name
+        org_uuid: session.customer?.name
       })
 
       // register issued tokens
