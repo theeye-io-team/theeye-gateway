@@ -15,7 +15,20 @@ module.exports = (app) => {
       const user = req.user
       const passport = req.passport
       const customerName = req.query.customer || null
-      const callback = req.query.callback
+
+      /**
+       *
+       * oauth parameters
+       * not yet implemented
+       * https://openid.net/specs/openid-connect-core-1_0.html#AuthRequest
+       *
+       */
+      const redirect_uri = req.query.redirect_uri
+      const scope = req.query.scope
+      const client_id = req.query.client_id
+      const response_type = req.query.response_type
+      const response_mode = req.query.response_mode
+      const nonce = req.query.nonce
 
       const session = await app.service.authentication.membersLogin({
         user,
@@ -25,8 +38,8 @@ module.exports = (app) => {
 
       res.cookie('auth', session.token, app.config.services.authentication.cookie)
 
-      if (callback) {
-        res.set('Location', `${callback}?access_token=${session.token}`)
+      if (redirect_uri) {
+        res.set('Location', `${redirect_uri}?access_token=${session.token}`)
         res.status(303)
         res.send()
       } else {

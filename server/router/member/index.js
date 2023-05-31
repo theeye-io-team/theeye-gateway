@@ -9,31 +9,26 @@ const ObjectId = require('mongoose').Types.ObjectId
 module.exports = (app) => {
   const router = express.Router()
 
-  router.get(
-    '/',
-    async (req, res, next) => {
-      try {
-        const session = req.session
-        let query = {}
-        let ninCredentials = [CredentialsConstants.AGENT, CredentialsConstants.INTEGRATION]
-        if (session.credential !== CredentialsConstants.ROOT) {
-          ninCredentials.push(CredentialsConstants.ROOT)
-        }
-
-        query.credential = { $nin: ninCredentials }
-        query.customer_id = session.customer_id 
-        req.db_query = query
-        next()
-      } catch (err) {
-        if (err.status) { res.status(err.status).json( { message: err.message }) }
-        else res.status(500).json('Internal Server Error')
+  router.get('/', async (req, res, next) => {
+    try {
+      const session = req.session
+      let query = {}
+      let ninCredentials = [CredentialsConstants.AGENT, CredentialsConstants.INTEGRATION]
+      if (session.credential !== CredentialsConstants.ROOT) {
+        ninCredentials.push(CredentialsConstants.ROOT)
       }
-    },
-    common(app).fetch
-  )
 
-  router.delete(
-    '/:id',
+      query.credential = { $nin: ninCredentials }
+      query.customer_id = session.customer_id 
+      req.db_query = query
+      next()
+    } catch (err) {
+      if (err.status) { res.status(err.status).json( { message: err.message }) }
+      else res.status(500).json('Internal Server Error')
+    }
+  }, common(app).fetch)
+
+  router.delete('/:id',
     credentialMiddleware.check([CredentialsConstants.ROOT, CredentialsConstants.MANAGER, CredentialsConstants.OWNER]),
     async (req, res, next) => {
       try {
@@ -60,8 +55,7 @@ module.exports = (app) => {
     }
   )
 
-  router.patch(
-    '/:id',
+  router.patch('/:id',
     credentialMiddleware.check([CredentialsConstants.ROOT, CredentialsConstants.MANAGER, CredentialsConstants.OWNER]),
     async (req, res, next) => {
       try {
@@ -90,8 +84,7 @@ module.exports = (app) => {
     }
   )
 
-  router.post(
-    '/',
+  router.post('/',
     credentialMiddleware.check([CredentialsConstants.ROOT, CredentialsConstants.MANAGER, CredentialsConstants.OWNER]),
     async (req, res, next) => {
       try {

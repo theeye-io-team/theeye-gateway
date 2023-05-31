@@ -405,14 +405,25 @@ module.exports = function (app) {
           username: 1,
           email: 1
         })
-        .populate('customer', { name: 1 })
+        .populate('customer', { name: 1, config: 1 })
         .execPopulate()
+
+      const integrations = []
+      if (member.customer.config) {
+        for (let name in member.customer.config) {
+          integrations.push({
+            name,
+            enabled: member.customer.config[name].enabled
+          })
+        }
+      }
 
       const token = app.service.authentication.issue({
         email: member.user.email,
         username: member.user.username,
         user_id: member.user._id.toString(),
-        org_uuid: member.customer.name
+        org_uuid: member.customer.name,
+        integrations
       })
 
       // register issued tokens
