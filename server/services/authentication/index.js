@@ -88,24 +88,11 @@ module.exports = function (app) {
      *
      */
     verify (token) {
-      let decoded
-      try {
-        decoded = jwt.verify(
-          token,
-          this.keys.pub,
-          { algorithms: ['RS256'] }
-        )
-      } catch (err) {
-        if (err.message === 'jwt expired')  {
-          throw new ClientError('Token expired')
-        } else if (err.message === 'jwt must be provided') {
-          throw new ClientError('Invalid Token')
-        } else if (err.message === 'jwt signature is required') {
-          throw new ClientError('Invalid Token Signature')
-        } else {
-          throw new ClientError(err.message)
-        }
-      }
+      const decoded = jwt.verify(
+        token,
+        this.keys.pub,
+        { algorithms: ['RS256'] }
+      )
 
       return decoded
     }
@@ -236,10 +223,10 @@ module.exports = function (app) {
 
         if (user.enabled === false) {
           app.service.notifications.eventNotifySupport({
-            subject: 'USER DISABLED. INVALID BEARER TOKEN.',
+            subject: 'USER ACCESS DENIED',
             body: `
               <div>
-                User is disabled. Bearer session was blocked.<br/>
+                User is disabled. Bearer token is blocked.<br/>
                 <p>Token: ${token}</p>
                 <p>id: ${user._id}</p>
                 <p>username: ${user.username}</p>
@@ -255,22 +242,31 @@ module.exports = function (app) {
         try {
           decoded = app.service.authentication.verify(token)
         } catch (err) {
-          logger.error(err)
-        }
-
-        if (!decoded) {
           app.service.notifications.eventNotifySupport({
-            subject: 'INVALID JWT.',
+            subject: 'USER ACCESS DENIED',
             body: `
               <div>
-                Invalid bearer session jwt.<br/>
+                JWT token verification failed.<br/>
+                <p>reason: ${err.message}</p>
+                <p>id: ${user._id}</p>
+                <p>username: ${user.username}</p>
+                <p>email: ${user.email}</p>
                 <p>Token: ${token}</p>
-                <p>Decoded: ${JSON.stringify(decoded)}</p>
               </div>
             `
           })
-        }
 
+          //if (err.message === 'jwt expired')  {
+          //  throw new ClientError('Token expired')
+          //} else if (err.message === 'jwt must be provided') {
+          //  throw new ClientError('Invalid Token')
+          //} else if (err.message === 'jwt signature is required') {
+          //  throw new ClientError('Invalid Token Signature')
+          //} else {
+          //  throw new ClientError(err.message)
+          //}
+          throw new ClientError(err.message, { statusCode: 401 })
+        }
 
         logger.log('client %s/%s connected [bearer]', user.username, user.email)
         next(null, user, session)
@@ -411,10 +407,13 @@ module.exports = function (app) {
       const integrations = []
       if (member.customer.config) {
         for (let name in member.customer.config) {
-          integrations.push({
-            name,
-            enabled: member.customer.config[name].enabled
-          })
+          const config = member.customer.config[name]
+          if (config) {
+            integrations.push({
+              name,
+              enabled: member.customer.config[name].enabled
+            })
+          }
         }
       }
 

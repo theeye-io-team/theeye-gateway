@@ -59,16 +59,44 @@ module.exports = function (app, config) {
     })
 
     for (let eventName in SocketEvents) {
-      socket.on(
-        eventName,
-        middlewares(socket, eventName, SocketEvents[eventName])
-      )
+      if (eventName === 'post:authorize') {
+        socket.on('post:authorize', (params, next) => {
+          SocketEvents['post:authorize']({ socket, params }, next)
+        })
+      } else {
+        socket.on(
+          eventName,
+          middlewares(socket, eventName, SocketEvents[eventName])
+        )
+      }
     }
 
     return this
   }
 
   const SocketEvents = {
+    'post:authorize': (req, next) => {
+      const { socket, params } = req
+      tokenVerify(socket, (err, user, session) => {
+        if (err) {
+          logger.error(err.message)
+          next({ status: 401, message: err.message })
+        } else {
+          const session_id = session._id.toString()
+          const user_id = session.user_id.toString()
+          const customer_id = session.customer_id.toString()
+
+          // user session subscriptions
+          joinRoom(socket, `${customer_id}:${user_id}:${TopicConstants.NOTIFICATION_CRUD}`)
+          joinRoom(socket, `${customer_id}:${user_id}:${TopicConstants.JOB_RESULT_RENDER}`)
+          joinRoom(socket, `${session_id}:${user_id}:${TopicConstants.SESSION}`)
+
+          logger.log('authorized')
+          req.socket.authorized = true
+          next({ status: 200, message: 'authorized' })
+        }
+      })
+    },
     'disconnect': (req, next) => {
       logger.log('client disconnected')
     },
@@ -91,11 +119,6 @@ module.exports = function (app, config) {
         TopicConstants.HOST_INTEGRATIONS_CRUD,
         TopicConstants.MESSAGE_CRUD,
       ]
-
-      // user session subscriptions
-      joinRoom(socket, `${customer_id}:${user_id}:${TopicConstants.NOTIFICATION_CRUD}`)
-      joinRoom(socket, `${customer_id}:${user_id}:${TopicConstants.JOB_RESULT_RENDER}`)
-      joinRoom(socket, `${session_id}:${user_id}:${TopicConstants.SESSION}`)
 
       if (app.service.authentication.acl.hasFullaccess(session.credential)) {
         // subscribe to all admin rooms
@@ -195,6 +218,15 @@ module.exports = function (app, config) {
   const middlewares = (socket, eventName, handler) => {
     return (params, next) => {
       next || (next=()=>{})
+
+      if (!socket.authorized) {
+        logger.log('unauthorized')
+        return next({
+          status: 401,
+          message: 'Incompleted authorization handshake'
+        })
+      }
+
       if (eventName === 'disconnect') {
         handler({socket}, next)
       } else {
