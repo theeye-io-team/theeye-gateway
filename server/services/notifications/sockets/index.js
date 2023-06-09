@@ -81,6 +81,7 @@ module.exports = function (app, config) {
         if (err) {
           logger.error(err.message)
           next({ status: 401, message: err.message })
+          socket.disconnect()
         } else {
           const session_id = session._id.toString()
           const user_id = session.user_id.toString()
