@@ -244,19 +244,24 @@ module.exports = function (app) {
           try {
             decoded = app.service.authentication.verify(token)
           } catch (err) {
-            app.service.notifications.eventNotifySupport({
-              subject: 'USER ACCESS DENIED',
-              body: `
-                <div>
-                  JWT token verification failed.<br/>
-                  <p>reason: ${err.message}</p>
-                  <p>id: ${user._id}</p>
-                  <p>username: ${user.username}</p>
-                  <p>email: ${user.email}</p>
-                  <p>Token: ${token}</p>
-                </div>
-              `
-            })
+            if (err.message !== 'jwt expired')  {
+              // only notify security errors
+              app.service.notifications.eventNotifySupport({
+                subject: 'USER ACCESS DENIED',
+                body: `
+                  <div>
+                    JWT token verification failed.<br/>
+                    <p>reason: ${err.message}</p>
+                    <p>id: ${user._id}</p>
+                    <p>username: ${user.username}</p>
+                    <p>email: ${user.email}</p>
+                    <p>Token: ${token}</p>
+                  </div>
+                `
+              })
+            }
+
+            throw new ClientError(err.message, { statusCode: 401 })
 
             //if (err.message === 'jwt expired')  {
             //  throw new ClientError('Token expired')
@@ -267,9 +272,13 @@ module.exports = function (app) {
             //} else {
             //  throw new ClientError(err.message)
             //}
-            throw new ClientError(err.message, { statusCode: 401 })
           }
         }
+
+        session.last_access = new Date()
+        session.save().catch(err => {
+          app.service.notifications.eventNotifySupport(err)
+        })
 
         logger.log('client %s/%s connected [bearer]', user.username, user.email)
         next(null, user, session)
