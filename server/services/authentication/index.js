@@ -69,14 +69,15 @@ module.exports = function (app) {
      *
      */
     issue (payload, options = {}) {
-      return jwt.sign(
-        payload,
-        this.keys.priv, // our Private Key
-        {
-          expiresIn: options.expiresIn || this.config.expires,
-          algorithm: "RS256"
-        }
-      )
+      const signSettings = {
+        algorithm: "RS256"
+      }
+
+      if (options.expiresIn !== null) {
+        signSettings.expiresIn = (options.expiresIn || this.config.expires)
+      }
+
+      return jwt.sign(payload, this.keys.priv, signSettings)
     }
 
     /**
@@ -237,35 +238,37 @@ module.exports = function (app) {
 
           throw new ClientError('Forbidden', { code: 'Locked', statusCode: 403 })
         }
-        
-        let decoded
-        try {
-          decoded = app.service.authentication.verify(token)
-        } catch (err) {
-          app.service.notifications.eventNotifySupport({
-            subject: 'USER ACCESS DENIED',
-            body: `
-              <div>
-                JWT token verification failed.<br/>
-                <p>reason: ${err.message}</p>
-                <p>id: ${user._id}</p>
-                <p>username: ${user.username}</p>
-                <p>email: ${user.email}</p>
-                <p>Token: ${token}</p>
-              </div>
-            `
-          })
 
-          //if (err.message === 'jwt expired')  {
-          //  throw new ClientError('Token expired')
-          //} else if (err.message === 'jwt must be provided') {
-          //  throw new ClientError('Invalid Token')
-          //} else if (err.message === 'jwt signature is required') {
-          //  throw new ClientError('Invalid Token Signature')
-          //} else {
-          //  throw new ClientError(err.message)
-          //}
-          throw new ClientError(err.message, { statusCode: 401 })
+        if (session.credential !== 'integration') {
+          let decoded
+          try {
+            decoded = app.service.authentication.verify(token)
+          } catch (err) {
+            app.service.notifications.eventNotifySupport({
+              subject: 'USER ACCESS DENIED',
+              body: `
+                <div>
+                  JWT token verification failed.<br/>
+                  <p>reason: ${err.message}</p>
+                  <p>id: ${user._id}</p>
+                  <p>username: ${user.username}</p>
+                  <p>email: ${user.email}</p>
+                  <p>Token: ${token}</p>
+                </div>
+              `
+            })
+
+            //if (err.message === 'jwt expired')  {
+            //  throw new ClientError('Token expired')
+            //} else if (err.message === 'jwt must be provided') {
+            //  throw new ClientError('Invalid Token')
+            //} else if (err.message === 'jwt signature is required') {
+            //  throw new ClientError('Invalid Token Signature')
+            //} else {
+            //  throw new ClientError(err.message)
+            //}
+            throw new ClientError(err.message, { statusCode: 401 })
+          }
         }
 
         logger.log('client %s/%s connected [bearer]', user.username, user.email)
@@ -387,11 +390,15 @@ module.exports = function (app) {
     async createSession (params) {
       const { member, protocol } = params
 
-      let expiration = params.expiration
-      if (!expiration) {
-        let expSecs = this.config.expires
-        expiration = new Date()
-        expiration.setSeconds(expiration.getSeconds() + expSecs)
+      let expirationDate, expirationSeconds
+      if (params.neverExpires === true) {
+        expirationSeconds = null
+        expirationDate = null
+      } else {
+        expirationSeconds = this.config.expires
+        // expiration data in seconds from now
+        expirationDate = new Date()
+        expirationDate.setSeconds(expirationDate.getSeconds() + expirationSeconds)
       }
 
       await member
@@ -423,12 +430,14 @@ module.exports = function (app) {
         user_id: member.user._id.toString(),
         org_uuid: member.customer.name,
         integrations
+      }, {
+        expiresIn: expirationSeconds
       })
 
       // register issued tokens
       const session = new app.models.session()
       session.token = token
-      session.expires = expiration
+      session.expires = expirationDate
       session.user = member.user_id
       session.user_id = member.user_id
       session.member = member._id
@@ -451,9 +460,9 @@ module.exports = function (app) {
      * @return {Promise}
      */
     async refreshSession (session) {
-      const expiration = new Date()
-      const expSecs = this.config.expires
-      expiration.setSeconds(expiration.getSeconds() + expSecs)
+      const expirationDate = new Date()
+      const expirationSeconds = this.config.expires
+      expirationDate.setSeconds(expirationDate.getSeconds() + expirationSeconds)
 
       await session
         .populate('user', {
@@ -466,15 +475,17 @@ module.exports = function (app) {
         .execPopulate()
 
       const token = app.service.authentication.issue({
-        user_id: session.user_id,
         email: session.user.email,
         username: session.user.username,
+        user_id: session.user_id,
         org_uuid: session.customer?.name
+      }, {
+        expiresIn: expirationSeconds
       })
 
-      // register issued tokens
+      // register issued tokens with new expiration date
       session.token = token
-      session.expires = expiration
+      session.expires = expirationDate
       return session.save()
     }
   }
@@ -518,9 +529,7 @@ module.exports = function (app) {
       }
     } else if (req.query.gateway_token) {
       try {
-        const payload = app.service
-          .authentication
-          .verify(req.query.gateway_token)
+        const payload = app.service.authentication.verify(req.query.gateway_token)
         req.session = payload.context
         next()
       } catch (err) {

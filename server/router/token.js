@@ -75,7 +75,7 @@ module.exports = (app) => {
       const tokenSession = await app.service.authentication.createSession({
         member: member,
         protocol: PassportConstants.PROTOCOL_LOCAL,
-        expiration: null // never expires
+        neverExpires: true // never expires
       })
 
       const token = {
