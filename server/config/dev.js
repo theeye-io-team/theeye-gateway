@@ -1,4 +1,5 @@
-{
+const { join } = require('path')
+module.exports = {
   "app": {
     "base_url": "http://localhost:6080",
     "port": 6080,
@@ -35,8 +36,9 @@
     },
     "authentication": {
       "rs256": {
-        "pub": "/home/facugon/workspace/theeye/theeye-gateway/server/config/jwtRS256.key.pub",
-        "priv": "/home/facugon/workspace/theeye/theeye-gateway/server/config/jwtRS256.key"
+        // this is only for dev. use pure JSON and absolute path in prod to be able to Encrypt the configuration
+        "pub": join(__dirname, "jwtRS256.key.pub"),
+        "priv": join(__dirname, "jwtRS256.key")
       },
       "secret": "692fc164a0c06a9fd02575cf17688c9e",
       "expires": 10800,
