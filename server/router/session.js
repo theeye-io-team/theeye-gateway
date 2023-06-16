@@ -131,7 +131,7 @@ module.exports = (app) => {
         }
       })
       await session.remove()
-      res.clearCookie()
+      res.clearCookie('auth', app.config.services.authentication.cookie)
 
       return res.status(200).json('OK')
     } catch (err) {
@@ -148,7 +148,7 @@ module.exports = (app) => {
       const session = req.session
       await app.service.authentication.refreshSession(session)
 
-      res.cookie('auth', session.token, app.config.services.authentication.cookie.domain)
+      res.cookie('auth', session.token, app.config.services.authentication.cookie)
 
       return res.status(200).json({ access_token: session.token })
     } catch (err) {
