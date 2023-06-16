@@ -18,7 +18,7 @@ const loadConfig = () => {
   } else {
     try {
 
-      logger.error(`loading ${env} configuration`)
+      logger.log(`loading ${env} configuration`)
       return require(`./${env}`)
 
     } catch (err) {

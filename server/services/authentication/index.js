@@ -31,15 +31,12 @@ module.exports = function (app) {
     constructor () {
       this.config = app.config.services.authentication
 
+      this.keys = { secret: this.config.secret }
+
       if (this.config.rs256) {
-        this.keys = {
-          pub: fs.readFileSync(this.config.rs256.pub,'utf8'),
-          priv: fs.readFileSync(this.config.rs256.priv,'utf8'),
-        }
-      } else {
-        this.keys = {
-          pub: this.config.secret,
-          priv: this.config.secret,
+        this.keys.rs256 = {
+          pub: fs.readFileSync(this.config.rs256.pub, 'utf8'),
+          priv: fs.readFileSync(this.config.rs256.priv, 'utf8')
         }
       }
 
@@ -69,15 +66,22 @@ module.exports = function (app) {
      *
      */
     issue (payload, options = {}) {
-      const signSettings = {
-        algorithm: "RS256"
+      const signSettings = { }
+
+      let privKey
+      if (this.keys.rs256) {
+        signSettings.algorithm = "RS256"
+        privKey = this.keys.rs256.priv
+      } else {
+        signSettings.algorithm = "HS256"
+        privKey = this.keys.secret
       }
 
       if (options.expiresIn !== null) {
         signSettings.expiresIn = (options.expiresIn || this.config.expires)
       }
 
-      return jwt.sign(payload, this.keys.priv, signSettings)
+      return jwt.sign(payload, privKey, signSettings)
     }
 
     /**
@@ -89,11 +93,16 @@ module.exports = function (app) {
      *
      */
     verify (token) {
-      const decoded = jwt.verify(
-        token,
-        this.keys.pub,
-        { algorithms: ['RS256'] }
-      )
+      let privKey, algorithms
+      if (this.keys.rs256) {
+        privKey = this.keys.rs256.priv
+        algorithms = [ 'RS256' ]
+      } else {
+        privKey = this.keys.secret
+        algorithms = [ 'HS256' ]
+      }
+
+      const decoded = jwt.verify(token, privKey, { algorithms })
 
       return decoded
     }

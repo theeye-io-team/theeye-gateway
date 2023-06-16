@@ -22,7 +22,7 @@ module.exports = (app) => {
   router.get('/', aclsMiddleware(), async (req, res, next) => {
     try {
       const customer_id = req.session.customer_id
-      let integrationMembers = []
+      let integrationPrincipals = []
 
       const customer = await app.models.customer.findById(customer_id)
       if (!customer) {
@@ -45,17 +45,25 @@ module.exports = (app) => {
           customer_id: customer_id
         })
 
+        let verificationError
+        try {
+          app.service.authentication.verify(session.token)
+        } catch (err) {
+          verificationError = err.message
+        }
+
         if (session) {
-          integrationMembers.push({
+          integrationPrincipals.push({
             id: member.id,
             username: member.user.username,
             name: member.user.name,
-            token: session.token
+            token: session.token,
+            verificationError
           })
         }
       }
 
-      res.json(integrationMembers)
+      res.json(integrationPrincipals)
     } catch (err) {
       next(err)
     }
