@@ -156,7 +156,6 @@ module.exports = {
     "url": "http://localhost:60080",
     "public_url": "http://localhost:60080",
     "port": 60080,
-    "secret": "77E0EAF3B83DD7A7A4004602626446EADED31BF794956FC9BBAD051FA5A25038"
   },
   "agent": {
     "binary": {

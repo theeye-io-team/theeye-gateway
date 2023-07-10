@@ -531,20 +531,20 @@ module.exports = function (app) {
    * internal gateway passwport to communicate micro services
    */
   const gatewayPassport = (req, res, next) => {
-    const secret = app.config.supervisor.secret
+    const secret = app.config.services.authentication.secret
 
     const Unauthorized = new Error('Unauthorized')
     Unauthorized.status = 401
 
     if (!req.query) {
       next( Unauthorized )
-    } else if (req.query.secret) {
-      if (req.query.secret === secret) {
-        next()
-      } else {
-        logger.error('Invalid internal gateway request. Invalid Secret')
-        next( Unauthorized )
-      }
+    //} else if (req.query.secret) {
+    //  if (req.query.secret === secret) {
+    //    next()
+    //  } else {
+    //    logger.error('Invalid internal gateway request. Invalid Secret')
+    //    next( Unauthorized )
+    //  }
     } else if (req.query.gateway_token) {
       try {
         const payload = app.service.authentication.verify(req.query.gateway_token)
