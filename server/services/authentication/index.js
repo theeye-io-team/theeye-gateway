@@ -253,6 +253,12 @@ module.exports = function (app) {
           throw new ClientError('Forbidden', { code: 'Locked', statusCode: 403 })
         }
 
+        // register token last usage
+        session.last_access = new Date()
+        await session.save().catch(err => {
+          app.service.notifications.eventNotifySupport(err)
+        })
+
         if (
           session.credential !== 'integration' &&
           this.config.jwt_verify?.enable_check === true
@@ -261,6 +267,15 @@ module.exports = function (app) {
           try {
             decoded = app.service.authentication.verify(token)
           } catch (err) {
+            //if (err.message === 'jwt expired')  {
+            //  throw new ClientError('Token expired')
+            //} else if (err.message === 'jwt must be provided') {
+            //  throw new ClientError('Invalid Token')
+            //} else if (err.message === 'jwt signature is required') {
+            //  throw new ClientError('Invalid Token Signature')
+            //} else {
+            //  throw new ClientError(err.message)
+            //}
             if (
               err.message !== 'jwt expired' ||
               this.config.jwt_verify.expired_notify === true
@@ -284,23 +299,8 @@ module.exports = function (app) {
             if (this.config.jwt_verify.reject_login === true) {
               throw new ClientError(err.message, { statusCode: 401 })
             }
-
-            //if (err.message === 'jwt expired')  {
-            //  throw new ClientError('Token expired')
-            //} else if (err.message === 'jwt must be provided') {
-            //  throw new ClientError('Invalid Token')
-            //} else if (err.message === 'jwt signature is required') {
-            //  throw new ClientError('Invalid Token Signature')
-            //} else {
-            //  throw new ClientError(err.message)
-            //}
           }
         }
-
-        session.last_access = new Date()
-        await session.save().catch(err => {
-          app.service.notifications.eventNotifySupport(err)
-        })
 
         logger.log('client %s/%s connected [bearer]', user.username, user.email)
         next(null, user, session)
