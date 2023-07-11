@@ -45,3 +45,14 @@ statics files will be served at localhost:6080
 ### Start development
 
 `DEBUG=*eye* node server/`
+
+
+### Generate JWT RS256 keys
+
+[https://gist.github.com/ygotthilf/baa58da5c3dd1f69fae9]()
+
+ssh-keygen -t rsa -b 1024 -m PEM -f jwtRS256.key
+# Don't add passphrase
+openssl rsa -in jwtRS256.key -pubout -outform PEM -out jwtRS256.key.pub
+cat jwtRS256.key
+cat jwtRS256.key.pub

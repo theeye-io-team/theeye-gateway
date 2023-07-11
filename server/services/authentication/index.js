@@ -5,6 +5,7 @@ const googleStrategy = require('passport-google-oauth').OAuth2Strategy
 const passportLdap = require('passport-ldapauth')
 const ldapauth = require('./ldapauth')
 const ACL = require('./acl')
+const fs = require('fs')
 
 const logger = require('../../logger')(':services:authentication')
 const EscapedRegExp = require('../../escaped-regexp')
@@ -29,6 +30,15 @@ module.exports = function (app) {
   class Authentication {
     constructor () {
       this.config = app.config.services.authentication
+
+      this.keys = { secret: this.config.secret }
+
+      if (this.config.rs256) {
+        this.keys.rs256 = {
+          pub: fs.readFileSync(this.config.rs256.pub, 'utf8'),
+          priv: fs.readFileSync(this.config.rs256.priv, 'utf8')
+        }
+      }
 
       this.acl = new ACL()
     }
@@ -56,13 +66,22 @@ module.exports = function (app) {
      *
      */
     issue (payload, options = {}) {
-      return jwt.sign(
-        payload,
-        this.config.secret, // our Private Key
-        {
-          expiresIn: options.expiresIn || this.config.expires
-        }
-      )
+      const signSettings = { }
+
+      let privKey
+      if (this.keys.rs256) {
+        signSettings.algorithm = "RS256"
+        privKey = this.keys.rs256.priv
+      } else {
+        signSettings.algorithm = "HS256"
+        privKey = this.keys.secret
+      }
+
+      if (options.expiresIn !== null) {
+        signSettings.expiresIn = (options.expiresIn || this.config.expires)
+      }
+
+      return jwt.sign(payload, privKey, signSettings)
     }
 
     /**
@@ -74,24 +93,16 @@ module.exports = function (app) {
      *
      */
     verify (token) {
-      let decoded
-      try {
-        decoded = jwt.verify(
-          token,
-          this.config.secret,
-          {}
-        )
-      } catch (err) {
-        if (err.message === 'jwt expired')  {
-          throw new ClientError('Token expired')
-        } else if (err.message === 'jwt must be provided') {
-          throw new ClientError('Invalid Token')
-        } else if (err.message === 'jwt signature is required') {
-          throw new ClientError('Invalid Token Signature')
-        } else {
-          throw new ClientError(err.message)
-        }
+      let privKey, algorithms
+      if (this.keys.rs256) {
+        privKey = this.keys.rs256.priv
+        algorithms = [ 'RS256' ]
+      } else {
+        privKey = this.keys.secret
+        algorithms = [ 'HS256' ]
       }
+
+      const decoded = jwt.verify(token, privKey, { algorithms })
 
       return decoded
     }
@@ -210,27 +221,8 @@ module.exports = function (app) {
       logger.log('new connection [bearer]')
 
       try {
-        //let decoded = app.service.authentication.verify(token)
         const session = await app.models.session.findOne({ token })
         if (!session) {
-          //let decoded
-          //try {
-          //  decoded = this.verify(token)
-          //} catch (err) {
-          //  logger.error(err)
-          //}
-
-          //app.service.notifications.eventNotifySupport({
-          //  subject: 'INVALID SESSION FORBIDDEN.',
-          //  body: `
-          //    <div>
-          //      Bearer session not found.<br/>
-          //      <p>Token: ${token}</p>
-          //      <p>Decoded: ${JSON.stringify(decoded)}</p>
-          //    </div>
-          //  `
-          //})
-
           throw new Error('invalid or outdated token')
         }
 
@@ -239,22 +231,63 @@ module.exports = function (app) {
           throw new Error('user no longer available')
         }
 
-        //if (user.enabled === false) {
-        //  app.service.notifications.eventNotifySupport({
-        //    subject: 'DISABLED BEARER SESSION FORBIDDEN.',
-        //    body: `
-        //      <div>
-        //        User is disabled. Bearer session was blocked.<br/>
-        //        <p>Token: ${token}</p>
-        //        <p>id: ${user._id}</p>
-        //        <p>username: ${user.username}</p>
-        //        <p>email: ${user.email}</p>
-        //      </div>
-        //    `
-        //  })
+        if (user.enabled === false) {
+          app.service.notifications.eventNotifySupport({
+            subject: 'USER ACCESS DENIED',
+            body: `
+              <div>
+                User is disabled. Bearer token is blocked.<br/>
+                <p>Token: ${token}</p>
+                <p>id: ${user._id}</p>
+                <p>username: ${user.username}</p>
+                <p>email: ${user.email}</p>
+              </div>
+            `
+          })
 
-        //  throw new ClientError('Forbidden', { code: 'UsernameLocked', statusCode: 403 })
-        //}
+          throw new ClientError('Forbidden', { code: 'Locked', statusCode: 403 })
+        }
+
+        if (session.credential !== 'integration') {
+          let decoded
+          try {
+            decoded = app.service.authentication.verify(token)
+          } catch (err) {
+            if (err.message !== 'jwt expired')  {
+              // only notify security errors
+              app.service.notifications.eventNotifySupport({
+                subject: 'USER ACCESS DENIED',
+                body: `
+                  <div>
+                    JWT token verification failed.<br/>
+                    <p>reason: ${err.message}</p>
+                    <p>id: ${user._id}</p>
+                    <p>username: ${user.username}</p>
+                    <p>email: ${user.email}</p>
+                    <p>Token: ${token}</p>
+                  </div>
+                `
+              })
+            }
+
+            throw new ClientError(err.message, { statusCode: 401 })
+
+            //if (err.message === 'jwt expired')  {
+            //  throw new ClientError('Token expired')
+            //} else if (err.message === 'jwt must be provided') {
+            //  throw new ClientError('Invalid Token')
+            //} else if (err.message === 'jwt signature is required') {
+            //  throw new ClientError('Invalid Token Signature')
+            //} else {
+            //  throw new ClientError(err.message)
+            //}
+          }
+        }
+
+        session.last_access = new Date()
+        session.save().catch(err => {
+          app.service.notifications.eventNotifySupport(err)
+        })
 
         logger.log('client %s/%s connected [bearer]', user.username, user.email)
         next(null, user, session)
@@ -373,24 +406,56 @@ module.exports = function (app) {
      * @return {Promise} session
      */
     async createSession (params) {
-      let { member, protocol, expiration } = params
+      const { member, protocol } = params
 
-      if (expiration !== undefined) {
-        expiration = params.expiration
+      let expirationDate, expirationSeconds
+      if (params.neverExpires === true) {
+        expirationSeconds = null
+        expirationDate = null
       } else {
-        let expSecs = this.config.expires
-        expiration = new Date()
-        expiration.setSeconds(expiration.getSeconds() + expSecs)
+        expirationSeconds = this.config.expires
+        // expiration data in seconds from now
+        expirationDate = new Date()
+        expirationDate.setSeconds(expirationDate.getSeconds() + expirationSeconds)
       }
 
-      let token = app.service.authentication.issue({ user_id: member.user_id })
+      await member
+        .populate('user', {
+          id: 1,
+          credential: 1,
+          username: 1,
+          email: 1
+        })
+        .populate('customer', { name: 1, config: 1 })
+        .execPopulate()
 
-      await member.populate('user', { id: 1, credential: 1 }).execPopulate()
+      const integrations = []
+      if (member.customer.config) {
+        for (let name in member.customer.config) {
+          const config = member.customer.config[name]
+          if (config) {
+            integrations.push({
+              name,
+              enabled: member.customer.config[name].enabled
+            })
+          }
+        }
+      }
+
+      const token = app.service.authentication.issue({
+        email: member.user.email,
+        username: member.user.username,
+        user_id: member.user._id.toString(),
+        org_uuid: member.customer.name,
+        integrations
+      }, {
+        expiresIn: expirationSeconds
+      })
 
       // register issued tokens
-      let session = new app.models.session()
+      const session = new app.models.session()
       session.token = token
-      session.expires = expiration
+      session.expires = expirationDate
       session.user = member.user_id
       session.user_id = member.user_id
       session.member = member._id
@@ -412,16 +477,33 @@ module.exports = function (app) {
      * @param {Session}
      * @return {Promise}
      */
-    refreshSession (session) {
-      let expiration = new Date()
-      let expSecs = this.config.expires
-      expiration.setSeconds(expiration.getSeconds() + expSecs)
+    async refreshSession (session) {
+      const expirationDate = new Date()
+      const expirationSeconds = this.config.expires
+      expirationDate.setSeconds(expirationDate.getSeconds() + expirationSeconds)
 
-      let token = app.service.authentication.issue({ user_id: session.user_id })
+      await session
+        .populate('user', {
+          id: 1,
+          credential: 1,
+          username: 1,
+          email: 1
+        })
+        .populate('customer', { name: 1 })
+        .execPopulate()
 
-      // register issued tokens
+      const token = app.service.authentication.issue({
+        email: session.user.email,
+        username: session.user.username,
+        user_id: session.user_id,
+        org_uuid: session.customer?.name
+      }, {
+        expiresIn: expirationSeconds
+      })
+
+      // register issued tokens with new expiration date
       session.token = token
-      session.expires = expiration
+      session.expires = expirationDate
       return session.save()
     }
   }
@@ -449,23 +531,23 @@ module.exports = function (app) {
    * internal gateway passwport to communicate micro services
    */
   const gatewayPassport = (req, res, next) => {
-    const secret = app.config.supervisor.secret
+    const secret = app.config.services.authentication.secret
 
     const Unauthorized = new Error('Unauthorized')
     Unauthorized.status = 401
 
     if (!req.query) {
       next( Unauthorized )
-    } else if (req.query.secret) {
-      if (req.query.secret === secret) {
-        next()
-      } else {
-        logger.error('Invalid internal gateway request. Invalid Secret')
-        next( Unauthorized )
-      }
+    //} else if (req.query.secret) {
+    //  if (req.query.secret === secret) {
+    //    next()
+    //  } else {
+    //    logger.error('Invalid internal gateway request. Invalid Secret')
+    //    next( Unauthorized )
+    //  }
     } else if (req.query.gateway_token) {
       try {
-        const payload = jwt.verify(req.query.gateway_token, secret, {})
+        const payload = app.service.authentication.verify(req.query.gateway_token)
         req.session = payload.context
         next()
       } catch (err) {

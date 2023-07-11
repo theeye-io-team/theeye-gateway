@@ -17,15 +17,12 @@ const loadConfig = () => {
     return JSON.parse( Encryption('decrypt', filename) )
   } else {
     try {
-
-      logger.error(`loading ${env} configuration`)
-      return require(`./${env}`)
-
+      logger.log(`loading ${env} configuration`)
+      const config = require(`./${env}`)
+      return config
     } catch (err) {
-
       logger.error(err)
       logger.error('loading default configuration')
-
       return require('./default')
     }
   }

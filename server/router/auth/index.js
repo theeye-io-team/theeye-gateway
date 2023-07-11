@@ -10,38 +10,57 @@ const TOKEN_REASON_CONFIRMATION = 'recovery_verify'
 module.exports = (app) => {
   const router = Router()
 
+  const createLoginSession = async (req, res, next) => {
+    try {
+      const user = req.user
+      const passport = req.passport
+      const customerName = req.query.customer || null
+
+      /**
+       *
+       * oauth parameters
+       * not yet implemented
+       * https://openid.net/specs/openid-connect-core-1_0.html#AuthRequest
+       *
+       */
+      const redirect_uri = req.query.redirect_uri
+      const scope = req.query.scope
+      const client_id = req.query.client_id
+      const response_type = req.query.response_type
+      const response_mode = req.query.response_mode
+      const nonce = req.query.nonce
+
+      const session = await app.service.authentication.membersLogin({
+        user,
+        passport,
+        customerName
+      })
+
+      res.cookie('auth', session.token, app.config.services.authentication.cookie)
+
+      if (redirect_uri) {
+        res.set('Location', `${redirect_uri}?access_token=${session.token}`)
+        res.status(303)
+        res.send()
+      } else {
+        res.json({ access_token: session.token })
+      }
+    } catch (err) {
+      next(err)
+    }
+  }
+
   router.post('/login', (req, res, next) => {
     if (app.config.services.authentication.strategies.ldapauth) {
       app.service.authentication.middlewares.ldapPassport(req, res, next)
     } else {
       app.service.authentication.middlewares.basicPassport(req, res, next)
     }
-  }, async (req, res, next) => {
-    try {
-      const user = req.user
-      const passport = req.passport
-      const customerName = req.query.customer || null
-      const session = await app.service.authentication.membersLogin({ user, passport, customerName })
-      res.json({ access_token: session.token, credential: session.credential })
-    } catch (err) {
-      next(err)
-    }
-  })
+  }, createLoginSession)
 
   router.post('/login/local',
     app.service.authentication.middlewares.basicPassport,
-    async (req, res, next) => {
-      try {
-        const user = req.user
-        const passport = req.passport
-        const customerName = req.query.customer || null
-        const session = await app.service.authentication.membersLogin({ user, passport, customerName })
-        res.json({ access_token: session.token, credential: session.credential })
-      } catch (err) {
-        next(err)
-      }
-    }
-  )
+    createLoginSession)
 
   /**
    *

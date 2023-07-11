@@ -6,6 +6,7 @@ module.exports = function (db) {
     expires: { type: Date },
     creation_date: { type: Date, default: () => { return new Date() }, required: true },
     last_update: { type: Date, default: () => { return new Date() }, required: true },
+    last_access: { type: Date, default: () => { return new Date() } },
     member: { type: mongoose.Schema.Types.ObjectId, ref: 'Member', required: true },
     member_id: { type: mongoose.Schema.Types.ObjectId, required: true },
     user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },

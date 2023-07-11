@@ -14,7 +14,17 @@ class Notifications {
     this.messages = new Messages(app, config.messages)
   }
 
-  eventNotifySupport ({ subject, body }) {
+  eventNotifySupport (payload) {
+    let subject, body
+
+    if (payload instanceof Error) {
+      subject = payload.message
+      body = payload.stack
+    } else {
+      subject = payload.subject
+      body = payload.body
+    }
+
     // email event
     this.email.send({
       subject,

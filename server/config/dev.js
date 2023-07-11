@@ -1,4 +1,5 @@
-{
+const { join } = require('path')
+module.exports = {
   "app": {
     "base_url": "http://localhost:6080",
     "port": 6080,
@@ -34,9 +35,22 @@
       "passwordResetUrl": "http://localhost:6080/passwordreset?"
     },
     "authentication": {
+      "rs256": {
+        // this is only for dev. use pure JSON and absolute path in prod to be able to Encrypt the configuration
+        "pub": join(__dirname, "jwtRS256.key.pub"),
+        "priv": join(__dirname, "jwtRS256.key")
+      },
       "secret": "692fc164a0c06a9fd02575cf17688c9e",
-      "expires": 10800,
+      "expires": 86400,
       "localBypass": true,
+      "cookie": {
+        "domain": "localhost",
+        "sameSite": "lax",
+        "expire": 86400,
+        "httpOnly": true,
+        "secure": true,
+        "signed": true
+      },
       "strategies": {
         "ldapauth": {
           "defaultGroup": "theeye_users",
@@ -142,7 +156,6 @@
     "url": "http://localhost:60080",
     "public_url": "http://localhost:60080",
     "port": 60080,
-    "secret": "77E0EAF3B83DD7A7A4004602626446EADED31BF794956FC9BBAD051FA5A25038"
   },
   "agent": {
     "binary": {
