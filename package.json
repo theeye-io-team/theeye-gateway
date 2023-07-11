@@ -5,7 +5,8 @@
   "main": "index.js",
   "scripts": {
     "start": "node ./server",
-    "build": "docker build . --tag 'theeye-gateway:1.0.0'"
+    "build": "docker build . --tag 'theeye-gateway:1.0.0'",
+    "release": "npx standard-version -t ''"
   },
   "license": "AGPL-3.0",
   "author": "",
@@ -35,6 +36,7 @@
     "passport-ldapauth": "^2.1.4",
     "redis": "^4.5.0",
     "socket.io": "^4.5.3",
+    "standard-version": "~9.5.0",
     "swagger-ui-express": "~4.1.6",
     "uuid": "~8.3.2",
     "validator": "~13.7.0"
