@@ -89,7 +89,10 @@ module.exports = (app) => {
         // hago el login
         const session = await app.service.authentication.membersLogin({ user, passport, customerName })
 
-        res.cookie('auth', session.token, app.config.services.authentication.cookie)
+        res.cookie(
+          app.config.services.authentication.cookie.name || 'theeye_session',
+          session.token,
+          app.config.services.authentication.cookie)
 
         res.json({ access_token: session.token })
       } catch (err) {
@@ -123,7 +126,10 @@ module.exports = (app) => {
         const member = memberOf[0]
         const session = await app.service.authentication.createSession({ member, protocol: passport.protocol })
 
-        res.cookie('auth', session.token, app.config.services.authentication.cookie)
+        res.cookie(
+          app.config.services.authentication.cookie.name || 'theeye_session',
+          session.token,
+          app.config.services.authentication.cookie)
 
         const queryString = new Buffer( JSON.stringify({ access_token: session.token }) ).toString('base64')
         return res.redirect('/sociallogin?' + queryString)

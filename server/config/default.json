@@ -43,6 +43,7 @@
       },
       "secret": "692fc164a0c06a9fd02575cf17688c9e",
       "cookie": {
+        "name":"theeye_session",
         "domain": ".theeye.io",
         "sameSite": "lax",
         "expires": 86400,
