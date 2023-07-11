@@ -551,11 +551,11 @@ module.exports = function (app) {
         req.session = payload.context
         next()
       } catch (err) {
-        logger.error('Invalid internal gateway request. Invalid Gateway Token')
+        logger.error('Invalid internal gateway request. Invalid gateway token')
         next( Unauthorized )
       }
     } else {
-      logger.error('Invalid internal gateway request. Not Provided Authentication')
+      logger.error('Invalid internal gateway request. Gateway token is missing')
       next( Unauthorized )
     }
   }
