@@ -132,7 +132,7 @@ module.exports = (app) => {
       })
       await session.remove()
       res.clearCookie(
-        app.config.services.authentication.cookie.name,
+        app.config.services.authentication.cookie.name || 'theeye_session',
         app.config.services.authentication.cookie
       )
 
