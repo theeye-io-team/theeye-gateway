@@ -57,7 +57,12 @@ module.exports = function (app) {
         passport.use(new googleStrategy(strategies.google.options, this.verifyGoogle))
       }
 
-      this.middlewares = { basicPassport, bearerPassport, ldapPassport, gatewayPassport }
+      this.middlewares = {
+        basicPassport,
+        bearerPassport,
+        ldapPassport,
+        gatewayPassport
+      }
     }
 
     /**
@@ -285,7 +290,7 @@ module.exports = function (app) {
         }
 
         session.last_access = new Date()
-        session.save().catch(err => {
+        await session.save().catch(err => {
           app.service.notifications.eventNotifySupport(err)
         })
 
