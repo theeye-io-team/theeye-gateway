@@ -14,12 +14,9 @@ class Emitter {
     } else {
       switch (topic) {
         case TopicConstants.NOTIFICATION_CRUD:
-        case TopicConstants.JOB_RESULT_RENDER:
-          //this.sendMemberEvent(io, topic, data, user._id)
           this.sendMemberEvent(io, topic, data, data.user_id)
           break;
         case TopicConstants.SESSION:
-          //this.sendSessionEvent(io, topic, data, user._id)
           this.sendSessionEvent(io, topic, data, data.model.user_id)
           break;
         default:

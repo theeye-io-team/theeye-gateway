@@ -89,7 +89,6 @@ module.exports = function (app, config) {
 
           // user session subscriptions
           joinRoom(socket, `${customer_id}:${user_id}:${TopicConstants.NOTIFICATION_CRUD}`)
-          joinRoom(socket, `${customer_id}:${user_id}:${TopicConstants.JOB_RESULT_RENDER}`)
           joinRoom(socket, `${session_id}:${user_id}:${TopicConstants.SESSION}`)
 
           logger.log('authorized')
