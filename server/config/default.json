@@ -42,11 +42,16 @@
         "priv": null
       },
       "secret": "692fc164a0c06a9fd02575cf17688c9e",
+      "jwt_verify": {
+        "enable_check": false,
+        "reject_login": false,
+        "expired_notify": false
+      },
       "cookie": {
         "name":"theeye_session",
         "domain": ".theeye.io",
         "sameSite": "lax",
-        "expires": 86400,
+        "expire": 86400,
         "httpOnly": true,
         "secure": true,
         "signed": true

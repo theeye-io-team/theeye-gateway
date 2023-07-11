@@ -33,7 +33,7 @@ module.exports = function (app) {
 
       this.keys = { secret: this.config.secret }
 
-      if (this.config.rs256) {
+      if (this.config.rs256?.pub && this.config.rs256?.priv) {
         this.keys.rs256 = {
           pub: fs.readFileSync(this.config.rs256.pub, 'utf8'),
           priv: fs.readFileSync(this.config.rs256.priv, 'utf8')
@@ -253,12 +253,18 @@ module.exports = function (app) {
           throw new ClientError('Forbidden', { code: 'Locked', statusCode: 403 })
         }
 
-        if (session.credential !== 'integration') {
+        if (
+          session.credential !== 'integration' &&
+          this.config.jwt_verify?.enable_check === true
+        ) {
           let decoded
           try {
             decoded = app.service.authentication.verify(token)
           } catch (err) {
-            if (err.message !== 'jwt expired')  {
+            if (
+              err.message !== 'jwt expired' ||
+              this.config.jwt_verify.expired_notify === true
+            )  {
               // only notify security errors
               app.service.notifications.eventNotifySupport({
                 subject: 'USER ACCESS DENIED',
@@ -275,7 +281,9 @@ module.exports = function (app) {
               })
             }
 
-            throw new ClientError(err.message, { statusCode: 401 })
+            if (this.config.jwt_verify.reject_login === true) {
+              throw new ClientError(err.message, { statusCode: 401 })
+            }
 
             //if (err.message === 'jwt expired')  {
             //  throw new ClientError('Token expired')

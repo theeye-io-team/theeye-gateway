@@ -41,6 +41,11 @@ module.exports = {
         "priv": join(__dirname, "jwtRS256.key")
       },
       "secret": "692fc164a0c06a9fd02575cf17688c9e",
+      "jwt_verify": {
+        "enable_check": true,
+        "reject_login": true,
+        "expired_notify": true
+      },
       "expires": 86400,
       "localBypass": true,
       "cookie": {
