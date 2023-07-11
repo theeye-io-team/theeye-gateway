@@ -228,11 +228,30 @@ module.exports = function (app) {
       try {
         const session = await app.models.session.findOne({ token })
         if (!session) {
+          app.service.notifications.eventNotifySupport({
+            subject: 'USER ACCESS DENIED',
+            body: `
+              <div>
+                Invalid bearer token.<br/>
+                <p>Token: ${token}</p>
+              </div>
+            `
+          })
           throw new Error('invalid or outdated token')
         }
 
         const user = await app.models.users.user.findOne({ _id: session.user_id })
         if (!user) {
+          app.service.notifications.eventNotifySupport({
+            subject: 'USER ACCESS DENIED',
+            body: `
+              <div>
+                Session exists but the user was not found.<br/>
+                <p>Token: ${token}</p>
+                <p>id: ${session.user_id}</p>
+              </div>
+            `
+          })
           throw new Error('user no longer available')
         }
 
@@ -259,9 +278,10 @@ module.exports = function (app) {
           app.service.notifications.eventNotifySupport(err)
         })
 
+        const jwt_verify = (app.config.services.authentication.jwt_verify || {})
         if (
           session.credential !== 'integration' &&
-          this.config.jwt_verify?.enable_check === true
+          jwt_verify.enable_check === true
         ) {
           let decoded
           try {
@@ -278,7 +298,7 @@ module.exports = function (app) {
             //}
             if (
               err.message !== 'jwt expired' ||
-              this.config.jwt_verify.expired_notify === true
+              jwt_verify.expired_notify === true
             )  {
               // only notify security errors
               app.service.notifications.eventNotifySupport({
@@ -296,7 +316,7 @@ module.exports = function (app) {
               })
             }
 
-            if (this.config.jwt_verify.reject_login === true) {
+            if (jwt_verify.reject_login === true) {
               throw new ClientError(err.message, { statusCode: 401 })
             }
           }

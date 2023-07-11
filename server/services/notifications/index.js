@@ -15,22 +15,27 @@ class Notifications {
   }
 
   eventNotifySupport (payload) {
-    let subject, body
+    if (
+      this.app.config.app.supportEmail &&
+      this.app.config.services.notifications.email
+    ) {
+      let subject, body
 
-    if (payload instanceof Error) {
-      subject = payload.message
-      body = payload.stack
-    } else {
-      subject = payload.subject
-      body = payload.body
+      if (payload instanceof Error) {
+        subject = payload.message
+        body = payload.stack
+      } else {
+        subject = payload.subject
+        body = payload.body
+      }
+
+      // email event
+      this.email.send({
+        subject,
+        body,
+        address: this.app.config.app.supportEmail
+      })
     }
-
-    // email event
-    this.email.send({
-      subject,
-      body,
-      address: this.app.config.app.supportEmail
-    })
   }
 }
 
