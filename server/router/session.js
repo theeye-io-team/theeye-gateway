@@ -131,7 +131,10 @@ module.exports = (app) => {
         }
       })
       await session.remove()
-      res.clearCookie('auth', app.config.services.authentication.cookie)
+      res.clearCookie(
+        app.config.services.authentication.cookie.name,
+        app.config.services.authentication.cookie
+      )
 
       return res.status(200).json('OK')
     } catch (err) {
@@ -148,7 +151,10 @@ module.exports = (app) => {
       const session = req.session
       await app.service.authentication.refreshSession(session)
 
-      res.cookie('auth', session.token, app.config.services.authentication.cookie)
+      res.cookie(
+        app.config.services.authentication.cookie.name || 'theeye_session',
+        session.token,
+        app.config.services.authentication.cookie)
 
       return res.status(200).json({ access_token: session.token })
     } catch (err) {

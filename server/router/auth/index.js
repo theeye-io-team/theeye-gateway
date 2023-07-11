@@ -36,7 +36,11 @@ module.exports = (app) => {
         customerName
       })
 
-      res.cookie('auth', session.token, app.config.services.authentication.cookie)
+      res.cookie(
+        app.config.services.authentication.cookie.name || 'theeye_session',
+        session.token,
+        app.config.services.authentication.cookie
+      )
 
       if (redirect_uri) {
         res.set('Location', `${redirect_uri}?access_token=${session.token}`)
