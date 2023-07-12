@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [1.14.0](https://github.com/theeye-io-team/theeye-gateway/compare/1.13.0...1.14.0) (2023-07-12)
+
+
+### Features
+
+* configure new jwt verification flow ([fc74b6a](https://github.com/theeye-io-team/theeye-gateway/commit/fc74b6a421d88e929069175739d29c202643e3b2))
+* **notifications:** jwt verify configurable ([2577719](https://github.com/theeye-io-team/theeye-gateway/commit/2577719f925a032f9a5441d7c2cd857ed9d11bd5))
+
+
+### Bug Fixes
+
+* register last access before jwt verify ([92d7f94](https://github.com/theeye-io-team/theeye-gateway/commit/92d7f940a0f55b37e023a31ea2370a127965b054))
+* wait session.save before continue ([076f9d4](https://github.com/theeye-io-team/theeye-gateway/commit/076f9d4667a6d705084927532c53b1afdc9a6a43))
+
 ## [1.13.0](https://github.com/theeye-io-team/theeye-gateway/compare/1.12.9...1.13.0) (2023-07-11)
 
 
