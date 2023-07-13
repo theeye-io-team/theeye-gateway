@@ -13,60 +13,123 @@ module.exports = (app) => {
    * get session profile
    *
    */
-  router.get('/profile', async (req, res, next) => {
+  router.get('/profile',
+    (req, res, next) => {
+      if (req.query?.scopes) {
+        profileScopes(req, res, next)
+      } else {
+        next()
+      }
+    },
+    async (req, res, next) => {
+      try {
+        const user = req.user
+        const session = req.session
+        const customers = []
+
+        const members = await app.models.member.find({ user_id: user._id })
+        if (members.length === 0) {
+          throw new ServerError('No Members', {code: 'UserNoMembers'})
+        }
+
+        for (let member of members) {
+          await member.populate('customer', { id: 1, name: 1, display_name: 1 }).execPopulate()
+          customers.push(member.customer)
+        }
+
+        await session.populate({
+          path: 'member',
+          populate: {
+            path: 'customer'
+          }
+        }).execPopulate()
+
+        let member = session.member
+        if (!member) {
+          throw new ServerError('Invalid Session', {code: 'SessionNoMember'})
+        }
+        if (!member.customer) {
+          throw new ServerError('Invalid Session', {code: 'SessionNoCustomerMember'})
+        }
+
+        let profile = {}
+        profile.id = user._id.toString()
+        profile.customers = customers // reduced information
+        profile.name = user.name
+        profile.username = user.username
+        profile.email = user.email
+        profile.onboardingCompleted = user.onboardingCompleted
+        profile.current_customer = {
+          id: member.customer.id,
+          name: member.customer.name,
+          display_name: (member.customer.display_name || member.customer.name),
+          config: member.customer.config
+        }
+        profile.notifications = member.notifications
+        profile.credential = session.credential
+        profile.protocol = session.protocol
+        profile.member_id = member._id
+
+        return res.json(profile)
+      } catch (err) {
+        next(err)
+      }
+    })
+
+  const profileScopes = async (req, res, next) => {
     try {
       const user = req.user
       const session = req.session
-      const customers = []
 
-      const members = await app.models.member.find({ user_id: user._id })
-      if (members.length === 0) {
-        throw new ServerError('No Members', {code: 'UserNoMembers'})
-      }
+      const profile = {}
 
-      for (let member of members) {
-        await member.populate('customer', { id: 1, name: 1, display_name: 1 }).execPopulate()
-        customers.push(member.customer)
-      }
+      if (req.query.scopes.includes('id')) {
+        profile.id = user._id.toString()
+        profile.username = user.username
+        await session.populate({
+          path: 'member',
+          populate: {
+            path: 'customer'
+          }
+        }).execPopulate()
 
-      await session.populate({
-        path: 'member',
-        populate: {
-          path: 'customer'
+        const member = session.member
+        profile.current_customer = {
+          id: member.customer.id,
+          name: member.customer.name
         }
-      }).execPopulate()
+      } else {
+        if (req.query.scopes.includes('principal')) {
+          profile.id = user._id.toString()
+          profile.name = user.name
+          profile.username = user.username
+          profile.email = user.email
+        }
 
-      let member = session.member
-      if (!member) {
-        throw new ServerError('Invalid Session', {code: 'SessionNoMember'})
-      }
-      if (!member.customer) {
-        throw new ServerError('Invalid Session', {code: 'SessionNoCustomerMember'})
-      }
+        if (req.query.scopes.includes('organization')) {
+          await session.populate({
+            path: 'member',
+            populate: {
+              path: 'customer'
+            }
+          }).execPopulate()
 
-      let profile = {}
-      profile.id = user._id.toString()
-      profile.customers = customers // reduced information
-      profile.name = user.name
-      profile.username = user.username
-      profile.email = user.email
-      profile.onboardingCompleted = user.onboardingCompleted
-      profile.current_customer = {
-        id: member.customer.id,
-        name: member.customer.name,
-        display_name: (member.customer.display_name || member.customer.name),
-        config: member.customer.config
-      }
-      profile.notifications = member.notifications
-      profile.credential = session.credential
-      profile.protocol = session.protocol
-      profile.member_id = member._id
+          const member = session.member
 
-      return res.json(profile)
+          profile.organization = {
+            id: member.customer.id,
+            name: member.customer.name,
+            display_name: (member.customer.display_name || member.customer.name),
+            config: member.customer.config
+          }
+        }
+
+        return res.json(profile)
+      }
     } catch (err) {
       next(err)
     }
-  })
+  }
 
   /**
    * replace current session customer. need to generate a new session
