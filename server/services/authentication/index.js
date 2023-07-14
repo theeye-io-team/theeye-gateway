@@ -585,6 +585,7 @@ module.exports = function (app) {
         next()
       } catch (err) {
         logger.error('Invalid internal gateway request. Invalid gateway token')
+        logger.error(err)
         next( Unauthorized )
       }
     } else {
