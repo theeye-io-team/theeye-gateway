@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [1.15.0](https://github.com/theeye-io-team/theeye-gateway/compare/1.14.0...1.15.0) (2023-07-14)
+
+
+### Features
+
+* fetch profile using scopes ([37e7b43](https://github.com/theeye-io-team/theeye-gateway/commit/37e7b4394f65a0f46739d1d0a3b45f7df057c297))
+
 ## [1.14.0](https://github.com/theeye-io-team/theeye-gateway/compare/1.13.0...1.14.0) (2023-07-12)
 
 
