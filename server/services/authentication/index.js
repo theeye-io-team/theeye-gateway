@@ -273,8 +273,8 @@ module.exports = function (app) {
         }
 
         // register token last usage
-        session.last_access = new Date()
-        await session.save().catch(err => {
+        user.last_access = new Date()
+        await user.save().catch(err => {
           app.service.notifications.eventNotifySupport(err)
         })
 
@@ -462,25 +462,11 @@ module.exports = function (app) {
         .populate('customer', { name: 1, config: 1 })
         .execPopulate()
 
-      const integrations = []
-      if (member.customer.config) {
-        for (let name in member.customer.config) {
-          const config = member.customer.config[name]
-          if (config) {
-            integrations.push({
-              name,
-              enabled: member.customer.config[name].enabled
-            })
-          }
-        }
-      }
-
       const token = app.service.authentication.issue({
         email: member.user.email,
         username: member.user.username,
         user_id: member.user._id.toString(),
-        org_uuid: member.customer.name,
-        integrations
+        org_uuid: member.customer.name
       }, {
         expiresIn: expirationSeconds
       })
