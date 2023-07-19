@@ -24,6 +24,7 @@ const credentialMiddleware = require ('./credentialMiddleware')
 const logger = require('../logger')('router::route')
 const CompatibilityRouter = require('./compatibility')
 const HelperRouter = require('./helper')
+const AssetsRouter = require('./assets')
 
 const GatewayRouter = require('./gateway')
 
@@ -73,6 +74,8 @@ class Router {
     api.use('/apiv2', bearerMiddleware, GatewayRouter(app))
     api.use('/apiv3', bearerMiddleware, GatewayRouter(app))
     api.use('/', CompatibilityRouter(app))
+
+    api.use('/api/assets', AssetsRouter(app))
 
     // static api route
     api.get('/components/:component/*', (req, res) => {

@@ -17,6 +17,8 @@ module.exports = function (db) {
       unique: true,
       required: true
     },
+    logo: { type: String, default: '' },
+    http_origins: { type: 'array', default: [] },
     display_name: { type: String },
     description: { type: String, default: '' },
     owner_id: { type: mongoose.Schema.Types.ObjectId },
