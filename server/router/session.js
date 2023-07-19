@@ -101,10 +101,12 @@ module.exports = (app) => {
         }
       } else {
         if (req.query.scopes.includes('principal')) {
-          profile.principal.id = user._id.toString()
-          profile.principal.name = user.name
-          profile.principal.username = user.username
-          profile.principal.email = user.email
+          profile.principal = {
+            id: user._id.toString(),
+            name: user.name,
+            username: user.username,
+            email: user.email
+          }
         }
 
         if (req.query.scopes.includes('organization')) {
@@ -115,13 +117,14 @@ module.exports = (app) => {
             }
           }).execPopulate()
 
-          const member = session.member
+          const customer = session.member?.customer
 
           profile.organization = {
-            id: member.customer.id,
-            name: member.customer.name,
-            display_name: (member.customer.display_name || member.customer.name),
-            config: member.customer.config
+            id: customer.id,
+            alias: customer.alias,
+            name: customer.name,
+            display_name: (customer.display_name || customer.name),
+            config: customer.config
           }
         }
 
