@@ -15,7 +15,7 @@ module.exports = function (db) {
       type: String,
       index: true,
       unique: true,
-      required: false
+      required: true
     },
     display_name: { type: String },
     description: { type: String, default: '' },
