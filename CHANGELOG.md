@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.15.1](https://github.com/theeye-io-team/theeye-gateway/compare/1.15.0...1.15.1) (2023-07-19)
+
+
+### Bug Fixes
+
+* customer alias validation ([#37](https://github.com/theeye-io-team/theeye-gateway/issues/37)) ([8aaca04](https://github.com/theeye-io-team/theeye-gateway/commit/8aaca04a7d4db7f3b8a3cd9903bb28a1d9d6433f))
+
 ## [1.15.0](https://github.com/theeye-io-team/theeye-gateway/compare/1.14.0...1.15.0) (2023-07-14)
 
 
