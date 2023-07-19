@@ -9,7 +9,7 @@ const CUSTOMER_NAMESPACE = 'e8ae2f14-ec7b-4246-9cf3-a9729c5b682b'
 
 const validateCustomerName = async (app, name) => {
   if (!customerNamePattern.test(name)) {
-    throw new ClientError('The organization should be at least 6 characters long, letters (a-z), numbers (0-9), period (.), underscore (_) and hyphen (-) are allowed. It must starts and ends with an alphanumeric symbol')
+    throw new ClientError('The organization name must be at least 6 characters long. Letters (a-z), numbers (0-9), period (.), underscore (_) and hyphen (-) are allowed. It must starts and ends with an alphanumeric symbol')
   }
 
   customer = await app.models.customer.findOne({ name: new EscapedRegExp(name, 'i') })
@@ -20,21 +20,33 @@ const validateCustomerName = async (app, name) => {
 
 const create = async (app, data) => {
 
-  const current = await app.models.customer.find({name:data.name})
-  if (current!==null && current.name === data.name) {
-    throw new ClientError('customer name already in use')
-  }
-
   const creation_date = new Date()
-  data.creation_date = creation_date
 
   if (!data.name) {
-    // timestamp based customer name
+    // autogenerate a timestamp based customer name
     const name = uuidv5(creation_date.getTime().toString(), CUSTOMER_NAMESPACE) 
     data.name = name
   } else {
     await validateCustomerName(app, data.name)
   }
+
+  if (data.alias) {
+    if (customerNamePattern.test(data.alias) === false) {
+      throw new ClientError('The alias must be at least 6 characters long. Letters (a-z), numbers (0-9), period (.), underscore (_) and hyphen (-) are allowed. It must starts and ends with an alphanumeric symbol')
+    }
+
+    const doc = await app.models.customer.findOne({
+      alias: new EscapedRegExp(data.alias, 'i') 
+    })
+
+    if (doc !== null) {
+      throw new ClientError('The customer name is in use')
+    }
+  } else {
+    data.alias = data.name
+  }
+
+  data.creation_date = creation_date
 
   const customer = await app.models.customer.create(data)
   await customer.save()
