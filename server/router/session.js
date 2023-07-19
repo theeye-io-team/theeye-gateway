@@ -96,14 +96,15 @@ module.exports = (app) => {
         const member = session.member
         profile.current_customer = {
           id: member.customer.id,
-          name: member.customer.name
+          name: member.customer.name,
+          display_name: member.customer.display_name,
         }
       } else {
         if (req.query.scopes.includes('principal')) {
-          profile.id = user._id.toString()
-          profile.name = user.name
-          profile.username = user.username
-          profile.email = user.email
+          profile.principal.id = user._id.toString()
+          profile.principal.name = user.name
+          profile.principal.username = user.username
+          profile.principal.email = user.email
         }
 
         if (req.query.scopes.includes('organization')) {

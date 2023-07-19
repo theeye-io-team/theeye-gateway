@@ -19,6 +19,12 @@ const validateCustomerName = async (app, name) => {
 }
 
 const create = async (app, data) => {
+
+  const current = await app.models.customer.find({name:data.name})
+  if (current!==null && current.name === data.name) {
+    throw new ClientError('customer name already in use')
+  }
+
   const creation_date = new Date()
   data.creation_date = creation_date
 

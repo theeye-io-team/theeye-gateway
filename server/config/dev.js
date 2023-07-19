@@ -3,7 +3,8 @@ module.exports = {
   "app": {
     "base_url": "http://localhost:6080",
     "port": 6080,
-    "secret": "692fc164a0c06a9fd02575cf17688c9e",
+    //"secret": "692fc164a0c06a9fd02575cf17688c9e",
+    "secret": "aff9e66f88d1341b6182d7dce48b882b5898c533",
     "supportEmail": "info@theeye.io"
   },
   "mongodb": {
@@ -35,12 +36,12 @@ module.exports = {
       "passwordResetUrl": "http://localhost:6080/passwordreset?"
     },
     "authentication": {
-      "rs256": {
-        // this is only for dev. use pure JSON and absolute path in prod to be able to Encrypt the configuration
-        "pub": join(__dirname, "jwtRS256.key.pub"),
-        "priv": join(__dirname, "jwtRS256.key")
-      },
-      "secret": "692fc164a0c06a9fd02575cf17688c9e",
+      //"rs256": {
+      //  // this is only for dev. use pure JSON and absolute path in prod to be able to Encrypt the configuration
+      //  "pub": join(__dirname, "jwtRS256.key.pub"),
+      //  "priv": join(__dirname, "jwtRS256.key")
+      //},
+      "secret": "2c1000c295ae613b031d3466db34ef021a5ae064", // hmac
       "jwt_verify": {
         "enable_check": true,
         "reject_login": true,

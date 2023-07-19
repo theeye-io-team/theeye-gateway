@@ -273,8 +273,8 @@ module.exports = function (app) {
         }
 
         // register token last usage
-        session.last_access = new Date()
-        await session.save().catch(err => {
+        user.last_access = new Date()
+        await user.save().catch(err => {
           app.service.notifications.eventNotifySupport(err)
         })
 

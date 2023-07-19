@@ -32,7 +32,8 @@ function BaseSchema (extraProps = {}) {
       devices: { type: 'array', default: [] },
       onboardingCompleted: { type: 'boolean', default: false },
       creation_date: { type: Date, default: () => { return new Date() }, required: true },
-      last_update: { type: Date, default: () => { return new Date() } }
+      last_update: { type: Date, default: () => { return new Date() } },
+      last_access: { type: Date }
     }), {
       collection: 'gw_user',
       discriminatorKey: '_type'
