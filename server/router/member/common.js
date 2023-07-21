@@ -112,7 +112,8 @@ module.exports = function (app) {
       customer: customer._id,
       customer_id: customer._id,
       customer_name: customer.name,
-      credential: context.credential
+      credential: context.credential,
+      tags: context.tags
     })
 
     member.user = user
@@ -153,7 +154,8 @@ module.exports = function (app) {
         customer: customer._id,
         customer_id: customer._id,
         customer_name: customer.name,
-        credential: context.credential
+        credential: context.credential,
+        tags: context.tags
       }
 
       member = await app.models.member.create(data)

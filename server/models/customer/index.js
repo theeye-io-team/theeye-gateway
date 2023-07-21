@@ -27,6 +27,7 @@ module.exports = function (db) {
         return { }
       }
     },
+    tags: [{ type: Object }],
     creation_date: { type: Date, default: () => { return new Date() } },
     last_update: { type: Date, default: () => { return new Date() } },
   }, {

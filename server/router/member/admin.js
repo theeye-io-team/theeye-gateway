@@ -48,7 +48,11 @@ module.exports = (app) => {
         throw new ClientError('Member Not Found',{statusCode:404})
       }
 
-      member.set({ credential: req.body.credential })
+      member.set({
+        credential: req.body.credential,
+        tags: req.body.tags
+      })
+
       await member.save()
       res.json(member)
     } catch (err) {
@@ -91,7 +95,8 @@ module.exports = (app) => {
         customer_id: body.customer_id,
         email: body.user.email.toLowerCase(),
         name: body.user.name, // partial/full name
-        credential: body.credential
+        credential: body.credential,
+        tags: body.tags
       }
 
       next()
@@ -137,7 +142,8 @@ module.exports = (app) => {
       req.context = {
         customer_id: body.customer_id,
         email: body.email.toLowerCase(),
-        credential: body.credential
+        credential: body.credential,
+        tags: body.tags
       }
 
       next()

@@ -31,7 +31,8 @@ module.exports = function (db) {
           ]
         }
       }
-    }
+    },
+    tags: [{ type: Object }]
   }, {
     collection: 'gw_members',
     discriminatorKey: '_type'
