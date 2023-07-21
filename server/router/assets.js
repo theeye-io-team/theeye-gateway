@@ -22,8 +22,9 @@ module.exports = (app) => {
         const uri = new URL(origin)
         const { protocol, hostname } = uri
 
+        const searchOrigin = `${protocol}//${hostname}`
         const customer = await app.models.customer.findOne({
-          http_origins: /`${protocol}:${hostname}`/
+          http_origins: new RegExp(searchOrigin, 'i')
         })
 
         if (!customer?.logo) {
