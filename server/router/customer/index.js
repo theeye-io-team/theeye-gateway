@@ -2,16 +2,9 @@ const express = require('express')
 const logger = require('../../logger')('router:customer')
 const CredentialsConstants = require('../../constants/credentials')
 const credentialMiddleware = require ('../credentialMiddleware')
-const got = require('got')
+const urlStreamingMiddleware = require('../urlStreamingMiddleware')
 
 const { ClientError } = require('../../errors')
-
-const getLogo = async (logoUrl) => {
-  const response = await got(logoUrl, { responseType: 'buffer' })
-  const imageBuffer = response.body
-  const imageFormat = response.headers['content-type'].split('/')[1]
-  return [imageBuffer, imageFormat]
-}
 
 module.exports = (app) => {
   const router = express.Router()
@@ -60,49 +53,6 @@ module.exports = (app) => {
     }
   )
 
-  router.get('/logo',
-    credentialMiddleware.check([
-      CredentialsConstants.ROOT,
-      CredentialsConstants.OWNER,
-      CredentialsConstants.ADMIN,
-      CredentialsConstants.MANAGER,
-      CredentialsConstants.USER,
-      CredentialsConstants.VIEWER,
-      CredentialsConstants.AGENT,
-      CredentialsConstants.INTEGRATION
-    ]),
-    async (req, res, next) => {
-      try {
-
-        // hay que resolver donde dejar el logo default
-        let defaultLogoUrl = 'https://app.theeye.io/bundles/images/2652d15693ded77a9381199a926ac1aa.svg'
-        let customerLogoUrl, imageBuffer, imageFormat
-        
-        const session = req.session
-        
-        if (session.customer_id) {
-          const customer = await app.models.customer.findById(session.customer_id)
-          if(customer?.logo) customerLogoUrl = customer.logo 
-        } 
-        
-        if(!customerLogoUrl) customerLogoUrl = defaultLogoUrl
-        console.log(customerLogoUrl)
-        try {
-          [imageBuffer, imageFormat] = await getLogo(customerLogoUrl)
-        } catch(err) {
-          [imageBuffer, imageFormat] = await getLogo(defaultLogoUrl)
-        }
-        
-        res.set('Content-Type', `image/${imageFormat}`)
-        res.status(200).send(imageBuffer)
-      } catch (err) {
-        console.log(err)
-        next(err)
-      }
-    }
-  )
-
-
   router.delete('/config',
     credentialMiddleware.check([
       CredentialsConstants.ROOT,
@@ -137,6 +87,23 @@ module.exports = (app) => {
         next(err)
       }
     }
+  )
+
+  router.get('/logo',
+    async (req, res, next) => {
+      try {
+        const customer = await app.models.customer.findById(req.session.customer_id)
+        if (!customer?.logo) {
+          throw new ClientError('Logo not found', {statusCode: 404})
+        } else {
+          req.url = customer.logo
+          return next()
+        }
+      } catch (err) {
+        next(err)
+      }
+    },
+    urlStreamingMiddleware()
   )
 
   return router
