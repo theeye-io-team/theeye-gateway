@@ -40,7 +40,8 @@ module.exports = (app) => {
         email: body.email.toLowerCase(),
         name: body.name,
         enabled: body.enabled,
-        password: body.password
+        password: body.password,
+        tags: body.tags
       }
 
       user = await createUser(req.user, data)
@@ -67,7 +68,8 @@ module.exports = (app) => {
         username: body.username.toLowerCase(),
         email: body.email.toLowerCase(),
         name: body.name,
-        enabled: body.enabled
+        enabled: body.enabled,
+        tags: body.tags
       })
 
       await user.save()

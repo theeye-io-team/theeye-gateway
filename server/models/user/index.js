@@ -33,7 +33,8 @@ function BaseSchema (extraProps = {}) {
       onboardingCompleted: { type: 'boolean', default: false },
       creation_date: { type: Date, default: () => { return new Date() }, required: true },
       last_update: { type: Date, default: () => { return new Date() } },
-      last_access: { type: Date }
+      last_access: { type: Date },
+      tags: [{ type: Object }]
     }), {
       collection: 'gw_user',
       discriminatorKey: '_type'
