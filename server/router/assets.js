@@ -1,58 +1,43 @@
 const express = require('express')
 const logger = require('../logger')('router:assets')
 const { ClientError } = require('../errors')
+const urlStreamingMiddleware = require('./urlStreamingMiddleware')
 const { URL } = require('url')
+
 
 module.exports = (app) => {
   const router = express.Router()
 
-  router.get('/logo', async (req, res, next) => {
-    try {
-      let customerLogoUrl, imageBuffer, imageFormat
+  router.get('/logo',
+    async (req, res, next) => {
+      try {
+        let customerLogoUrl, imageBuffer, imageFormat
 
-      const origin = req.headers.host || req.headers.origin
-      const originUrl = parseUrl(origin)
+        const origin = req.headers.referer || req.headers.origin
 
-      if (originUrl) {
+        if (!origin) {
+          throw new ClientError('Forbidden', {statusCode:403})
+        }
+
+        const uri = new URL(origin)
+        const { protocol, hostname } = uri
+
         const customer = await app.models.customer.findOne({
-          http_origins: {
-            $regex: originUrl,
-            $options: "i"
-          }
+          http_origins: /`${protocol}:${hostname}`/
         })
 
-        if(customer?.logo) customerLogoUrl = customer.logo
-      }
+        if (!customer?.logo) {
+          throw new ClientError('Logo Not Found', {statusCode: 404})
+        }
 
-      if(!customerLogoUrl) customerLogoUrl = defaultLogoUrl
-
-      try {
-        [imageBuffer, imageFormat] = await getLogo(customerLogoUrl)
-      } catch(err) {
-        [imageBuffer, imageFormat] = await getLogo(defaultLogoUrl)
+        req.url = customer.logo
+        return next()
+      } catch (err) {
+        next(err)
       }
-      
-      res.set('Content-Type', `image/${imageFormat}`)
-      res.status(200).send(imageBuffer)
-      
-    } catch (err) {
-    }
-  })
+    },
+    urlStreamingMiddleware()
+  )
 
   return router
-}
-
-const parseUrl = (inputUrl) => {
-  try {
-    if(/localhost/i.test(inputUrl)) return 'localhost'
-
-    const parsedUrl = new URL(inputUrl)
-    const { protocol, hostname } = parsedUrl
-    const url = `${protocol}//${hostname}`
-   
-    return url
-  } catch (err) {
-    logger.error('Error parsing URL:', err.message)
-    return null
-  }
 }
