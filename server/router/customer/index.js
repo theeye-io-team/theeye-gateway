@@ -2,6 +2,7 @@ const express = require('express')
 const logger = require('../../logger')('router:customer')
 const CredentialsConstants = require('../../constants/credentials')
 const credentialMiddleware = require ('../credentialMiddleware')
+const urlStreamingMiddleware = require('../urlStreamingMiddleware')
 
 const { ClientError } = require('../../errors')
 
@@ -86,6 +87,23 @@ module.exports = (app) => {
         next(err)
       }
     }
+  )
+
+  router.get('/logo',
+    async (req, res, next) => {
+      try {
+        const customer = await app.models.customer.findById(req.session.customer_id)
+        if (!customer?.logo) {
+          throw new ClientError('Logo not found', {statusCode: 404})
+        } else {
+          req.url = customer.logo
+          return next()
+        }
+      } catch (err) {
+        next(err)
+      }
+    },
+    urlStreamingMiddleware()
   )
 
   return router
