@@ -37,9 +37,53 @@ module.exports = function (app) {
 
         let member
         if (!user) {
-          member = await inviteNewUser(app, customer, context)
+          const { user, member } = await newUserFlow(app, customer, context)
+
+          if (req.notify_user === true) {
+            await app.service
+              .notifications
+              .email
+              .sendActivationMessage({ user })
+
+            await app.service
+              .notifications
+              .email
+              .sendCustomerInvitationMessage({
+                name: user.name,
+                email: user.email,
+                customer_name: customer.name
+              })
+          }
+
         } else {
-          member = await inviteExistentUser(app, customer, user, context)
+          const member = await existentUserFlow(app, customer, user, context)
+
+          if (req.notify_user === true) {
+            if (user.enabled !== true) {
+              // resent user activation email
+              user.invitation_token = app.service
+                .authentication
+                .issue({ email: user.email })
+
+              await app.service
+                .notifications
+                .email
+                .sendActivationMessage({ user })
+
+              await user.save()
+              member.user = user
+            }
+
+            // resend customer invitation
+            await app.service
+              .notifications
+              .email
+              .sendCustomerInvitationMessage({
+                name: user.name,
+                email: user.email,
+                customer_name: customer.name
+              })
+          }
         }
 
         return res.status(200).json(member)
@@ -93,7 +137,7 @@ module.exports = function (app) {
     }
   }
 
-  const inviteNewUser = async (app, customer, context) => {
+  const newUserFlow = async (app, customer, context) => {
     const email = context.email.toLowerCase()
 
     // si el usuario no existe, creo un nuevo
@@ -118,24 +162,10 @@ module.exports = function (app) {
 
     member.user = user
 
-    await app.service
-      .notifications
-      .email
-      .sendActivationMessage({ user })
-
-    await app.service
-      .notifications
-      .email
-      .sendCustomerInvitationMessage({
-        name: user.name,
-        email: user.email,
-        customer_name: customer.name
-      })
-
-    return member
+    return { user, member }
   }
 
-  const inviteExistentUser = async (app, customer, user, context) => {
+  const existentUserFlow = async (app, customer, user, context) => {
     // check if is already member
     let member = await app.models.member.findOne({
       user_id: user._id,
@@ -161,29 +191,6 @@ module.exports = function (app) {
       member = await app.models.member.create(data)
       member.user = user
     }
-
-    if (user.enabled !== true) {
-      // resent user activation email
-      user.invitation_token = app.service.authentication.issue({ email: user.email })
-
-      await app.service
-        .notifications
-        .email
-        .sendActivationMessage({ user })
-
-      await user.save()
-      member.user = user
-    }
-
-    // resend customer invitation
-    await app.service
-      .notifications
-      .email
-      .sendCustomerInvitationMessage({
-        name: user.name,
-        email: user.email,
-        customer_name: customer.name
-      })
 
     return member
   }

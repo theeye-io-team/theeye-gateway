@@ -259,19 +259,19 @@ module.exports = (app) => {
         user_id: user._id
       })
 
-      await app.service
-        .notifications
-        .email
-        .sendInvitationMessage({
-          inviter,
-          invitee: user
-        })
+      //await app.service
+      //  .notifications
+      //  .email
+      //  .sendInvitationMessage({
+      //    inviter,
+      //    invitee: user
+      //  })
     } else {
-      user.invitation_token = app.service.authentication.issue({ email: user.email })
-      await app.service
-        .notifications
-        .email
-        .sendActivationMessage({ user })
+      //user.invitation_token = app.service.authentication.issue({ email: user.email })
+      //await app.service
+      //  .notifications
+      //  .email
+      //  .sendActivationMessage({ user })
       await user.save()
     }
 
