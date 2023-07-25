@@ -128,6 +128,15 @@ module.exports = (app) => {
           }
         }
 
+        if (req.query.scopes.includes('member')) {
+          profile.member = {
+            credential: session.member.credential,
+            notifications: session.member.notifications,
+            tags: session.member.tags,
+            creation_date: session.member.creation_date
+          }
+        }
+
         return res.json(profile)
       }
     } catch (err) {
