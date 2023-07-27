@@ -8,13 +8,62 @@ const CredentialsConstants = require('../../constants/credentials')
 const EscapedRegExp = require('../../escaped-regexp')
 const { ClientError, ServerError } = require('../../errors')
 
-const { validUsername, usernameAvailable, isUserKeyAvailable } = require('../user/data-validate')
+const { validateUserData, validUsername, usernameAvailable, isUserKeyAvailable } = require('../user/data-validate')
 const { create: createCustomer } = require('../customer/common')
 
 const INVALID_USERNAME_MESSAGE = 'The username is not valid. It can contains 6 to 20 letters (a-z), numbers (0-9), period (.), underscore (_) and hyphen (-). It must starts and ends with an alphanumeric symbol'
 
 module.exports = (app) => {
   const router = express.Router()
+
+  const register = async (data) => {
+    if (!data.username) {
+      data.username = data.email
+    }
+
+    const user = await registerUser(data)
+
+    if (!data.customer) { data.customer = {} }
+    data.customer.display_name = user.username
+    data.customer.owner = user._id
+    data.customer.owner_id = user._id
+    const customer = await createCustomer(app, data.customer)
+
+    const member = await app.models.member.create({
+      user: user._id,
+      user_id: user.id,
+      customer: customer._id,
+      customer_id: customer._id,
+      customer_name: customer.name,
+      credential: 'owner'
+    })
+
+    return { user, customer, member }
+  }
+
+  const registerUser = async (data) => {
+    const user = await app.models.users.uiUser.create({
+      username: data.username.toLowerCase(),
+      email: data.email.toLowerCase(),
+      name: (data.name || ""),
+      enabled: true,
+      credential: null,
+      invitation_token: null,
+      devices: null,
+      notifications: null ,
+      onboardingCompleted: false
+    })
+
+    await app.models.passport.create({
+      password: data.password,
+      protocol: 'local',
+      provider: 'theeye',
+      user: user._id,
+      user_id: user._id
+    })
+
+    return user
+  }
 
   router.get('/verifyinvitationtoken', async (req, res, next) => {
     try {
@@ -110,16 +159,26 @@ module.exports = (app) => {
     }
   }, async (req, res, next) => {
     try {
-      const body = req.body
+
       if (app.config.services.registration.enabled === false) {
         throw new ClientError('Registration is not allowed', {statusCode:403})
       }
+      
       if (
         app.config.services.authentication.strategies.ldapauth && 
         app.config.services.authentication.localBypass !== true
       ) {
         throw new ClientError('Registration is not allowed', {statusCode:403})
       }
+
+      const body = req.body
+
+      validateUserData(
+        Object.assign({}, body, {
+          enabled: true
+        })
+      )
+
       if (!body.name) {
         throw new ClientError('Missing param name.')
       }
@@ -127,12 +186,15 @@ module.exports = (app) => {
         throw new ClientError('Invalid email.')
       }
       if (!body.username || body.email !== body.username) {
-        if (!validUsername(body.username)) {
+        if (!validUsername(data.username)) {
           throw new ClientError(INVALID_USERNAME_MESSAGE)
         }
       }
 
       await isUserKeyAvailable(app, body)
+
+      const result = await register(body)
+      res.json(result)
 
       await notifyUserRegistration(app, body)
 

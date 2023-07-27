@@ -21,13 +21,15 @@ const validateUserData = (data) => {
     throw new ClientError('The username is not valid. It could be and Email or local-part of an Email')
   }
   if (data.password) {
-    if (data.password !== data.confirmPassword) {
-      throw new ClientError('Passwords doesn\'t match')
+    if ((data.confirmPassword && data.password !== data.confirmPassword) ||
+      (data.confirm_password && data.password !== data.confirm_password)) {
+      throw new ClientError('Passwords don\'t match')
     }
     if (data.password.length < 8) {
-      throw new ClientError('Passwords should be at least 8 characters long')
+      throw new ClientError('Password should be at least 8 characters long')
     }
   }
+
 }
 
 const validUsername = (username) => {
