@@ -186,7 +186,7 @@ module.exports = (app) => {
         throw new ClientError('Invalid email.')
       }
       if (!body.username || body.email !== body.username) {
-        if (!validUsername(data.username)) {
+        if (!validUsername(body.username)) {
           throw new ClientError(INVALID_USERNAME_MESSAGE)
         }
       }
