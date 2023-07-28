@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [1.16.0](https://github.com/theeye-io-team/theeye-gateway/compare/1.15.1...1.16.0) (2023-07-28)
+
+
+### Features
+
+* map of tags ([#38](https://github.com/theeye-io-team/theeye-gateway/issues/38)) ([256b9bc](https://github.com/theeye-io-team/theeye-gateway/commit/256b9bc29bcbee88e57d33683b9d9448304072b6))
+* **member:** member scope ([9c94573](https://github.com/theeye-io-team/theeye-gateway/commit/9c94573d3c684b3218c8956a58b5ab9a72917582))
+* whitelabel logo ([#36](https://github.com/theeye-io-team/theeye-gateway/issues/36)) ([0257cf6](https://github.com/theeye-io-team/theeye-gateway/commit/0257cf6606c2bcc2ce806f932fe9f9964f83f457))
+
 ### [1.15.1](https://github.com/theeye-io-team/theeye-gateway/compare/1.15.0...1.15.1) (2023-07-19)
 
 
