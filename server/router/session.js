@@ -188,6 +188,11 @@ module.exports = (app) => {
       user.current_customer_id = member.customer_id
       await user.save()
 
+      res.cookie(
+        app.config.services.authentication.cookie.name || 'theeye_session',
+        newSession.token,
+        app.config.services.authentication.cookie)
+
       // return new session
       res.json({ access_token: newSession.token })
     } catch (err) {
