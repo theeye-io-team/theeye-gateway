@@ -462,11 +462,18 @@ module.exports = function (app) {
         .populate('customer', { name: 1, config: 1 })
         .execPopulate()
 
+      if (!member.user) {
+        throw new ClientError('Invalid session. User is no longer available')
+      }
+      if (!member.customer) {
+        throw new ClientError('Invalid session. Organization is no longer available')
+      }
+
       const token = app.service.authentication.issue({
         email: member.user.email,
         username: member.user.username,
         user_id: member.user._id.toString(),
-        org_uuid: member.customer.name
+        org_uuid: member.customer?.name
       }, {
         expiresIn: expirationSeconds
       })
@@ -570,12 +577,13 @@ module.exports = function (app) {
         req.session = payload.context
         next()
       } catch (err) {
-        logger.error('Invalid internal gateway request. Invalid gateway token')
-        logger.error(err)
+        logger.error('Invalid internal gateway request. Invalid gateway token. %s', err.message)
+        logger.reqErrorDump(req)
         next( Unauthorized )
       }
     } else {
-      logger.error('Invalid internal gateway request. Gateway token is missing')
+      logger.error('Invalid internal gateway request. Gateway token was not provided')
+      logger.reqErrorDump(req)
       next( Unauthorized )
     }
   }

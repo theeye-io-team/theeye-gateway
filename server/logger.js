@@ -39,6 +39,15 @@ function Logger (name) {
 
   self.instance = debug
 
+  self.reqErrorDump = (req) => {
+    self.error('%j', {
+      headers: req.headers,
+      url: req.originalUrl,
+      method: req.method,
+      hostname: req.hostname
+    })
+  }
+
   return self
 }
 
