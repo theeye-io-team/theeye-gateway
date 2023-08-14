@@ -7,6 +7,8 @@ const ldapauth = require('./ldapauth')
 const ACL = require('./acl')
 const fs = require('fs')
 
+const basicAuthHeaders = require('basic-auth')
+
 const logger = require('../../logger')(':services:authentication')
 const EscapedRegExp = require('../../escaped-regexp')
 const {
@@ -49,8 +51,12 @@ module.exports = function (app) {
 
       let strategies = this.config.strategies
       if (strategies.ldapauth) {
+        const ldapConfig = Object.assign({},
+          strategies.ldapauth,
+          { credentialsLookup: basicAuthHeaders }
+        )
         const ldapHandler = await ldapauth(app)
-        passport.use(new passportLdap(strategies.ldapauth, ldapHandler))
+        passport.use(new passportLdap(ldapConfig, ldapHandler))
       }
 
       if (strategies.google) {
