@@ -37,7 +37,7 @@ module.exports = (app) => {
       })
 
       res.cookie(
-        app.config.services.authentication.cookie.name || 'theeye_session',
+        app.config.services.authentication.cookie?.name || 'theeye_session',
         session.token,
         app.config.services.authentication.cookie
       )

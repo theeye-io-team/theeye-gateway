@@ -124,7 +124,8 @@ module.exports = (app) => {
             alias: customer.alias,
             name: customer.name,
             display_name: (customer.display_name || customer.name),
-            config: customer.config
+            config: customer.config,
+            tags: customer.tags
           }
         }
 
