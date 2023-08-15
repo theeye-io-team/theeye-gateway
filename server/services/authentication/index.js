@@ -7,6 +7,8 @@ const ldapauth = require('./ldapauth')
 const ACL = require('./acl')
 const fs = require('fs')
 
+const basicAuthHeaders = require('basic-auth')
+
 const logger = require('../../logger')(':services:authentication')
 const EscapedRegExp = require('../../escaped-regexp')
 const {
@@ -49,8 +51,12 @@ module.exports = function (app) {
 
       let strategies = this.config.strategies
       if (strategies.ldapauth) {
+        const ldapConfig = Object.assign({},
+          strategies.ldapauth,
+          { credentialsLookup: basicAuthHeaders }
+        )
         const ldapHandler = await ldapauth(app)
-        passport.use(new passportLdap(strategies.ldapauth, ldapHandler))
+        passport.use(new passportLdap(ldapConfig, ldapHandler))
       }
 
       if (strategies.google) {
@@ -146,7 +152,6 @@ module.exports = function (app) {
           passport.last_login = new Date()
           passport.save()
         }
-
 
         done (null, { user, passport })
       } catch (err) {
@@ -273,10 +278,11 @@ module.exports = function (app) {
         }
 
         // register token last usage
-        user.last_access = new Date()
-        await user.save().catch(err => {
-          app.service.notifications.eventNotifySupport(err)
-        })
+        // performance issues. this is producing a lot of db writing
+        //user.last_access = new Date()
+        //await user.save().catch(err => {
+        //  app.service.notifications.eventNotifySupport(err)
+        //})
 
         const jwt_verify = (app.config.services.authentication.jwt_verify || {})
         if (
