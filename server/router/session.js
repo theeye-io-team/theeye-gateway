@@ -130,11 +130,17 @@ module.exports = (app) => {
         }
 
         if (req.query.scopes.includes('member')) {
+          if (!session.member?.credential) {
+            await session.populate({
+              path: 'member'
+            }).execPopulate()
+          }
+
           profile.member = {
             credential: session.member.credential,
             notifications: session.member.notifications,
             tags: session.member.tags,
-            creation_date: session.member.creation_date
+            since: session.member.creation_date
           }
         }
 
