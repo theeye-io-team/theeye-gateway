@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.16.1](https://github.com/theeye-io-team/theeye-gateway/compare/1.16.0...1.16.1) (2023-08-15)
+
+
+### Bug Fixes
+
+* added validations and req dump ([738e348](https://github.com/theeye-io-team/theeye-gateway/commit/738e3481df23d739035a687b1a3f2bc2e3508669))
+* customer change must change session cookie ([589d880](https://github.com/theeye-io-team/theeye-gateway/commit/589d8806145a6646550e88ba503a705636b23165))
+* ldap w/basic auth ([#39](https://github.com/theeye-io-team/theeye-gateway/issues/39)) ([a38361d](https://github.com/theeye-io-team/theeye-gateway/commit/a38361d1afdb4db27b28cf5978c56bfcc505d141))
+
 ## [1.16.0](https://github.com/theeye-io-team/theeye-gateway/compare/1.15.1...1.16.0) (2023-07-28)
 
 
