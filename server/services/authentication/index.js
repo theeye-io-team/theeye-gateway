@@ -278,6 +278,7 @@ module.exports = function (app) {
         }
 
         // register token last usage
+        // performance issues. this is producing a lot of db writing
         //user.last_access = new Date()
         //await user.save().catch(err => {
         //  app.service.notifications.eventNotifySupport(err)
