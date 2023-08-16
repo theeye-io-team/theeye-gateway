@@ -1,5 +1,6 @@
 const moment = require('moment')
 const express = require('express')
+const isEmail = require('validator/lib/isEmail')
 
 const logger = require('../../logger')('router:notifications')
 const CredentialsConstants = require('../../constants/credentials')
@@ -36,13 +37,15 @@ module.exports = (app) => {
       logger.debug('%s|event arrived. %s', event.id, event.topic)
       logger.data('%o', event)
 
+      const members = await getMembersToNotify(event)
+
       await Promise.all([
         // send event via pub/sub messages system
         app.service.notifications.messages.sendEvent(event),
         // handler for generic generated events by topic  
-        createTopicEventNotifications(req, res),
+        createTopicEventNotifications(event, members),
         // handler for all generated events by organization/topic
-        sendSocketEventByACL(event),
+        sendSocketEventByACL(event, members),
         // application specific notifications
         //sendTaskEventNotification(req, res)
       ])
@@ -80,7 +83,15 @@ module.exports = (app) => {
 
   router.post('/task', async (req, res, next) => {
     try {
-      await createTaskCustomNotification(req, res)
+      const event = req.body
+      if (!event) {
+        throw new ClientError('Invalid Event. Request body required')
+      }
+
+      createTaskCustomNotification(event)
+        .then(() => logger.log('task notification dispatched'))
+        .catch(logger.error)
+
       return res.status(200).json('ok')
     } catch (err) {
       if (err.status) {
@@ -92,33 +103,21 @@ module.exports = (app) => {
     }
   })
 
-  const sendSocketEventByACL = async (event) => {
+  const sendSocketEventByACL = async (event, members) => {
+    const AdminCredentials = [
+      CredentialsConstants.ROOT,
+      CredentialsConstants.ADMIN,
+      CredentialsConstants.OWNER
+    ]
     app.service.notifications.sockets.sendEvent(event, 'admin')
 
-    if (event.data && event.data.model) {
-      const model = event.data.model
-      // use model acl 
-      if (Array.isArray(model.acl) && model.acl.length > 0) {
-        const acl = model.acl
-        const promises = []
-        for (let value of acl) {
-          const userPromise = app.models.users.user.findOne({ email: value })
-          promises.push(userPromise)
-        }
-
-        Promise
-          .all(promises)
-          .then(users => {
-            for (let user of users) {
-              if (user !== null) { // is === null , the email is invalid
-                app.service.notifications.sockets.sendEvent(event, user)
-              }
-            }
-          })
+    for (let order = 0; order < members.length; order++) {
+      const member = members[order]
+      // member is not admin
+      // send messages to its own channel
+      if (!AdminCredentials.includes(member.credential)) {
+        app.service.notifications.sockets.sendEvent(event, member.user)
       }
-    } else {
-      logger.log('event model not present.')
-      logger.log(event)
     }
   }
 
@@ -127,12 +126,7 @@ module.exports = (app) => {
    * custom notifications can be sent to any user registered in the eye
    *
    */
-  const createTaskCustomNotification = async (req, res) => {
-    const event = req.body
-    if (!event) {
-      throw new ClientError('Invalid Event. Request body required')
-    }
-
+  const createTaskCustomNotification = async (event) => {
     //const notifyJob = event.data.model
     //const notifyTask = notifyJob.task
     //const notificationTypes = notifyTask.notificationTypes
@@ -142,9 +136,6 @@ module.exports = (app) => {
     //const recipients = (parseRecipients(args[2]) || notifyTask.recipients)
 
     const { subject, message, recipients, notificationTypes } = event.data
-
-    const organization = event.data.organization
-    const organization_id = event.data.organization_id
 
     logger.debug('%s|%s', event.id, 'sending custom notifications')
 
@@ -156,39 +147,14 @@ module.exports = (app) => {
 
     event.data.notification = { subject, body: message, recipients }
 
+    // If notifications are not filtered, send all types as default
     if (!notificationTypes || notificationTypes.desktop) {
-      createNotifications({
-        topic: TopicsConstants.NOTIFICATION_TASK,
-        data: event.data,
-        event_id: event.id,
-        customer_name: organization,
-        customer_id: organization_id,
-        customer: organization_id
-      }, users).then(notifications => {
-        if (notifications) {
-          // send extra notification event via socket to desktop clients
-          logger.debug('%s|%s', event.id, 'creating desktop notifications')
-          for (let index in notifications) {
-            const notification = notifications[index]
-            app.service.notifications.sockets.sendEvent({
-              id: event.id,
-              topic: TopicsConstants.NOTIFICATION_CRUD,
-              data: {
-                model: notification,
-                model_type: 'Notification',
-                user_id: notification.user_id,
-                operation: 'create',
-                organization,
-                organization_id
-              }
-            })
-            logger.debug('%s|%s', event.id, 'by desktop notified')
-          }
-        }
+      const payload = Object.assign({}, event, {
+        topic: TopicsConstants.NOTIFICATION_TASK
       })
+      createNotifications(payload, users)
     }
 
-    // If notifications are not filtered, send all types as default
     if (!notificationTypes || notificationTypes.push) {
       for (let user of users) {
         logger.debug(`${event.id}|sending push notification to user ${user._id}`)
@@ -218,79 +184,26 @@ module.exports = (app) => {
    * should only be notified to the organization members
    *
    */
-  const createTopicEventNotifications = async (req, res) => {
-    const event = req.body
-    const topic = event.topic
+  const createTopicEventNotifications = async (event, members) => {
 
-    logger.debug('%s|sending event notification.', event.id)
+    if (members.length === 0) {
+      logger.debug('%s|%s', event.id, 'no members to notify')
+      return
+    }
 
     if (!isHandledNotificationEvent(event)) {
       logger.debug('%s|dismissed. not handled', event.id)
       return
     }
 
-    const model = event.data.model
-    //let acls = (model.task ? model.task.acl : model.acl) || []
-    const acls = (model.acl||[])
-    const credentials = [
-      CredentialsConstants.ROOT,
-      CredentialsConstants.ADMIN,
-      CredentialsConstants.OWNER
-    ]
-    const organization = event.data.organization
-    const organization_id = event.data.organization_id
+    logger.debug('%s|sending event notification.', event.id)
 
-    let members = await getMembersToNotify(event, organization_id, acls, credentials)
+    const users = members.map(member => member.user)
 
-    if (members.length === 0) {
-      logger.debug('%s|%s', event.id, 'dismissed. no organization members to notify')
-      return
-    }
+    // desktop notifications
+    createNotifications(event, users)
 
-    if (!isApprovalOnHoldEvent(event)) {
-      members = applyMembersNotificationFilters(event, members)
-      // filtered members will not be notified at all
-      if (!members || !Array.isArray(members) || members.length === 0) {
-        logger.debug(`${event.id}|dismissed. notification is ignored by users`)
-        return
-      }
-    }
-
-    let users = members.map(member => member.user)
-
-    // create a notification for each user
-    createNotifications({
-      topic: event.topic,
-      data: event.data,
-      event_id: event.id,
-      customer_name: organization,
-      customer_id: organization_id,
-      customer: organization_id
-    }, users).then(notifications => {
-      //
-      // notifications panel.
-      // send notification-crud event via socket to ui clients
-      //
-      if (notifications.length > 0) {
-        for (let index in notifications) {
-          const notification = notifications[index]
-          app.service.notifications.sockets.sendEvent({
-            id: event.id,
-            topic: TopicsConstants.NOTIFICATION_CRUD,
-            data: {
-              model: notification,
-              model_type: 'Notification',
-              user_id: notification.user_id,
-              operation: 'create',
-              organization,
-              organization_id
-            }
-          })
-          logger.debug('%s|%s', event.id, 'by socket notified')
-        }
-      }
-    })
-
+    // email notifications
     sendMembersEmailEvent(event, members)
 
     for (let user of users) {
@@ -386,113 +299,103 @@ module.exports = (app) => {
     return users
   }
 
-  // Returns a members collection for a given customer
-  const getMembersToNotify = async (event, customer_id, ids, credentials) => {
-    var query = { customer_id }
+  const getMembersToNotify = async (event) => {
+    const model = event.data.model
+    const query = { customer_id: event.data.organization_id }
 
-    if (event && isApprovalOnHoldEvent(event)) {
-      const approvers = event.data.model?.approvers
-      query.user_id = { $in: approvers }
-    } else {
-      if (Array.isArray(credentials) && credentials.length > 0) {
-        query.credential = { $in: credentials }
-      }
-    }
-
-    let members = await app.models.member
+    // get members of the organization
+    const members = await app.models.member
       .find(query)
       .populate({
         path: 'user',
+        match: {
+          enabled: true,
+          email: { $ne: '', $ne: null }
+        },
         select: 'email username enabled credential devices'
       })
       .exec()
 
-    if (!members || !Array.isArray(members) || members.length === 0) {
+    if (members.length === 0) {
       return []
     }
 
-    members = members.filter(member => {
-      let user = member.user
-      logger.log(`verifying member ${user.email}, ${user.username}`)
-      return (user.username && user.email && user.enabled === true)
-    })
-
-    return members
-  }
-
-  /**
-   * @return {Promise}
-   */
-  const createNotifications = async (event, users) => {
-    // Persist notifications
-    // rulez for updates stopped/updates started.
-    // only create notification for host
-    const notifications = []
-
-    users.forEach(user => {
-      notifications.push(Object.assign({}, event, { user_id: user._id, user: user._id }))
-    })
-
-    //return app.models.notification.create(notifications)
-
-    // temp disable notifications in database
-    // create model but dont save it to database
-    let models = []
-    for (let notification of notifications) {
-      models.push(new app.models.notification(notification))
-    }
-    return models
-  }
-
-  /**
-   * @summary can compare same valid comparable types
-   * @param {*} val1
-   * @param {*} val2
-   * @return {Boolean}
-   */
-  const canCompare = (val1, val2) => {
-    const isComparable = (value) => {
-      // we can compare types and null
-      let types = ['number','string','boolean','undefined']
-      let type = typeof value
-      return types.indexOf(type) !== -1 || value === null
+    const acl = {
+      identifiers: [],
+      roles: [
+        CredentialsConstants.ROOT,
+        CredentialsConstants.ADMIN,
+        CredentialsConstants.OWNER
+      ],
+      tags: []
     }
 
-    if (isComparable(val1) && isComparable(val2)) {
-      return (typeof val1 === typeof val2)
-    } else {
+    // prepare model acl
+    if (model.acl?.length > 0) {
+      for (let order = 0; order < model.acl.length; order++) {
+        const value = model.acl[order]
+
+        if (CredentialsConstants.LIST.indexOf(value) !== -1) {
+          // the acl is a credential
+          acl.roles.push(value)
+        } else if (isTagAcl(value)) {
+          // the acl is a k:v tag
+          acl.tags.push(value)
+        //} else if (isEmail(value)) {
+        } else {
+          // the acl is an identifier
+          acl.identifiers.push(value)
+        }
+      }
+    }
+
+    const toNotify = []
+    for (let order = 0; order < members.length; order++) {
+      const member = members[order]
+      if (member.user) {
+        // approval tasks Approvers must be notified
+        if (isApprovalOnHoldEvent(event)) {
+          const approvers = event.data.model?.approvers
+          for (let i = 0; i < approvers.length; i++) {
+            if (member.user_id === approvers[i]) {
+              toNotify.push(member)
+              break
+            }
+          }
+        } else if (notifyMember(member, acl) === true) {
+          if (!isFilteredByMember(event, members)) {
+            toNotify.push(member)
+          }
+        }
+      } else {
+        logger.error('member user does not exists %s', member._id)
+      }
+    }
+    return toNotify
+  }
+
+  const notifyMember = (member, acl) => {
+    let found = false
+
+    if (acl.roles.indexOf(member.credential) !== -1) { return true }
+
+    found = member.tags
+      .find(mTag => acl.tags.includes(`${mTag.k}:${mTag.v}`))
+
+    if (found) { return true }
+
+    return acl.identifiers.includes(member.user.email)
+  }
+
+  const isFilteredByMember = (event, member) => {
+    const filters = member.notifications?.notificationFilters || []
+    let filtered = false
+    if (!Array.isArray(filters) || filters.length === 0) {
+      // not filtes
       return false
     }
-  }
 
-  /**
-   * @summary ...
-   * @param {Object} event
-   * @return {Boolean}
-   */
-  const isApprovalOnHoldEvent = (event) => {
-    let isEvent = (
-      event.topic === 'job-crud' &&
-      event.data.model_type === 'ApprovalJob' &&
-      event.data.model.lifecycle === 'onhold'
-    )
-
-    return isEvent
-  }
-
-  const applyMembersNotificationFilters = (event, members) => {
-    let filtered = []
-    for (let member of members) {
-      let excludes = (member.notifications && member.notifications.notificationFilters) || []
-      let exclusionFilter
-      if (excludes && Array.isArray(excludes) && excludes.length > 0) {
-        exclusionFilter = excludes.find(exc => hasMatchedExclusionFilter(exc, event))
-      }
-      if (exclusionFilter === undefined) {
-        filtered.push(member)
-      }
-    }
-    return filtered
+    return filters.find(f => hasMatchedExclusionFilter(f, event)) !== undefined
   }
 
   /**
@@ -539,6 +442,110 @@ module.exports = (app) => {
     return true
   }
 
+  /**
+   * @summary can compare same valid comparable types
+   * @param {*} val1
+   * @param {*} val2
+   * @return {Boolean}
+   */
+  const canCompare = (val1, val2) => {
+    const isComparable = (value) => {
+      // we can compare types and null
+      let types = ['number','string','boolean','undefined']
+      let type = typeof value
+      return types.indexOf(type) !== -1 || value === null
+    }
+
+    if (isComparable(val1) && isComparable(val2)) {
+      return (typeof val1 === typeof val2)
+    } else {
+      return false
+    }
+  }
+
+  /**
+   *
+   * create notification in DB is disabled.
+   *
+   * send the model via socket.
+   *
+   */
+  const createNotifications = (event, users) => {
+    const props = {
+      topic: event.topic,
+      data: event.data,
+      event_id: event.id,
+      customer_name: event.data.organization,
+      customer_id: event.data.organization_id,
+      customer: event.data.organization_id
+    }
+
+    return insertNotifications(props, users)
+      .then(notifications => {
+        // notifications panel.
+        // send notification-crud event via socket to ui clients
+        if (notifications.length > 0) {
+          logger.debug('%s|%s', event.id, 'creating desktop notifications')
+          for (let index = 0; index < notifications.length; index++) {
+            const notification = notifications[index]
+            app.service.notifications.sockets.sendEvent({
+              id: event.id,
+              topic: TopicsConstants.NOTIFICATION_CRUD,
+              data: {
+                model: notification,
+                model_type: 'Notification',
+                user_id: notification.user_id,
+                operation: 'create',
+                organization: event.data.organization,
+                organization_id: event.data.organization_id
+              }
+            })
+            logger.debug('%s|%s', event.id, 'by socket notified')
+          }
+        }
+      })
+      .catch(logger.error)
+  }
+
+  const insertNotifications = (event, users) => {
+    // Persist notifications
+    // rulez for updates stopped/updates started.
+    // only create notification for host
+    const notifications = []
+
+    for (let index = 0; index < users.length; index++) {
+      const user = users[index]
+      notifications.push(
+        Object.assign({}, event, { user_id: user._id, user: user._id })
+      )
+    }
+
+    //return app.models.notification.create(notifications)
+
+    // temp disable notifications in database
+    // create model but dont save it to database
+    let models = []
+    for (let notification of notifications) {
+      models.push(new app.models.notification(notification))
+    }
+    return models
+  }
+
+  /**
+   * @summary ...
+   * @param {Object} event
+   * @return {Boolean}
+   */
+  const isApprovalOnHoldEvent = (event) => {
+    let isEvent = (
+      event.topic === 'job-crud' &&
+      event.data.model_type === 'ApprovalJob' &&
+      event.data.model.lifecycle === 'onhold'
+    )
+
+    return isEvent
+  }
+
   const isCompleted = (lifecycle) => {
     let completed = [
       'canceled',
@@ -551,16 +558,6 @@ module.exports = (app) => {
     return completed
   }
 
-  //const isResultNotificationEvent = (event) => {
-  //  if (event.topic !== 'job-crud') {
-  //    return false
-  //  }
-  //  if (event.data.model.task.show_result !== true) {
-  //    return false
-  //  }
-  //  return isCompleted(event.data.model.lifecycle)
-  //}
-
   const sendMembersEmailEvent = (event, members) => {
     for (let member of members) {
       if (
@@ -568,7 +565,7 @@ module.exports = (app) => {
         member.notifications.email !== false
       ) {
         // try to deliver emails to the user
-        let user = member.user
+        const user = member.user
         app.service.notifications.email
           .sendEvent(event, user)
           .then(response => {
@@ -581,6 +578,10 @@ module.exports = (app) => {
           })
       }
     }
+  }
+
+  const isTagAcl = (value) => {
+    return value.trim().split(':').length === 2
   }
 
   return router
