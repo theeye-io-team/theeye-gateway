@@ -40,7 +40,7 @@ module.exports = (app) => {
       const members = await getMembersToNotify(event)
 
       await Promise.all([
-        // send event via pub/sub messages system
+        // send event via redis pub/sub messages system
         app.service.notifications.messages.sendEvent(event),
         // handler for generic generated events by topic  
         createTopicEventNotifications(event, members),
