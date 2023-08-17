@@ -357,7 +357,7 @@ module.exports = (app) => {
         if (isApprovalOnHoldEvent(event)) {
           const approvers = event.data.model?.approvers
           for (let i = 0; i < approvers.length; i++) {
-            if (member.user_id === approvers[i]) {
+            if (member.user_id.toString() === approvers[i]) {
               toNotify.push(member)
               break
             }
@@ -507,7 +507,7 @@ module.exports = (app) => {
       .catch(logger.error)
   }
 
-  const insertNotifications = (event, users) => {
+  const insertNotifications = async (event, users) => {
     // Persist notifications
     // rulez for updates stopped/updates started.
     // only create notification for host
