@@ -301,7 +301,15 @@ module.exports = (app) => {
 
   const getMembersToNotify = async (event) => {
     const model = event.data.model
-    const query = { customer_id: event.data.organization_id }
+    const query = {
+      customer_id: event.data.organization_id,
+      credential: {
+        $nin: [
+          CredentialsConstants.AGENT,
+          CredentialsConstants.INTEGRATION,
+        ]
+      }
+    }
 
     // get members of the organization
     const members = await app.models.member
@@ -363,7 +371,7 @@ module.exports = (app) => {
             }
           }
         } else if (notifyMember(member, acl) === true) {
-          if (!isFilteredByMember(event, members)) {
+          if (!isFilteredByMember(event, member)) {
             toNotify.push(member)
           }
         }
