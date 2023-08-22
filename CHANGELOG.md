@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.16.2](https://github.com/theeye-io-team/theeye-gateway/compare/1.16.1...1.16.2) (2023-08-22)
+
+
+### Bug Fixes
+
+* added origin/url to token notification ([#41](https://github.com/theeye-io-team/theeye-gateway/issues/41)) ([3772c01](https://github.com/theeye-io-team/theeye-gateway/commit/3772c0162cc60b8de4b52fd205695c21de37dd38))
+
 ### [1.16.1](https://github.com/theeye-io-team/theeye-gateway/compare/1.16.0...1.16.1) (2023-08-15)
 
 
