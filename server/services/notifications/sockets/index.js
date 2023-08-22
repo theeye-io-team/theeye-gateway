@@ -61,6 +61,7 @@ module.exports = function (app, config) {
     for (let eventName in SocketEvents) {
       if (eventName === 'post:authorize') {
         socket.on('post:authorize', (params, next) => {
+          // @TODO use socket.request as request.
           SocketEvents['post:authorize']({ socket, params }, next)
         })
       } else {
@@ -202,14 +203,18 @@ module.exports = function (app, config) {
 
     if (socket.handshake.auth && socket.handshake.auth.access_token) {
       let token = socket.handshake.auth.access_token
-      app.service.authentication.verifySessionToken(token, (err, user, session) => {
-        if (err) {
-          logger.error(err)
-          unauthorized()
-        } else {
-          next(null, user, session)
+      app.service.authentication.verifySessionToken(
+        socket.request, // IncommingMessage
+        token,
+        (err, user, session) => {
+          if (err) {
+            logger.error(err)
+            unauthorized()
+          } else {
+            next(null, user, session)
+          }
         }
-      })
+      )
     } else {
       disconnect()
     }
@@ -228,6 +233,7 @@ module.exports = function (app, config) {
       }
 
       if (eventName === 'disconnect') {
+          // @TODO use socket.request as request.
         handler({socket}, next)
       } else {
         logger.log('authentication middleware')
@@ -236,6 +242,7 @@ module.exports = function (app, config) {
             logger.error(err.message)
             next({ status: 401, message: err.message })
           } else {
+          // @TODO use socket.request as request.
             handler({ socket, user, session, params }, next)
           }
         })
