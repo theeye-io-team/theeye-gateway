@@ -47,7 +47,7 @@ module.exports = function (app) {
 
     async configure () {
       passport.use(new passportBasic(this.verifyUserPassword))
-      passport.use(new passportBearer(this.verifySessionToken))
+      passport.use(new passportBearer({ passReqToCallback: true }, this.verifySessionToken))
 
       let strategies = this.config.strategies
       if (strategies.ldapauth) {
@@ -227,8 +227,11 @@ module.exports = function (app) {
       }
     }
 
-    async verifySessionToken (token, next) {
+    async verifySessionToken (req = {}, token, next) {
       logger.log('new connection [bearer]')
+
+      const origin = req.headers?.referer || req.headers?.origin
+      const url = `${req.baseUrl}${req.path}`
 
       try {
         const session = await app.models.session.findOne({ token })
@@ -237,7 +240,9 @@ module.exports = function (app) {
             subject: 'USER ACCESS DENIED',
             body: `
               <div>
-                Invalid bearer token.<br/>
+                Invalid bearer token<br/>
+                <p>Origin: ${origin}</p>
+                <p>URL: ${url}</p>
                 <p>Token: ${token}</p>
               </div>
             `
@@ -252,6 +257,8 @@ module.exports = function (app) {
             body: `
               <div>
                 Session exists but the user was not found.<br/>
+                <p>Origin: ${origin}</p>
+                <p>URL: ${url}</p>
                 <p>Token: ${token}</p>
                 <p>id: ${session.user_id}</p>
               </div>
@@ -266,6 +273,8 @@ module.exports = function (app) {
             body: `
               <div>
                 User is disabled. Bearer token is blocked.<br/>
+                <p>Origin: ${origin}</p>
+                <p>URL: ${url}</p>
                 <p>Token: ${token}</p>
                 <p>id: ${user._id}</p>
                 <p>username: ${user.username}</p>
@@ -312,6 +321,8 @@ module.exports = function (app) {
                 body: `
                   <div>
                     JWT token verification failed.<br/>
+                    <p>Origin: ${origin}</p>
+                    <p>URL: ${url}</p>
                     <p>reason: ${err.message}</p>
                     <p>id: ${user._id}</p>
                     <p>username: ${user.username}</p>
