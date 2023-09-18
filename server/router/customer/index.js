@@ -94,7 +94,7 @@ module.exports = (app) => {
       try {
         const customer = await app.models.customer.findById(req.session.customer_id)
         if (!customer?.logo) {
-          throw new ClientError('Logo not found', {statusCode: 404})
+          throw new ClientError('Logo not found', { statusCode: 204 })
         } else {
           req.url = customer.logo
           return next()
