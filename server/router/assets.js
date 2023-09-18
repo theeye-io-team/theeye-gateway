@@ -28,7 +28,7 @@ module.exports = (app) => {
         })
 
         if (!customer?.logo) {
-          throw new ClientError('Logo Not Found', {statusCode: 404})
+          throw new ClientError('Logo Not Found', {statusCode: 204})
         }
 
         req.url = customer.logo
