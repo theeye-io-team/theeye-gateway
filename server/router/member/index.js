@@ -59,8 +59,9 @@ module.exports = (app) => {
     credentialMiddleware.check([CredentialsConstants.ROOT, CredentialsConstants.MANAGER, CredentialsConstants.OWNER]),
     async (req, res, next) => {
       try {
-        if (!req.body.credential) {
-          return res.status(400).json({ message: "Missing param credential." })
+        const { credential, tags } = req.body
+        if (!credential && !Array.isArray(tags)) {
+          return res.status(400).json({ message: "Nothing to update." })
         }
 
         let member = await app.models.member.findOne({
@@ -74,7 +75,14 @@ module.exports = (app) => {
           throw err
         }
 
-        member.set({ credential: req.body.credential })
+        if (credential) {
+          member.set({ credential })
+        }
+
+        if (Array.isArray(tags)) {
+          member.set({ tags })
+        }
+
         await member.save()
         res.json(member)
       } catch (err) {
