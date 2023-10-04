@@ -42,12 +42,10 @@ module.exports = (app) => {
       await Promise.all([
         // send event via redis pub/sub messages system
         app.service.notifications.messages.sendEvent(event),
-        // handler for generic generated events by topic  
+        // handler for generically generated events by topic  
         createTopicEventNotifications(event, members),
         // handler for all generated events by organization/topic
         sendSocketEventByACL(event, members),
-        // application specific notifications
-        //sendTaskEventNotification(req, res)
       ])
 
       return res.status(200).json('ok')
@@ -109,6 +107,8 @@ module.exports = (app) => {
       CredentialsConstants.ADMIN,
       CredentialsConstants.OWNER
     ]
+
+    // administrators channel
     app.service.notifications.sockets.sendEvent(event, 'admin')
 
     for (let order = 0; order < members.length; order++) {
@@ -196,16 +196,23 @@ module.exports = (app) => {
       return
     }
 
+    const filteredMembers = applyMemberNotificationFilters(event, members)
+    if (filteredMembers.length === 0) {
+      logger.debug('%s|dismissed. no one wants to receive it', event.id)
+      return
+    }
+
     logger.debug('%s|sending event notification.', event.id)
 
-    const users = members.map(member => member.user)
+    const users = filteredMembers.map(member => member.user)
 
-    // desktop notifications
+    // desktop notifications / bell
     createNotifications(event, users)
 
     // email notifications
-    sendMembersEmailEvent(event, members)
+    sendMembersEmailEvent(event, filteredMembers)
 
+    // push notifications
     for (let user of users) {
       logger.debug(`${event.id}|sending push notification to user ${user._id}`)
       app.service.notifications.push.sendEvent(event, user)
@@ -302,6 +309,7 @@ module.exports = (app) => {
   const getMembersToNotify = async (event) => {
     const model = event.data.model
     const query = {
+      disabled: { $ne: true },
       customer_id: event.data.organization_id,
       credential: {
         $nin: [
@@ -360,39 +368,54 @@ module.exports = (app) => {
     const toNotify = []
     for (let order = 0; order < members.length; order++) {
       const member = members[order]
-      if (member.user) {
-        // approval tasks Approvers must be notified
-        if (isApprovalOnHoldEvent(event)) {
-          const approvers = event.data.model?.approvers
-          for (let i = 0; i < approvers.length; i++) {
-            if (member.user_id.toString() === approvers[i]) {
-              toNotify.push(member)
-              break
-            }
-          }
-        } else if (notifyMember(member, acl) === true) {
-          if (!isFilteredByMember(event, member)) {
-            toNotify.push(member)
-          }
-        }
-      } else {
+      if (!member.user) {
         logger.error('member user does not exists %s', member._id)
+        member.disabled = true
+        member.save().then(() => {
+          logger.error('member automatically disabled')
+        })
+      } else if (memberHasAccess(member, acl)) {
+        toNotify.push(member)
       }
     }
     return toNotify
   }
 
-  const notifyMember = (member, acl) => {
+  const memberHasAccess = (member, acl) => {
     let found = false
 
+    // by credential
     if (acl.roles.indexOf(member.credential) !== -1) { return true }
 
+    // by key:value tags
     found = member.tags
       .find(mTag => acl.tags.includes(`${mTag.k}:${mTag.v}`))
 
     if (found) { return true }
 
+    // by user email
     return acl.identifiers.includes(member.user.email)
+  }
+
+  const applyMemberNotificationFilters = (event, members) => {
+    const toNotify = []
+    for (let index = 0; index < members.length; index++) {
+      const member = members[index]
+
+      // approval tasks Approvers must be notified
+      if (isApprovalOnHoldEvent(event)) {
+        const approvers = event.data.model?.approvers
+        for (let i = 0; i < approvers.length; i++) {
+          if (member.user_id.toString() === approvers[i]) {
+            toNotify.push(member)
+            break
+          }
+        }
+      } else if (!isFilteredByMember(event, member)) {
+        toNotify.push(member)
+      }
+    }
+    return toNotify
   }
 
   const isFilteredByMember = (event, member) => {

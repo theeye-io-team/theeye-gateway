@@ -2,6 +2,7 @@ const mongoose = require('mongoose')
 
 module.exports = function (db) {
   const schema = new mongoose.Schema({
+    disabled: { type: Boolean, default: false },
     user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
     user_id: { type: mongoose.Schema.Types.ObjectId, required: true },
     customer: { type: mongoose.Schema.Types.ObjectId, ref: 'Customer', required: true },
