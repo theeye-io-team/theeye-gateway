@@ -15,24 +15,9 @@ module.exports = (app) => {
   router.post('/', async (req, res, next) => {
     try {
       const event = req.body
-
-      if (!event.id) {
-        let err = new Error('id required')
-        err.status = 400
-        throw err
-      }
-
-      if (!event.data) {
-        let err = new Error('%s|data required', event.id)
-        err.status = 400
-        throw err
-      }
-
-      if (!event.topic) {
-        let err = new Error('%s|topic required', event.id)
-        err.status = 400
-        throw err
-      }
+      if (!event.id) { throw new ClientError('id required') }
+      if (!event.data) { throw new ClientError('event data required', event.id) }
+      if (!event.topic) { throw new ClientError('event topic required', event.id) }
 
       logger.debug('%s|event arrived. %s', event.id, event.topic)
       logger.data('%o', event)
@@ -86,7 +71,7 @@ module.exports = (app) => {
         throw new ClientError('Invalid Event. Request body required')
       }
 
-      createTaskCustomNotification(event)
+      createTaskNotification(event)
         .then(() => logger.log('task notification dispatched'))
         .catch(logger.error)
 
@@ -126,15 +111,7 @@ module.exports = (app) => {
    * custom notifications can be sent to any user registered in the eye
    *
    */
-  const createTaskCustomNotification = async (event) => {
-    //const notifyJob = event.data.model
-    //const notifyTask = notifyJob.task
-    //const notificationTypes = notifyTask.notificationTypes
-    //const args = (notifyJob.task_arguments_values || [])
-    //const subject = (args[0] || notifyTask.subject)
-    //const body = (args[1] || notifyTask.body)
-    //const recipients = (parseRecipients(args[2]) || notifyTask.recipients)
-
+  const createTaskNotification = async (event) => {
     const { subject, message, recipients, notificationTypes } = event.data
 
     logger.debug('%s|%s', event.id, 'sending custom notifications')
@@ -248,8 +225,13 @@ module.exports = (app) => {
     return true
   }
 
-  // Returns a user collection for a given customer
-  const getUsersToNotify = async (event, customerName, ids = [], credentials = []) => {
+  // Returns a users collection for the given customer
+  const getUsersToNotify = async (
+    event,
+    customerName,
+    ids = [],
+    credentials = []
+  ) => {
     let query = {}
 
     if (event && isApprovalOnHoldEvent(event)) {
@@ -276,22 +258,14 @@ module.exports = (app) => {
       }
 
       if (Array.isArray(credentials) && credentials.length > 0) {
-        query.$or.push({
-          credential: { $in: credentials }
-        })
+        query.$or.push({ credential: { $in: credentials } })
       }
 
       if (Array.isArray(ids) && ids.length > 0) {
         // casi insensitive search
         const ciIds = ids.map(id => new EscapedRegExp(id, 'i'))
-
-        query.$or.push({
-          email: { $in: ciIds }
-        })
-
-        query.$or.push({
-          username: { $in: ciIds }
-        })
+        query.$or.push({ email: { $in: ciIds } })
+        query.$or.push({ username: { $in: ciIds } })
       }
 
       if (customerName) {
