@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [1.17.0](https://github.com/theeye-io-team/theeye-gateway/compare/1.16.2...1.17.0) (2023-10-25)
+
+
+### Features
+
+* acl's using tag members and roles ([#40](https://github.com/theeye-io-team/theeye-gateway/issues/40)) ([e17d075](https://github.com/theeye-io-team/theeye-gateway/commit/e17d075d40804c9bfbecdac64958f4fc4414f6af))
+
+
+### Bug Fixes
+
+* doesn't filter socket notifications ([#43](https://github.com/theeye-io-team/theeye-gateway/issues/43)) ([35a3210](https://github.com/theeye-io-team/theeye-gateway/commit/35a3210334ff38aee092db6743727480acf0d03d))
+* patch member tags ([#42](https://github.com/theeye-io-team/theeye-gateway/issues/42)) ([44d1007](https://github.com/theeye-io-team/theeye-gateway/commit/44d1007ac82c899b2a3de94e6a946ce8b83cee71))
+* return status code 204 if logo is unavailable ([baa2d8d](https://github.com/theeye-io-team/theeye-gateway/commit/baa2d8d79f6028c55c243da870ee7af3c407cc0f))
+
 ### [1.16.2](https://github.com/theeye-io-team/theeye-gateway/compare/1.16.1...1.16.2) (2023-08-22)
 
 
