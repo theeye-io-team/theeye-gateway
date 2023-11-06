@@ -486,11 +486,14 @@ module.exports = function (app) {
         throw new ClientError('Invalid session. Organization is no longer available')
       }
 
+      const credential = (member.user?.credential || member.credential)
+
       const token = app.service.authentication.issue({
         email: member.user.email,
         username: member.user.username,
         user_id: member.user._id.toString(),
-        org_uuid: member.customer?.name
+        org_uuid: member.customer?.name,
+        credential
       }, {
         expiresIn: expirationSeconds
       })
@@ -506,12 +509,7 @@ module.exports = function (app) {
       session.customer = member.customer_id
       session.customer_id = member.customer_id
       session.protocol = protocol
-
-      if (member.user.credential) {
-        session.credential = member.user.credential
-      } else {
-        session.credential = member.credential
-      }
+      session.credential = credential
 
       return session.save()
     }
@@ -539,7 +537,8 @@ module.exports = function (app) {
         email: session.user.email,
         username: session.user.username,
         user_id: session.user_id,
-        org_uuid: session.customer?.name
+        org_uuid: session.customer?.name,
+        credential: session.credential
       }, {
         expiresIn: expirationSeconds
       })
