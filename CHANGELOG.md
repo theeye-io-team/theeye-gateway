@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [1.18.0](https://github.com/theeye-io-team/theeye-gateway/compare/1.17.0...1.18.0) (2023-11-06)
+
+
+### Features
+
+* credential added to session token ([85af1a7](https://github.com/theeye-io-team/theeye-gateway/commit/85af1a731cbb5cf08a462894951281afbcc7862a))
+
 ## [1.17.0](https://github.com/theeye-io-team/theeye-gateway/compare/1.16.2...1.17.0) (2023-10-25)
 
 
