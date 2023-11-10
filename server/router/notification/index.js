@@ -321,7 +321,7 @@ module.exports = (app) => {
     }
 
     // prepare model acl
-    if (model.acl?.length > 0) {
+    if (model && model.acl?.length > 0) {
       for (let order = 0; order < model.acl.length; order++) {
         const value = model.acl[order]
 
