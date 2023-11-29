@@ -49,14 +49,14 @@ module.exports = {
       },
       "expires": 86400,
       "localBypass": true,
-      "cookie": {
-        "domain": "localhost",
-        "sameSite": "lax",
-        "expire": 86400,
-        "httpOnly": true,
-        "secure": true,
-        "signed": true
-      },
+      //"cookie": {
+      //  "domain": "localhost",
+      //  "sameSite": "lax",
+      //  "expire": 86400,
+      //  "httpOnly": true,
+      //  "secure": true,
+      //  "signed": true
+      //},
       "strategies": {
         "ldapauth": {
           "defaultGroup": "theeye_users",

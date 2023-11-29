@@ -196,9 +196,10 @@ module.exports = (app) => {
       await user.save()
 
       res.cookie(
-        app.config.services.authentication.cookie.name || 'theeye_session',
+        app.config.services.authentication.cookie?.name || 'theeye_session',
         newSession.token,
-        app.config.services.authentication.cookie)
+        app.config.services.authentication.cookie
+      )
 
       // return new session
       res.json({ access_token: newSession.token })
@@ -220,7 +221,7 @@ module.exports = (app) => {
       })
       await session.remove()
       res.clearCookie(
-        app.config.services.authentication.cookie.name || 'theeye_session',
+        app.config.services.authentication.cookie?.name || 'theeye_session',
         app.config.services.authentication.cookie
       )
 
@@ -240,9 +241,10 @@ module.exports = (app) => {
       await app.service.authentication.refreshSession(session)
 
       res.cookie(
-        app.config.services.authentication.cookie.name || 'theeye_session',
+        app.config.services.authentication.cookie?.name || 'theeye_session',
         session.token,
-        app.config.services.authentication.cookie)
+        app.config.services.authentication.cookie
+      )
 
       return res.status(200).json({ access_token: session.token })
     } catch (err) {
