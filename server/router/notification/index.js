@@ -263,7 +263,10 @@ module.exports = (app) => {
 
       if (Array.isArray(ids) && ids.length > 0) {
         // casi insensitive search
-        const ciIds = ids.map(id => new EscapedRegExp(id, 'i'))
+        const ciIds = ids
+          .filter(id => typeof id === 'string')
+          .map(id => new EscapedRegExp(id, 'i'))
+
         query.$or.push({ email: { $in: ciIds } })
         query.$or.push({ username: { $in: ciIds } })
       }
