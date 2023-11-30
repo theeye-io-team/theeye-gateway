@@ -116,7 +116,7 @@ module.exports = (app) => {
 
     logger.debug('%s|%s', event.id, 'sending custom notifications')
 
-    let users = await getUsersToNotify(null, null, recipients, [])
+    let users = await getUsersToNotify(null, event.data.organization, recipients, [])
     if (users.length === 0) {
       logger.debug('%s|%s', event.id, 'dismissed. no system users to notify')
       return 
