@@ -11,28 +11,32 @@ module.exports = function (app, config) {
     }
 
     sendEvent (event, user) {
-      const model = event.data.model
-      let data
-      switch (event.topic) {
-        case TopicsConstants.MONITOR_STATE:
-          let monitor_event = event.data.monitor_event
-          let severity = model.failure_severity
+      try {
+        const model = event.data.model
+        let data
+        switch (event.topic) {
+          case TopicsConstants.MONITOR_STATE:
+            let monitor_event = event.data.monitor_event
+            let severity = model.failure_severity
 
-          if (severity === 'HIGH' || severity === 'CRITICAL') {
-            data = prepareMonitorStateChangeNotification(model, monitor_event)
+            if (severity === 'HIGH' || severity === 'CRITICAL') {
+              data = prepareMonitorStateChangeNotification(model, monitor_event)
+              if (data.msg) this.send(data, user)
+            }
+            break
+          case TopicsConstants.JOB_CRUD:
+            data = prepareJobNotification(model)
             if (data.msg) this.send(data, user)
-          }
-          break
-        case TopicsConstants.JOB_CRUD:
-          data = prepareJobNotification(model)
-          if (data.msg) this.send(data, user)
-          break
-        case TopicsConstants.WEBHOOK_TRIGGERED:
-          data = prepareWebhookNotification(model)
-          if (data.msg) this.send(data, user)
-          break
-        default:
-          logger.debug('topic not handled')
+            break
+          case TopicsConstants.WEBHOOK_TRIGGERED:
+            data = prepareWebhookNotification(model)
+            if (data.msg) this.send(data, user)
+            break
+          default:
+            logger.debug('topic not handled')
+        }
+      } catch (err) {
+        logger.error(err)
       }
     }
 

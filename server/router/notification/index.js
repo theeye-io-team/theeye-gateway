@@ -116,7 +116,7 @@ module.exports = (app) => {
 
     logger.debug('%s|%s', event.id, 'sending custom notifications')
 
-    let users = await getUsersToNotify(null, event.data.organization, recipients, [])
+    let users = await getUsersToNotify(null, null, recipients, [])
     if (users.length === 0) {
       logger.debug('%s|%s', event.id, 'dismissed. no system users to notify')
       return 
@@ -136,7 +136,6 @@ module.exports = (app) => {
       for (let user of users) {
         logger.debug(`${event.id}|sending push notification to user ${user._id}`)
         app.service.notifications.push.send({ msg: subject }, user)
-        logger.debug(`${event.id}|by push notified`)
       }
     }
 
@@ -147,11 +146,17 @@ module.exports = (app) => {
           payload.organization = event.data.organization || ''
         }
         app.service.notifications.email.send(payload, user.email)
-        logger.debug('%s|%s', event.id, 'by email notified')
+          .then(() => {
+            logger.debug('%s|%s', event.id, 'by email notified')
+          })
+          .catch(err => {
+            logger.error(err)
+            logger.error('%s|%s', event.id, err.message)
+          })
       }
     }
 
-    logger.debug('%s|%s', event.id, 'custome notifications sent')
+    //logger.debug('%s|%s', event.id, 'custome notifications sent')
   }
 
   /*
