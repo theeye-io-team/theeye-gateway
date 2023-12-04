@@ -136,7 +136,6 @@ module.exports = (app) => {
       for (let user of users) {
         logger.debug(`${event.id}|sending push notification to user ${user._id}`)
         app.service.notifications.push.send({ msg: subject }, user)
-        logger.debug(`${event.id}|by push notified`)
       }
     }
 
@@ -147,11 +146,17 @@ module.exports = (app) => {
           payload.organization = event.data.organization || ''
         }
         app.service.notifications.email.send(payload, user.email)
-        logger.debug('%s|%s', event.id, 'by email notified')
+          .then(() => {
+            logger.debug('%s|%s', event.id, 'by email notified')
+          })
+          .catch(err => {
+            logger.error(err)
+            logger.error('%s|%s', event.id, err.message)
+          })
       }
     }
 
-    logger.debug('%s|%s', event.id, 'custome notifications sent')
+    //logger.debug('%s|%s', event.id, 'custome notifications sent')
   }
 
   /*
@@ -263,7 +268,10 @@ module.exports = (app) => {
 
       if (Array.isArray(ids) && ids.length > 0) {
         // casi insensitive search
-        const ciIds = ids.map(id => new EscapedRegExp(id, 'i'))
+        const ciIds = ids
+          .filter(id => typeof id === 'string')
+          .map(id => new EscapedRegExp(id, 'i'))
+
         query.$or.push({ email: { $in: ciIds } })
         query.$or.push({ username: { $in: ciIds } })
       }
