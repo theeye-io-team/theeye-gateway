@@ -39,28 +39,25 @@ module.exports = function (app) {
         if (!user) {
           const { user, member } = await newUserFlow(app, customer, context)
 
-          if (req.notify_user === true) {
             await app.service
               .notifications
               .email
               .sendActivationMessage({ user })
 
-            await app.service
-              .notifications
-              .email
-              .sendCustomerInvitationMessage({
-                name: user.name,
-                email: user.email,
-                customer_name: customer.name
-              })
-          }
+            //await app.service
+            //  .notifications
+            //  .email
+            //  .sendCustomerInvitationMessage({
+            //    name: user.name,
+            //    email: user.email,
+            //    customer_name: customer.name
+            //  })
 
         } else {
           const member = await existentUserFlow(app, customer, user, context)
 
-          if (req.notify_user === true) {
             if (user.enabled !== true) {
-              // resent user activation email
+              // send user activation email
               user.invitation_token = app.service
                 .authentication
                 .issue({ email: user.email })
@@ -74,16 +71,14 @@ module.exports = function (app) {
               member.user = user
             }
 
-            // resend customer invitation
-            await app.service
-              .notifications
-              .email
-              .sendCustomerInvitationMessage({
-                name: user.name,
-                email: user.email,
-                customer_name: customer.name
-              })
-          }
+            //await app.service
+            //  .notifications
+            //  .email
+            //  .sendCustomerInvitationMessage({
+            //    name: user.name,
+            //    email: user.email,
+            //    customer_name: customer.name
+            //  })
         }
 
         return res.status(200).json(member)
