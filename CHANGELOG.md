@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.18.2](https://github.com/theeye-io-team/theeye-gateway/compare/1.18.1...1.18.2) (2023-12-14)
+
+
+### Bug Fixes
+
+* capture error when cookie config is not set ([#44](https://github.com/theeye-io-team/theeye-gateway/issues/44)) ([da92155](https://github.com/theeye-io-team/theeye-gateway/commit/da921555412579ef7982ad535d5003ddfc5c56f4))
+* ensure recipients values are strings ([#45](https://github.com/theeye-io-team/theeye-gateway/issues/45)) ([1d0bf07](https://github.com/theeye-io-team/theeye-gateway/commit/1d0bf07b9ed55c9f41da0d49b5da9601503d234d))
+* send activation email with activation link ([#46](https://github.com/theeye-io-team/theeye-gateway/issues/46)) ([bb9d130](https://github.com/theeye-io-team/theeye-gateway/commit/bb9d130525a7f1fee9fc528d1f15434217b8b53d))
+
 ### [1.18.1](https://github.com/theeye-io-team/theeye-gateway/compare/1.18.0...1.18.1) (2023-11-29)
 
 
