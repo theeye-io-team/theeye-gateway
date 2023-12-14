@@ -100,24 +100,21 @@ class Email extends AbstractNotification {
    * @return {Promise}
    *
    */
-  sendCustomerInvitationMessage ({ name, email, customer_name }) {
-    if (this.config.message.customerInvitation.enabled === false) {
-      return
-    }
-
-    const app = this.app
-
-    const options = {
-      subject: 'TheEye Invitation',
-      body: Templates.customerInvitation({
-        name,
-        email,
-        customer_name
-      })
-    }
-
-    return this.send(options, email)
-  }
+  //sendCustomerInvitationMessage ({ name, email, customer_name }) {
+  //  if (this.config.message.customerInvitation.enabled === false) {
+  //    return
+  //  }
+  //  const app = this.app
+  //  const options = {
+  //    subject: 'TheEye Invitation',
+  //    body: Templates.customerInvitation({
+  //      name,
+  //      email,
+  //      customer_name
+  //    })
+  //  }
+  //  return this.send(options, email)
+  //}
 
   /**
    *
