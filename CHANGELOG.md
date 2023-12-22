@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.18.3](https://github.com/theeye-io-team/theeye-gateway/compare/1.18.2...1.18.3) (2023-12-22)
+
+
+### Bug Fixes
+
+* capture all errors ([#48](https://github.com/theeye-io-team/theeye-gateway/issues/48)) ([0f58b5c](https://github.com/theeye-io-team/theeye-gateway/commit/0f58b5c66d3be92811c4f0101acd6b9147eda712))
+
 ### [1.18.2](https://github.com/theeye-io-team/theeye-gateway/compare/1.18.1...1.18.2) (2023-12-14)
 
 
