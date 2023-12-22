@@ -62,7 +62,7 @@ class Mailer {
     }
 
     logger.debug(options)
-    this.transporter.sendMail(options, callback)
+    return this.transporter.sendMail(options, callback)
   }
 }
 
