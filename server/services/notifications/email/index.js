@@ -46,23 +46,13 @@ class Email extends AbstractNotification {
     const organization = (message.organization || '')
     const from = this.config.from.replace(/%customer%/g, organization)
 
-    return new Promise((resolve, reject) => {
-      const mail = {}
-      mail.bcc = message.address || address
-      mail.html = message.body || message.html
-      mail.subject = message.subject
-      mail.from = from
+    const mail = {}
+    mail.bcc = message.address || address
+    mail.html = message.body || message.html
+    mail.subject = message.subject
+    mail.from = from
 
-      this.mailer.sendMail(mail, (err, response) => {
-        if (err) {
-          logger.error(err)
-          logger.error(response)
-          reject(err)
-        } else {
-          resolve(response)
-        }
-      })
-    })
+    return this.mailer.sendMail(mail)
   }
 
   /**
@@ -71,28 +61,32 @@ class Email extends AbstractNotification {
    *
    */
   sendActivationMessage (input) {
-    if (this.config.message.activation.enabled === false) {
-      return
+    try {
+      if (this.config.message.activation.enabled === false) {
+        return
+      }
+
+      const app = this.app
+      const { user } = input
+
+      const activation_link = this.getTokenLink(
+        user.invitation_token,
+        app.config.services.registration.activateUrl
+      )
+
+      const options = {
+        subject: 'TheEye Account Activation',
+        body: Templates.activation({
+          name: user.name,
+          email: user.email,
+          activation_link
+        })
+      }
+
+      return this.send(options, user.email)
+    } catch (err) {
+      logger.error(err.message)
     }
-
-    const app = this.app
-    const { user } = input
-
-    const activation_link = this.getTokenLink(
-      user.invitation_token,
-      app.config.services.registration.activateUrl
-    )
-
-    const options = {
-      subject: 'TheEye Account Activation',
-      body: Templates.activation({
-        name: user.name,
-        email: user.email,
-        activation_link
-      })
-    }
-
-    return this.send(options, user.email)
   }
 
   /**
@@ -122,13 +116,17 @@ class Email extends AbstractNotification {
    *
    */
   sendInvitationMessage (input) {
-    if (this.config.message.invitation.enabled === false) {
-      return
-    }
+    try {
+      if (this.config.message.invitation.enabled === false) {
+        return
+      }
 
-    const body = Templates.invitation(input)
-    const options = { subject: 'TheEye Invitation', body }
-    return this.send(options, input.invitee.email)
+      const body = Templates.invitation(input)
+      const options = { subject: 'TheEye Invitation', body }
+      return this.send(options, input.invitee.email)
+    } catch (err) {
+      logger.error(err.message)
+    }
   }
 
   /**
@@ -138,34 +136,38 @@ class Email extends AbstractNotification {
    *
    */
   sendRegistrationMessage (input) {
-    if (this.config.message.registration.enabled === false) {
-      return
+    try {
+      if (this.config.message.registration.enabled === false) {
+        return
+      }
+
+      const app = this.app
+      const { user } = input
+
+      const activation_link = this.getTokenLink(
+        user.invitation_token,
+        app.config.services.registration.finishUrl
+      )
+
+      const options = {
+        subject: 'TheEye Registration',
+        body: Templates.registration({
+          email: user.email,
+          name: user.name,
+          activation_link
+        })
+      }
+
+      let addresses = user.email
+      if (app.config.services.registration.notifyUs === true) {
+        // bcc us
+        addresses += `,${app.config.app.supportEmail}`
+      }
+
+      return this.send(options, addresses)
+    } catch (err) {
+      logger.error(err)
     }
-
-    const app = this.app
-    const { user } = input
-
-    const activation_link = this.getTokenLink(
-      user.invitation_token,
-      app.config.services.registration.finishUrl
-    )
-
-    const options = {
-      subject: 'TheEye Registration',
-      body: Templates.registration({
-        email: user.email,
-        name: user.name,
-        activation_link
-      })
-    }
-
-    let addresses = user.email
-    if (app.config.services.registration.notifyUs === true) {
-      // bcc us
-      addresses += `,${app.config.app.supportEmail}`
-    }
-
-    return app.service.notifications.email.send(options, addresses)
   }
 
   /**
@@ -175,30 +177,34 @@ class Email extends AbstractNotification {
    *
    */
   sendPasswordRecoveryToken (input) {
-    const app = this.app
-    if (this.config.message.passwordRecover.enabled === false) {
-      return
+    try {
+      const app = this.app
+      if (this.config.message.passwordRecover.enabled === false) {
+        return
+      }
+
+      const { user, token } = input
+
+      if (!app.config.services.registration.passwordResetUrl) {
+        throw new Error('missing configuration registration.passwordResetUrl')
+      }
+
+      const url = this.getTokenLink(
+        token,
+        app.config.services.registration.passwordResetUrl
+      )
+
+      const body = Templates.passwordRecover({ url, email: user.email, name: user.name })
+      const options = {
+        to: user.email,
+        subject: 'TheEye Password Recover',
+        body
+      }
+
+      return this.send(options, user.email)
+    } catch (err) {
+      logger.error(err)
     }
-
-    const { user, token } = input
-
-    if (!app.config.services.registration.passwordResetUrl) {
-      throw new Error('missing configuration registration.passwordResetUrl')
-    }
-
-    const url = this.getTokenLink(
-      token,
-      app.config.services.registration.passwordResetUrl
-    )
-
-    const body = Templates.passwordRecover({ url, email: user.email, name: user.name })
-    const options = {
-      to: user.email,
-      subject: 'TheEye Password Recover',
-      body
-    }
-
-    return this.send(options, user.email)
   }
 
   getTokenLink (token, url) {
