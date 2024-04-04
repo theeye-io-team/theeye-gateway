@@ -81,8 +81,11 @@ module.exports = (app) => {
 
       const { member, user } = await createIntegrationToken(app, customer, data)
       const tokenSession = await app.service.authentication.createSession({
-        member: member,
-        protocol: PassportConstants.PROTOCOL_LOCAL,
+        member,
+        passport: {
+          protocol: PassportConstants.PROTOCOL_LOCAL,
+          provider: PassportConstants.PROVIDER_THEEYE,
+        },
         neverExpires: true // never expires
       })
 

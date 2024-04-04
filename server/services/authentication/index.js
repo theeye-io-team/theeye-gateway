@@ -422,7 +422,7 @@ module.exports = function (app) {
           await user.save()
         }
 
-        return this.createSession({ member, protocol: passport.protocol })
+        return this.createSession({ member, passport })
       } catch (err) {
         logger.error(err)
         const data = err.data
@@ -456,7 +456,7 @@ module.exports = function (app) {
      * @return {Promise} session
      */
     async createSession (params) {
-      const { member, protocol } = params
+      const { member, passport } = params
 
       let expirationDate, expirationSeconds
       if (params.neverExpires === true) {
@@ -489,6 +489,7 @@ module.exports = function (app) {
       const credential = (member.user?.credential || member.credential)
 
       const token = app.service.authentication.issue({
+        issuer: passport.provider,
         email: member.user.email,
         username: member.user.username,
         user_id: member.user._id.toString(),
@@ -508,7 +509,8 @@ module.exports = function (app) {
       session.member_id = member._id
       session.customer = member.customer_id
       session.customer_id = member.customer_id
-      session.protocol = protocol
+      session.protocol = passport.protocol
+      session.provider = passport.provider
       session.credential = credential
 
       return session.save()

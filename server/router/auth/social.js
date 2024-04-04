@@ -124,7 +124,7 @@ module.exports = (app) => {
           }
 
         const member = memberOf[0]
-        const session = await app.service.authentication.createSession({ member, protocol: passport.protocol })
+        const session = await app.service.authentication.createSession({ member, passport })
 
         res.cookie(
           app.config.services.authentication.cookie.name || 'theeye_session',
