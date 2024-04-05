@@ -176,7 +176,11 @@ module.exports = (app) => {
   }, async (req, res, next) => {
     try {
       const { member, session, user } = req
-      const newSession = await app.service.authentication.createSession({ member, protocol: session.protocol })
+      const passport = {
+        protocol: session.protocol,
+        provider: session.provider
+      }
+      const newSession = await app.service.authentication.createSession({ member, passport })
       const model = { _id: session._id, user_id: session.user_id } // information to identify target user
 
       app.service.notifications.sockets.sendEvent({

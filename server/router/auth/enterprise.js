@@ -118,7 +118,7 @@ module.exports = (app) => {
         })
       }
 
-      const session = await app.service.authentication.createSession({ member, protocol: passport.protocol })
+      const session = await app.service.authentication.createSession({ member, passport })
       res.status(200).json({ access_token: session.token })
     } catch (err) {
       logger.error('%o', err)

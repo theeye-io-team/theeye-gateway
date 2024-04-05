@@ -20,6 +20,7 @@ module.exports = function (db) {
     logo: { type: String, default: '' },
     http_origins: { type: 'array', default: [] },
     display_name: { type: String },
+    provider_uuid: { type: String }, // temporal
     description: { type: String, default: '' },
     owner_id: { type: mongoose.Schema.Types.ObjectId },
     owner: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
