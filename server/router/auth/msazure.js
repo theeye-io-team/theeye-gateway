@@ -161,9 +161,10 @@ module.exports = (app) => {
     }
     return passport
   }
+
   const memberCreate = async (user, customer) => {
     let member = await app.models.member.findOne({
-      user_id: user.id,
+      user_id: user._id,
       customer_id: customer._id
     })
 
@@ -174,7 +175,8 @@ module.exports = (app) => {
         customer: customer._id,
         customer_id: customer._id,
         customer_name: customer.name,
-        credential: (profile.credential || 'user')
+        //credential: (profile?.credential || 'user')
+        credential: 'user'
       })
     }
     return member
