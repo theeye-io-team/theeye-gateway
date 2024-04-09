@@ -6,7 +6,7 @@ if [ -z "${DEBUG}" ]; then
 fi
 
 if [ -z "${NODE_ENV}" ]; then
-  export NODE_ENV="dev"
+  export NODE_ENV="local"
 fi
 
 npx nodemon --ignore ./client ${1} server/

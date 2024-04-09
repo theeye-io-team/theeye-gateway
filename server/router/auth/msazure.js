@@ -15,6 +15,13 @@ module.exports = (app) => {
   const config = app.config.services.authentication.strategies.oidcAzureAd
   const router = Router()
 
+  if (!config || config.enabled === false || !config.options) {
+    router.get('/signin', (req, res) => res.send(503,"MS Authentication service is disabled"))
+    router.get('/connect', (req, res) => res.send(503,"MS Authentication service is disabled"))
+    return router
+    // break
+  }
+
   const oidcStrategy = new OIDCStrategy(
     config.options,
     (req, ss, sub, payload, accessToken, refreshToken, done) => {
@@ -42,7 +49,6 @@ module.exports = (app) => {
   )
 
   Passport.use(oidcStrategy)
-
 
   router.get('/signin',
     (req, res, next) => {
