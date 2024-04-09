@@ -21,4 +21,5 @@ config
 *.orig
 client
 
+server/config/*
 server/services/notifications/email/templates/*.html

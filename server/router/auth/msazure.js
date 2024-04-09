@@ -1,86 +1,179 @@
 const Router = require('express').Router
 const ObjectId = require('mongoose').Types.ObjectId
 const { ClientError, ServerError } = require('../../errors')
-const logger = require('../../logger')('router:auth')
+const logger = require('../../logger')('router:auth:msazure')
+const axios = require('axios')
+
+const OIDCStrategy = require('passport-azure-ad').OIDCStrategy
+const Passport = require('passport')
 
 const { create } = require('../customer/common')
 
 const AZUREAD_PROVIDER = 'azuread-openidconnect'
 
 module.exports = (app) => {
+  const config = app.config.services.authentication.strategies.oidcAzureAd
   const router = Router()
 
-  router.post('/connect',
-    app.service.authentication.middlewares.bearerPassport,
-    async (req, res, next) => {
+  const oidcStrategy = new OIDCStrategy(
+    config.options,
+    (req, ss, sub, payload, accessToken, refreshToken, done) => {
       try {
-        const { profile, organization } = req.body
-        const user = req.user
-
-        if (!organization.id) {
-          throw new ClientError('Tenant ID not present in payload')
+        if (config.dumpResponse === true) {
+          logger.log('azure payload dump')
+          logger.log(`ss ${ss}`)
+          logger.log(`sub ${sub}`)
+          logger.log(`accessToken ${accessToken}`)
+          logger.log(`refreshToken ${refreshToken}`)
+          logger.log(`payload %j`, payload)
         }
 
-        const customer = await app.models.customer.findById(req.session.customer_id)
-        if (!customer) {
-          throw new ClientError('Invalid session', { statusCode: 401 })
+        if (!accessToken) {
+          throw new Error('Could not obtain an Access Token')
+        } else {
+          logger.log('user authenticated.')
+          done(null, { accessToken, refreshToken, payload })
         }
-        customer.provider_uuid = `${AZUREAD_PROVIDER}:${organization.id}`
-        await customer.save()
-
-        const passport = await passportCreate(user, profile)
-
-        res.status(200).json('ok')
       } catch (err) {
-        logger.error('%o', err)
-        next(err)
+        logger.error(err)
+        done(err)
       }
     }
   )
 
-  //
-  // user authentication is made using another microservice
-  //
+  Passport.use(oidcStrategy)
+
+
+  router.get('/signin',
+    (req, res, next) => {
+      Passport.authenticate('azuread-openidconnect',
+        {
+          session: false,
+          response: res,
+          failureRedirect: config.failureRedirect
+        }
+      )(req, res, next)
+    }
+  )
+
   router.post('/signin',
-    app.service.authentication.middlewares.gatewayPassport,
-    async (req, res, next) => {
+    (req, res, next) => {
+      Passport.authenticate('azuread-openidconnect',
+        {
+          session: false,
+          response: res,
+          failureRedirect: config.failureRedirect
+        }
+      )(req, res, next)
+    }
+  )
+
+  router.get('/connect',
+    (req, res, next) => {
+      const session_state = req.query.session_state
+      Passport.authenticate('azuread-openidconnect',
+        {
+          customState: `session_connect:${session_state}`,
+          session: false,
+          response: res,
+          failureRedirect: config.failureRedirect
+        }
+      )(req, res, next)
+    }
+  )
+
+  router.post('/callback',
+    (req, res, next) => {
+      Passport.authenticate('azuread-openidconnect',
+        {
+          session: false,
+          response: res,
+          failureRedirect: config.failureRedirect
+        }
+      )(req, res, next)
+    },
+    async (req, res) => {
       try {
-        const { profile, organization } = req.body
+        logger.log(req.user)
+        logger.log(req.params.customer_name)
 
-        if (!organization.id) {
-          throw new ClientError('Organization ID is required')
-        }
+        const profile = await buildUserProfile(req.user)
+        const organization = await buildOrganizationProfile(req.user)
+        const state = req.body.state
 
-        const customer = await app.models.customer.findOne({
-          provider_uuid: `${AZUREAD_PROVIDER}:${organization.id}`
-        })
-
-        if (!customer) {
-          throw new ClientError(`There is not a Customer connected to the Tenant ${organization.id}`)
-        }
-
-        // the customer already exists.
-        // here we are registering a user signin using ms azure
-        // we have to check whether the user is created or not
-        const user = await userCreate(profile)
-
-        const passport = await passportCreate(user, profile)
-
-        const member = await memberCreate(user, customer)
+        const { member, passport } = await connectAccount(req, profile, organization, state)
 
         const session = await app.service.authentication
           .createSession({ member, passport })
 
-        res.status(200).json({ access_token: session.token })
+        const qs = JSON.stringify({ access_token: session.token })
+        const query = Buffer.from(qs).toString('base64')
+        res.redirect(`${app.config.app.base_url}/tokenlogin?${query}`)
       } catch (err) {
-        logger.error('%o', err)
-        next(err)
+        logger.error(err)
+        if (err.response) {
+          logger.error(err.response.data)
+        }
+        res.redirect('/error')
       }
     }
   )
 
-  const userCreate = async (profile) => {
+  /**
+   * @return {Promise}
+   */
+  const connectAccount = async (req,profile, organization, state) => {
+    if (/session_connect:/.test(state)) {
+      // user organization connection
+      const token = state.replace(/session_connect:/, '')
+      const { user, session } = await app.service.authentication.verifySessionToken(req, token)
+      return userOrganizationConnect(profile, organization, user)
+    } else {
+      // internal registration
+      return userSignin(profile, organization)
+    }
+  }
 
+  const userOrganizationConnect = async (profile, organization, user) => {
+    const customer = await app.models.customer.findById(req.session.customer_id)
+    if (!customer) {
+      throw new ClientError('Invalid session', { statusCode: 401 })
+    }
+    customer.provider_uuid = `${AZUREAD_PROVIDER}:${organization.id}`
+    await customer.save()
+    const passport = await passportCreate(user, profile)
+    const member = await memberCreate(user, customer)
+
+    return { passport, member, customer }
+  }
+
+  const userSignin = async (profile, organization) => {
+    const customer = await app.models.customer.findOne({
+      provider_uuid: `${AZUREAD_PROVIDER}:${organization.id}`
+    })
+
+    if (!customer) {
+      throw new ClientError(`There is not a Customer connected to the Tenant ${organization.id}`)
+    }
+
+    // the customer already exists.
+    // here we are registering a user signin using ms azure
+    // we have to check whether the user is created or not
+    const user = await userCreate(profile)
+
+    const passport = await passportCreate(user, profile)
+
+    const member = await memberCreate(user, customer)
+
+    return { member, passport, user, customer }
+  }
+
+  router.get('/signout', function(req, res){
+    req.logOut()
+    res.redirect('https://login.microsoftonline.com/common/oauth2/logout?post_logout_redirect_uri=http://localhost:' + app.config.app.port)
+  })
+
+  const userCreate = async (profile) => {
     let user = await app.models.users.uiUser.findOne({
       $or: [
         { email: new RegExp(profile.email, 'i') },
@@ -180,6 +273,87 @@ module.exports = (app) => {
       })
     }
     return member
+  }
+
+  const buildUserProfile = async (user) => {
+    const accessToken = user.accessToken
+
+    logger.log('getting Azure user profile information')
+
+    const payload = await axios.get(config.apis.profile, {
+      headers: {
+        Authorization: 'Bearer ' + accessToken
+      }
+    }).catch(err => {
+      logger.error(err)
+      return null
+    })
+
+    let data
+    if (!payload) {
+      data = Object.assign({}, user.payload, user.payload._json)
+    } else {
+      data = payload.data
+    }
+
+    logger.log(data)
+    logger.log('building profile')
+
+    const profile = azure2theeye(data, config.fields)
+    if (!profile.credential) {
+      profile.credential = (config.defaultCredential || 'user')
+    }
+
+    return profile
+  }
+
+  const buildOrganizationProfile = async (user) => {
+    logger.log('getting user organization information')
+
+    const payload = await axios.get(config.apis.organization ,{
+      headers: {
+        Authorization: 'Bearer ' + user.accessToken
+      }
+    }).catch(err => {
+      logger.error(err)
+      return null
+    })
+
+    let data
+    if (payload === null) {
+      data = { id: user.payload._json.tid }
+    } else {
+      data = payload.data?.value[0]
+    }
+
+    return data
+  }
+
+  const azure2theeye = (payload, attrsMap) => {
+    const profile = {}
+
+    for (let theeyeName in attrsMap) {
+      const azureName = attrsMap[theeyeName]
+      if (azureName !== null) {
+        if (Array.isArray(azureName)) {
+          for (let index = 0; index < azureName.length; index++) {
+            const field = azureName[index]
+            if (payload[field]) {
+              profile[theeyeName] = payload[field]
+            }
+          }
+        } else {
+          profile[theeyeName] = payload[azureName]
+        }
+
+        // field value not found in azure ad returned payload
+        if (!profile[theeyeName]) {
+          throw new Error(`no suitable "${theeyeName}" found in azure profile`)
+        }
+      }
+    }
+
+    return profile
   }
 
   return router
