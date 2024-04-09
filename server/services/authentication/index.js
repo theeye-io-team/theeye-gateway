@@ -340,7 +340,11 @@ module.exports = function (app) {
         }
 
         logger.log('client %s/%s connected [bearer]', user.username, user.email)
-        next(null, user, session)
+        if (next) {
+          next(null, user, session)
+        } else {
+          return { user, session }
+        }
       } catch (err) { // jwt verify error
         logger.error(err)
         unauthorized(next)

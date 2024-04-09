@@ -1,4 +1,4 @@
-{
+
   "app": {
     "base_url": "http://127.0.0.1:6080",
     "port": 6080,
@@ -59,12 +59,59 @@
       "expires": 86400,
       "localBypass": false,
       "strategies": {
+        "oidcAzureAd": {
+          "name": "OIDCAzureAd",
+          "options": {
+            "identityMetadata": "https://login.microsoftonline.com/common/v2.0/.well-known/openid-configuration",
+            "clientID": "",
+            "clientSecret": "",
+            "responseType": "code",
+            "responseMode": "form_post",
+            "redirectUrl": "http://localhost:6080/api/auth/msazure/callback",
+            "allowHttpForRedirectUrl": true,
+            "validateIssuer": false,
+            "issuer": null,
+            "passReqToCallback": true,
+            "useCookieInsteadOfSession": true,
+            "cookieEncryptionKeys": [ ],
+            "scope": [
+              "profile",
+              "email",
+              "offline_access",
+              "https://graph.microsoft.com/mail.read"
+            ],
+            "loggingLevel": "info",
+            "nonceLifetime": null,
+            "nonceMaxAmount": 5,
+            "clockSkew": null
+          },
+          "apis": {
+            "profile": "https://graph.microsoft.com/v1.0/me?$select=id,onPremisesSamAccountName,mail,displayName,userPrincipalName",
+            "organization": "https://graph.microsoft.com/v1.0/organization"
+          },
+          "fields": {
+            "email": [
+              "mail",
+              "userPrincipalName"
+            ],
+            "username": [
+              "onPremisesSamAccountName",
+              "userPrincipalName"
+            ],
+            "name": "displayName",
+            "id": "id",
+            "credential": null
+          },
+          "dumpResponse": true,
+          "defaultCredential": "user",
+          "failureRedirect": "/login"
+        },
         "google": {
           "name": "Google",
           "options": {
             "protocol": "oauth2",
-            "clientID": "212014499186-msvd283en9ltde098rq3romo2blkpr80.apps.googleusercontent.com",
-            "clientSecret": "_RmCygMFw5-IHQ4y7x09Ez0m",
+            "clientID": "",
+            "clientSecret": "",
             "callbackURL": "http://localhost:6080/api/auth/social/google/callback",
             "scope": [
               "profile",
