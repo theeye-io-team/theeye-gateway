@@ -26,7 +26,7 @@ module.exports = (app) => {
     config.options,
     (req, ss, sub, payload, accessToken, refreshToken, done) => {
       try {
-        if (config.dumpResponse === true) {
+        if (config.options.loggingLevel === 'info') {
           logger.log('azure payload dump')
           logger.log(`ss ${ss}`)
           logger.log(`sub ${sub}`)
@@ -128,20 +128,20 @@ module.exports = (app) => {
   /**
    * @return {Promise}
    */
-  const connectAccount = async (req,profile, organization, state) => {
+  const connectAccount = async (req, profile, organization, state) => {
     if (/session_connect:/.test(state)) {
       // user organization connection
       const token = state.replace(/session_connect:/, '')
       const { user, session } = await app.service.authentication.verifySessionToken(req, token)
-      return userOrganizationConnect(profile, organization, user)
+      return userOrganizationConnect(session, profile, organization, user)
     } else {
       // internal registration
       return userSignin(profile, organization)
     }
   }
 
-  const userOrganizationConnect = async (profile, organization, user) => {
-    const customer = await app.models.customer.findById(req.session.customer_id)
+  const userOrganizationConnect = async (session, profile, organization, user) => {
+    const customer = await app.models.customer.findById(session.customer_id)
     if (!customer) {
       throw new ClientError('Invalid session', { statusCode: 401 })
     }
@@ -291,7 +291,11 @@ module.exports = (app) => {
         Authorization: 'Bearer ' + accessToken
       }
     }).catch(err => {
-      logger.error(err)
+      logger.error('azure user profile fetch denied')
+      logger.error(err.message)
+      if (config.options.loggingLevel === 'info') {
+        logger.error(err.response.data)
+      }
       return null
     })
 
@@ -321,7 +325,11 @@ module.exports = (app) => {
         Authorization: 'Bearer ' + user.accessToken
       }
     }).catch(err => {
-      logger.error(err)
+      logger.error('azure organization profile fetch denied')
+      logger.error(err.message)
+      if (config.options.loggingLevel === 'info') {
+        logger.error(err.response.data)
+      }
       return null
     })
 
