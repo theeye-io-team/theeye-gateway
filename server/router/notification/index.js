@@ -207,6 +207,7 @@ module.exports = (app) => {
   // for desktop notifications and persistent messages
   const handledTopics = [
     TopicsConstants.MONITOR_STATE,
+    TopicsConstants.INDICATOR_CRUD,
     TopicsConstants.JOB_CRUD,
     //TopicsConstants.WORKFLOW_JOB_CRUD,
     TopicsConstants.SCHEDULE_CRUD,
