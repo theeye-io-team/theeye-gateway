@@ -2,6 +2,21 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [1.19.0](https://github.com/theeye-io-team/theeye-gateway/compare/1.18.3...1.19.0) (2024-05-23)
+
+
+### Features
+
+* ms azure authentication ([#49](https://github.com/theeye-io-team/theeye-gateway/issues/49)) ([ae03bd4](https://github.com/theeye-io-team/theeye-gateway/commit/ae03bd43731d5b162291d3a6e5b565e25a536e6b))
+* msazure integration ([#50](https://github.com/theeye-io-team/theeye-gateway/issues/50)) ([7c2cf48](https://github.com/theeye-io-team/theeye-gateway/commit/7c2cf483df5e33ef185fb356cb783a1651c7a76d))
+
+
+### Bug Fixes
+
+* default inactive configuration ([#51](https://github.com/theeye-io-team/theeye-gateway/issues/51)) ([002de24](https://github.com/theeye-io-team/theeye-gateway/commit/002de2497255765b282232556b941212ca0b6626))
+* error capture and dump ([f22dbb3](https://github.com/theeye-io-team/theeye-gateway/commit/f22dbb31cb8c7754d786b6eddcc01892d1216984))
+* member profile ([2a036da](https://github.com/theeye-io-team/theeye-gateway/commit/2a036da28db3d8c7a6fac41710521f4c0881fa32))
+
 ### [1.18.3](https://github.com/theeye-io-team/theeye-gateway/compare/1.18.2...1.18.3) (2023-12-22)
 
 
