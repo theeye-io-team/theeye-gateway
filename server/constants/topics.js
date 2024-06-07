@@ -5,7 +5,6 @@ module.exports = {
   HOST_PROCESSES: 'host-processes',
   HOST_STATS: 'host-stats',
   //CRUD: 'crud', // could replace all crud operations
-  JOB_CRUD: 'job-crud',
   SCHEDULE_CRUD: 'schedule-crud',
   INDICATOR_CRUD: 'indicator-crud',
   HOST_INTEGRATIONS_CRUD: 'host-integrations-crud',
@@ -14,5 +13,9 @@ module.exports = {
   NOTIFICATION_TASK: 'notification-task',
   SESSION: 'session',
   WEBHOOK_TRIGGERED: 'webhook-triggered',
-  TASK_COMPLETED: 'task-completed'
+  // single task execution events
+  TASK_COMPLETED: 'task-completed',
+  JOB_CRUD: 'job-crud',
+  //WORKFLOW_JOB_FINISHED: 'workflow-job-finished',
+  WORKFLOW_JOB_CRUD: 'workflow-job-crud',
 }
