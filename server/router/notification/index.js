@@ -204,9 +204,11 @@ module.exports = (app) => {
     logger.debug(`${event.id}|${event.topic} notifications sent`)
   }
 
+  // for desktop notifications and persistent messages
   const handledTopics = [
     TopicsConstants.MONITOR_STATE,
     TopicsConstants.JOB_CRUD,
+    //TopicsConstants.WORKFLOW_JOB_CRUD,
     TopicsConstants.SCHEDULE_CRUD,
     TopicsConstants.WEBHOOK_TRIGGERED
   ]
