@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.19.1](https://github.com/theeye-io-team/theeye-gateway/compare/1.19.0...1.19.1) (2024-06-19)
+
+
+### Bug Fixes
+
+* wf job crud event added ([#53](https://github.com/theeye-io-team/theeye-gateway/issues/53)) ([3f6c2e5](https://github.com/theeye-io-team/theeye-gateway/commit/3f6c2e592d1104dfc907cdc0b40e597a1d1d9572))
+
 ## [1.19.0](https://github.com/theeye-io-team/theeye-gateway/compare/1.18.3...1.19.0) (2024-05-23)
 
 
