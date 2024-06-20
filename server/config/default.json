@@ -1,4 +1,4 @@
-
+{
   "app": {
     "base_url": "http://127.0.0.1:6080",
     "port": 6080,
@@ -59,13 +59,13 @@
       "expires": 86400,
       "localBypass": false,
       "strategies": {
-        "!!oidcAzureAd": {
+        "oidcAzureAd": {
           "enabled": false,
           "name": "OIDCAzureAd",
           "options": {
             "identityMetadata": "https://login.microsoftonline.com/common/v2.0/.well-known/openid-configuration",
-            "clientID": "",
-            "clientSecret": "",
+            "clientID": "111",
+            "clientSecret": "222",
             "responseType": "code",
             "responseMode": "form_post",
             "redirectUrl": "http://localhost:6080/api/auth/msazure/callback",
@@ -78,8 +78,7 @@
             "scope": [
               "profile",
               "email",
-              "offline_access",
-              "https://graph.microsoft.com/mail.read"
+              "offline_access"
             ],
             "loggingLevel": "info",
             "nonceLifetime": null,
