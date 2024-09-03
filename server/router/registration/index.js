@@ -76,6 +76,18 @@ module.exports = (app) => {
 
   router.post('/register', async (req, res, next) => {
     try {
+
+      if (app.config.services.registration.enabled === false) {
+        throw new ClientError('Registration is not allowed', {statusCode:403})
+      }
+
+      if (
+        app.config.services.authentication.strategies.ldapauth && 
+        app.config.services.authentication.localBypass !== true
+      ) {
+        throw new ClientError('Registration is not allowed', {statusCode:403})
+      }
+
       const config = app.config.grecaptcha
       if (config.enabled !== false) {
         // verify grecaptcha
@@ -111,15 +123,6 @@ module.exports = (app) => {
   }, async (req, res, next) => {
     try {
       const body = req.body
-      if (app.config.services.registration.enabled === false) {
-        throw new ClientError('Registration is not allowed', {statusCode:403})
-      }
-      if (
-        app.config.services.authentication.strategies.ldapauth && 
-        app.config.services.authentication.localBypass !== true
-      ) {
-        throw new ClientError('Registration is not allowed', {statusCode:403})
-      }
       if (!body.name) {
         throw new ClientError('Missing param name.')
       }

@@ -11,7 +11,7 @@ module.exports = (app) => {
   const router = express.Router()
 
   const aclsMiddleware = () => {
-    let creds = [
+    const creds = [
       CredentialsConstants.ROOT,
       CredentialsConstants.OWNER,
       CredentialsConstants.ADMIN
@@ -40,7 +40,7 @@ module.exports = (app) => {
           select: 'id username name'
         }).execPopulate()
 
-        let session = await app.models.session.findOne({
+        const session = await app.models.session.findOne({
           user_id: member.user._id,
           customer_id: customer_id
         })
@@ -74,7 +74,7 @@ module.exports = (app) => {
       const data = req.body
       const customer_id = req.session.customer_id
 
-      let customer = await app.models.customer.findById(customer_id)
+      const customer = await app.models.customer.findById(customer_id)
       if (!customer) {
         throw new ClientError('Forbidden', { code: 'OrganizationAccessError', statusCode: 403 })
       }
@@ -105,28 +105,38 @@ module.exports = (app) => {
   router.delete('/:id', aclsMiddleware(), async (req, res, next) => {
     try {
       const id = req.params.id
-      const session = req.session
+      const customer_id = req.session.customer_id
 
-      const member = await app.models.member.findById(id)
+      const customer = await app.models.customer.findById(customer_id)
+      if (!customer) {
+        throw new ClientError('Forbidden', { code: 'OrganizationAccessError', statusCode: 403 })
+      }
+
+      const member = await app.models.member.findOne({
+        _id: id,
+        customer_id: customer._id,
+        credential: CredentialsConstants.INTEGRATION
+      })
+
       if (!member) {
         throw new ClientError('Member Not Found', {statusCode: 404})
       }
 
       const user_id = member.user_id
 
-      app.models.session
-        .findOne({ user_id, customer_id: session.customer_id })
+      await app.models.session
+        .findOne({ user_id, customer_id: customer._id })
         .then(session => session && session.remove())
 
-      app.models.passport
+      await app.models.passport
         .findOne({ user_id })
         .then(passport => passport && passport.remove())
 
-      app.models.users.botUser
+      await app.models.users.botUser
         .findById(user_id)
         .then(user => user && user.remove())
 
-      member.remove()
+      await member.remove()
 
       res.json({})
     } catch (err) {

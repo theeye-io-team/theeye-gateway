@@ -92,48 +92,50 @@ module.exports = (app) => {
     }
   )
 
-  router.post('/',
-    credentialMiddleware.check([CredentialsConstants.ROOT, CredentialsConstants.MANAGER, CredentialsConstants.OWNER]),
-    async (req, res, next) => {
-      try {
-        const body = req.body
+  router.post('/', credentialMiddleware.check(
+    [
+      CredentialsConstants.ROOT,
+      CredentialsConstants.MANAGER,
+      CredentialsConstants.OWNER
+    ]
+  ), async (req, res, next) => {
+    try {
+      const body = req.body
 
-        if (!body.user.name) {
-          let err = Error('Missing param name.')
-          err.status = 400
-          throw err
-        }
-        if (!body.credential) {
-          let err = Error('Missing param credential.')
-          err.status = 400
-          throw err
-        }
-
-        if (!body.user.email || typeof body.user.email !== 'string') {
-          let err = Error('Missing param email.')
-          err.status = 400
-          throw err
-        }
-        if (!isEmail(body.user.email)) {
-          let err = Error('Invalid Email.')
-          err.status = 400
-          throw err
-        }
-
-        req.context = {
-          customer_id: req.session.customer_id,
-          email: body.user.email,
-          name: body.user.name,
-          credential: body.credential
-        }
-
-        next()
-      } catch (err) {
-        next(err)
+      if (!body.user.name) {
+        let err = Error('Missing param name.')
+        err.status = 400
+        throw err
       }
-    },
-    common(app).create
-  )
+      if (!body.credential) {
+        let err = Error('Missing param credential.')
+        err.status = 400
+        throw err
+      }
+
+      if (!body.user.email || typeof body.user.email !== 'string') {
+        let err = Error('Missing param email.')
+        err.status = 400
+        throw err
+      }
+      if (!isEmail(body.user.email)) {
+        let err = Error('Invalid Email.')
+        err.status = 400
+        throw err
+      }
+
+      req.context = {
+        customer_id: req.session.customer_id,
+        email: body.user.email,
+        name: body.user.name,
+        credential: body.credential
+      }
+
+      next()
+    } catch (err) {
+      next(err)
+    }
+  }, common(app).create)
 
   return router
 }

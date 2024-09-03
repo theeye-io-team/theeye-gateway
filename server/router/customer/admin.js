@@ -49,7 +49,7 @@ module.exports = (app) => {
     try {
       const id = req.params.id
 
-      let customer = await app.models.customer.findById(id)
+      const customer = await app.models.customer.findById(id)
       if (!customer) {
         throw new ClientError('Customer Not Found', { statusCode: 404 })
       }

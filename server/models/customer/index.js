@@ -48,6 +48,13 @@ module.exports = function (db) {
     }
   }
 
+
+  schema.pre('validate', function (next) {
+    if (!this.alias) {
+      this.alias = this.name
+    }
+    next()
+  })
   schema.pre('save', function (next) {
     this.last_update = new Date()
     // do stuff
