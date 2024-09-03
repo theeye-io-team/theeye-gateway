@@ -20,33 +20,32 @@ module.exports = (app) => {
         const session = req.session
 
         if (!session.customer_id) {
-          return res.status(400).json({ message: "Missing param customer id." })
+          throw new ClientError('Forbidden', { statusCode: 403 })
         }
 
-        if (!req.body.integration) {
-          return res.status(400).json({ message: "Missing param integration." })
-        }
-
-        if (!req.body.config) {
-          return res.status(400).json({ message: "Missing param config." })
-        }
-
-        const id = session.customer_id
-        const integration = req.body.integration
-        const config = req.body.config
-
-        const customer = await app.models.customer.findById(id)
+        const customer = await app.models.customer.findById(session.customer_id)
         if (!customer) {
-          let err = new Error('Customer Not Found')
-          err.status = 404
-          throw err
+          throw new ClientError('Forbidden', { statusCode: 403 })
         }
+
+        if (!req.body) {
+          throw new ClientError('Invalid payload')
+        }
+
+        if (!req.body?.integration) {
+          throw new ClientError('Missing param integration')
+        }
+
+        if (!req.body?.config) {
+          throw new ClientError('Missing param config')
+        }
+
+        const { integration, config } = req.body
 
         customer.set({ ['config.' + integration]: config })
-
         await customer.save()
 
-        res.json({ [ integration ] : config })
+        res.json({ [ integration ]: config })
       } catch (err) {
         next(err)
       }
@@ -66,14 +65,13 @@ module.exports = (app) => {
         if (!session.customer_id) {
           throw new ClientError('Forbidden', { statusCode: 403 })
         }
-        // bad payload
-        if (!req.body.integration) {
-          throw new ClientError('Integration required')
-        }
-        //
         const customer = await app.models.customer.findById(session.customer_id)
         if (!customer) {
           throw new ClientError('Forbidden', { statusCode: 403 })
+        }
+        // bad payload
+        if (!req.body.integration) {
+          throw new ClientError('Integration required')
         }
 
         if (customer.config[req.body.integration]) {

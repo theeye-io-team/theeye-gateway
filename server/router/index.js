@@ -44,6 +44,7 @@ class Router {
       next()
     })
 
+    // public routes
     api.use('/api/auth', AuthRouter(app))
     api.use('/api/auth/msazure', MSAzureAuthRouter(app))
     api.use('/api/auth/enterprise', internalMiddleware, EnterpriseAuthRouter(app))
@@ -51,15 +52,17 @@ class Router {
     api.use('/api/status', StatusRouter(app))
     api.use('/api/registration', RegistrationRouter(app))
 
+    // user session routes
+    api.use('/helper', bearerMiddleware, HelperRouter(app))
     api.use('/api/bot', bearerMiddleware, BotRouter(app))
     api.use('/api/token', bearerMiddleware, TokenRouter(app))
     api.use('/api/inbox', bearerMiddleware, InboxRouter(app))
     api.use('/api/member', bearerMiddleware, MemberRouter(app))
     api.use('/api/session', bearerMiddleware, SessionRouter(app))
-    api.use('/api/message', bearerMiddleware, MessageRouter(app))
+    //api.use('/api/message', bearerMiddleware, MessageRouter(app))
     api.use('/api/customer', bearerMiddleware, CustomerRouter(app))
 
-    // admin routes
+    // root routes
     api.use('/api/admin/auth', bearerMiddleware, credentialMiddleware.root(), AuthAdminRouter(app))
     api.use('/api/admin/user', bearerMiddleware, credentialMiddleware.root(), UserAdminRouter(app))
     api.use('/api/admin/member', bearerMiddleware, credentialMiddleware.root(), MemberAdminRouter(app))
@@ -67,7 +70,7 @@ class Router {
     api.use('/api/admin/notification', bearerMiddleware, credentialMiddleware.root(), NotificationAdminRouter(app))
     api.use('/api/admin/registration', bearerMiddleware, credentialMiddleware.root(), RegistrationAdminRouter(app))
 
-    api.use('/helper', bearerMiddleware, HelperRouter(app))
+    // internal usage. for api communication
     api.use('/api/notification', internalMiddleware, NotificationRouter(app))
     api.use('/api/internal/user', internalMiddleware, UserInternalRouter(app))
     api.use('/api/internal/member', internalMiddleware, MemberInternalRouter(app))
@@ -77,6 +80,8 @@ class Router {
     api.use('/apiv3', bearerMiddleware, GatewayRouter(app))
     api.use('/', CompatibilityRouter(app))
 
+    // ----------------------------------------
+    // public assets
     api.use('/api/assets', AssetsRouter(app))
 
     // static api route
