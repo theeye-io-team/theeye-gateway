@@ -107,6 +107,10 @@ module.exports = (app) => {
             username: user.username,
             email: user.email
           }
+          if (user.credential) {
+            // the user has been assigned a fixed credential
+            profile.principal.credential = user.credential
+          }
         }
 
         if (req.query.scopes.includes('organization')) {
