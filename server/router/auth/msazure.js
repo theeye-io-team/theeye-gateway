@@ -133,27 +133,27 @@ module.exports = (app) => {
       // user organization connection
       const token = state.replace(/session_connect:/, '')
       const { user, session } = await app.service.authentication.verifySessionToken(req, token)
-      return userOrganizationConnect(session, profile, organization, user)
+      return userOrganizationConnect(req, session, profile, organization, user)
     } else {
       // internal registration
-      return userSignin(profile, organization)
+      return userSignin(req, profile, organization)
     }
   }
 
-  const userOrganizationConnect = async (session, profile, organization, user) => {
+  const userOrganizationConnect = async (req, session, profile, organization, user) => {
     const customer = await app.models.customer.findById(session.customer_id)
     if (!customer) {
       throw new ClientError('Invalid session', { statusCode: 401 })
     }
     customer.provider_uuid = `${AZUREAD_PROVIDER}:${organization.id}`
     await customer.save()
-    const passport = await passportCreate(user, profile)
+    const passport = await passportCreate(user, profile, req?.user||null)
     const member = await memberCreate(user, customer)
 
     return { passport, member, customer }
   }
 
-  const userSignin = async (profile, organization) => {
+  const userSignin = async (req, profile, organization) => {
     const customer = await app.models.customer.findOne({
       provider_uuid: `${AZUREAD_PROVIDER}:${organization.id}`
     })
@@ -167,7 +167,7 @@ module.exports = (app) => {
     // we have to check whether the user is created or not
     const user = await userCreate(profile)
 
-    const passport = await passportCreate(user, profile)
+    const passport = await passportCreate(user, profile, req?.user||null)
 
     const member = await memberCreate(user, customer)
 
@@ -241,7 +241,7 @@ module.exports = (app) => {
     return user
   }
 
-  const passportCreate = async (user, profile) => {
+  const passportCreate = async (user, profile, tokens = null) => {
     // search user provider passport.
     let passport = await app.models.passport.findOne({
       user_id: user._id,
@@ -253,11 +253,13 @@ module.exports = (app) => {
         protocol: 'oauth2',
         provider: AZUREAD_PROVIDER,
         identifier: profile.id,
+        tokens,
         user: user._id,
         user_id: user._id,
         last_login: new Date()
       })
     }
+
     return passport
   }
 
