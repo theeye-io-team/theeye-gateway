@@ -37,7 +37,31 @@ module.exports = (app) => {
       }
 
       customer.set(update)
+      if (!customer.alias) {
+        customer.alias = customer.name
+      }
+
       await customer.save()
+
+      res.json(customer)
+    } catch (err) {
+      next(err)
+    }
+  })
+
+  router.get('/:id', async (req, res, next) => {
+    try {
+      const id = req.params.id
+      const update = req.body
+
+      let customer = await app.models.customer.findById(id)
+      if (!customer) {
+        throw new ClientError('Customer Not Found')
+      }
+
+      if (!customer.alias) {
+        customer.alias = customer.name
+      }
 
       res.json(customer)
     } catch (err) {

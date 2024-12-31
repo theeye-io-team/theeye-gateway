@@ -8,18 +8,18 @@ module.exports = function (db) {
       type: String,
       index: true,
       unique: true,
-      required: true,
-      dropDups: true
+      required: true
     },
     alias: {
       type: String,
       index: true,
       unique: true,
-      required: true
+      required: true,
+      default: ''
     },
+    display_name: { type: String, default: '' },
     logo: { type: String, default: '' },
     http_origins: { type: 'array', default: [] },
-    display_name: { type: String },
     provider_uuid: { type: String }, // temporal
     description: { type: String, default: '' },
     owner_id: { type: mongoose.Schema.Types.ObjectId },
@@ -47,7 +47,6 @@ module.exports = function (db) {
       delete ret.__v
     }
   }
-
 
   schema.pre('validate', function (next) {
     if (!this.alias) {
